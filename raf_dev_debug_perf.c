@@ -256,6 +256,8 @@ static int j(const DField *f, char *out, size_t out_len) {
         return -1; // invalid args
     }
 
+    uint32_t rows = clamp_used(f->r_used, D_ROWS);
+    uint32_t cols = clamp_used(f->c_used, D_COLS);
     uint32_t sev = f->severity;
 
     /*
@@ -275,8 +277,8 @@ static int j(const DField *f, char *out, size_t out_len) {
         "\"matrix\":[",
         f->tag,
         sev,
-        f->r_used,
-        f->c_used,
+        rows,
+        cols,
         f->crc_state,
         (unsigned long long)f->t_epoch,
         f->perm_dev,
@@ -290,11 +292,11 @@ static int j(const DField *f, char *out, size_t out_len) {
     }
 
     size_t need = (size_t)prefix;
-    for (uint32_t i = 0; i < f->r_used; ++i) {
+    for (uint32_t i = 0; i < rows; ++i) {
         need += 1u; // '['
-        for (uint32_t c = 0; c < f->c_used; ++c) {
+        for (uint32_t c = 0; c < cols; ++c) {
             int cell = snprintf(NULL, 0,
-                                (c + 1u < f->c_used) ? "%.6f," : "%.6f",
+                                (c + 1u < cols) ? "%.6f," : "%.6f",
                                 f->m[i][c]);
             if (cell < 0) {
                 out[0] = '\0';
@@ -303,7 +305,7 @@ static int j(const DField *f, char *out, size_t out_len) {
             need += (size_t)cell;
         }
         need += 1u; // ']'
-        if (i + 1u < f->r_used) {
+        if (i + 1u < rows) {
             need += 1u; // ',' between rows
         }
     }
@@ -327,8 +329,8 @@ static int j(const DField *f, char *out, size_t out_len) {
         "\"matrix\":[",
         f->tag,
         sev,
-        f->r_used,
-        f->c_used,
+        rows,
+        cols,
         f->crc_state,
         (unsigned long long)f->t_epoch,
         f->perm_dev,
@@ -342,11 +344,11 @@ static int j(const DField *f, char *out, size_t out_len) {
     }
 
     size_t pos = (size_t)w;
-    for (uint32_t i = 0; i < f->r_used; ++i) {
+    for (uint32_t i = 0; i < rows; ++i) {
         out[pos++] = '[';
-        for (uint32_t c = 0; c < f->c_used; ++c) {
+        for (uint32_t c = 0; c < cols; ++c) {
             int z = snprintf(out + pos, out_len - pos,
-                             (c + 1u < f->c_used) ? "%.6f," : "%.6f",
+                             (c + 1u < cols) ? "%.6f," : "%.6f",
                              f->m[i][c]);
             if (z < 0 || (size_t)z >= (out_len - pos)) {
                 out[0] = '\0';
@@ -355,7 +357,7 @@ static int j(const DField *f, char *out, size_t out_len) {
             pos += (size_t)z;
         }
         out[pos++] = ']';
-        if (i + 1u < f->r_used) {
+        if (i + 1u < rows) {
             out[pos++] = ',';
         }
     }
