@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
+#include <ctype.h>
 #include <math.h>
 
 // -------------------------------
@@ -62,6 +63,40 @@ static float e(RField *f) {
 static void k(RField *f) {
     f->crc_state = raf_fast_crc32(0u, f->m,
         (size_t)(sizeof(float) * f->r_used * f->c_used));
+}
+
+// Trim whitespace and inline comments; returns new length.
+static size_t t_inline(char *line) {
+    if (!line) return 0u;
+
+    // Strip newline / carriage return and trailing spaces.
+    size_t len = strlen(line);
+    while (len > 0u && (line[len - 1u] == '\n' || line[len - 1u] == '\r' ||
+                        isspace((unsigned char)line[len - 1u]))) {
+        line[--len] = '\0';
+    }
+
+    // Remove inline comments after '#'.
+    char *h = strchr(line, '#');
+    if (h) {
+        *h = '\0';
+        len = strlen(line);
+        while (len > 0u && isspace((unsigned char)line[len - 1u])) {
+            line[--len] = '\0';
+        }
+    }
+
+    // Left trim.
+    size_t off = 0u;
+    while (line[off] != '\0' && isspace((unsigned char)line[off])) {
+        ++off;
+    }
+    if (off > 0u) {
+        memmove(line, line + off, len - off + 1u);
+        len -= off;
+    }
+
+    return len;
 }
 
 // -------------------------------
@@ -240,8 +275,8 @@ int main(int argc, char **argv) {
     // Strict stdin processing: CSV lines from shell or another tool.
     char line[256];
     while (f.r_used < R_MAX_ROWS && fgets(line, sizeof(line), stdin)) {
-        if (line[0] == '#' || line[0] == '\n') {
-            continue; // ignore comments / empty
+        if (t_inline(line) == 0u) {
+            continue; // ignore comments / empty after trimming
         }
         int r = v(line, &f);
         if (r != 0) {
