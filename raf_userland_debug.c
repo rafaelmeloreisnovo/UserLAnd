@@ -103,11 +103,19 @@ static int v(const char *line, RField *f) {
         // At least timestamp and CPU are required.
         return -3;
     }
+
+    if (!isfinite(ts) || !isfinite(cpu)) {
+        return -5; // reject NaN/inf inputs early
+    }
     if (n < 3) {
         io = 0.0f; // default when missing
+    } else if (!isfinite(io)) {
+        return -5;
     }
     if (n < 4) {
         net = 0.0f; // default when missing
+    } else if (!isfinite(net)) {
+        return -5;
     }
 
     if (!f->has_t0) {
