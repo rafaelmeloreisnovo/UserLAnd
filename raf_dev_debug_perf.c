@@ -125,9 +125,16 @@ static uint32_t clamp_used(uint32_t v, uint32_t max_v) {
     return (v <= max_v) ? v : max_v;
 }
 
+static void clamp_dims(DField *f) {
+    if (!f) return;
+    f->r_used = clamp_used(f->r_used, D_ROWS);
+    f->c_used = clamp_used(f->c_used, D_COLS);
+}
+
 static float e(DField *f) {
-    uint32_t rows = clamp_used(f->r_used, D_ROWS);
-    uint32_t cols = clamp_used(f->c_used, D_COLS);
+    clamp_dims(f);
+    uint32_t rows = f->r_used;
+    uint32_t cols = f->c_used;
     const float *m = &f->m[0][0];
     uint32_t total = rows * cols;
     float acc = 0.0f;
@@ -139,8 +146,9 @@ static float e(DField *f) {
 }
 
 static void k(DField *f) {
-    uint32_t rows = clamp_used(f->r_used, D_ROWS);
-    uint32_t cols = clamp_used(f->c_used, D_COLS);
+    clamp_dims(f);
+    uint32_t rows = f->r_used;
+    uint32_t cols = f->c_used;
     f->crc_state = raf_fast_crc32(0u, f->m,
         (size_t)(sizeof(float) * rows * cols));
 }
@@ -245,6 +253,7 @@ static int v(const char *line, DField *f) {
     f->m[r][7] = c01(ent, 0.0f, 10.0f);
 
     f->r_used++;
+    clamp_dims(f);
     return 0;
 }
 
@@ -431,6 +440,7 @@ int main(int argc, char **argv) {
         }
     }
 
+    clamp_dims(&f);
     s(&f);
 
     char json[D_JSON];
