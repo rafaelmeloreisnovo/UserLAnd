@@ -285,7 +285,7 @@ static int j(const DField *f, char *out, size_t out_len) {
         f->perm_net
     );
     if (prefix < 0) {
-        out[0] = '\\0';
+        out[0] = '\0';
         return -2; // encoding failure
     }
 
@@ -297,7 +297,7 @@ static int j(const DField *f, char *out, size_t out_len) {
                                 (c + 1u < f->c_used) ? "%.6f," : "%.6f",
                                 f->m[i][c]);
             if (cell < 0) {
-                out[0] = '\\0';
+                out[0] = '\0';
                 return -2;
             }
             need += (size_t)cell;
@@ -310,7 +310,7 @@ static int j(const DField *f, char *out, size_t out_len) {
     need += 2u; // closing ]}
 
     if (need + 1u > out_len) { // +1 for NUL
-        out[0] = '\\0';
+        out[0] = '\0';
         return 1; // overflow prevented
     }
 
@@ -337,7 +337,7 @@ static int j(const DField *f, char *out, size_t out_len) {
         f->perm_net
     );
     if (w < 0 || (size_t)w >= out_len) {
-        out[0] = '\\0';
+        out[0] = '\0';
         return -2;
     }
 
@@ -349,7 +349,7 @@ static int j(const DField *f, char *out, size_t out_len) {
                              (c + 1u < f->c_used) ? "%.6f," : "%.6f",
                              f->m[i][c]);
             if (z < 0 || (size_t)z >= (out_len - pos)) {
-                out[0] = '\\0';
+                out[0] = '\0';
                 return -2;
             }
             pos += (size_t)z;
@@ -362,7 +362,7 @@ static int j(const DField *f, char *out, size_t out_len) {
 
     out[pos++] = ']';
     out[pos++] = '}';
-    out[pos] = '\\0';
+    out[pos] = '\0';
     return 0;
 }
 
