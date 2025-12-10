@@ -295,18 +295,20 @@ static int j(const DField *f, char *out, size_t out_len) {
      * Predict total length to avoid ambiguous partial writes (ISO/IEEE/NIST defensive).
      * snprintf(NULL,0,...) is C11-compliant and keeps footprint minimal.
      */
-    int prefix = snprintf(NULL, 0,
+    const char *json_prefix =
         "{"
-        "\"tag\":\"%s\","\
-        "\"severity\":%u,"\
-        "\"rows\":%u,"\
-        "\"cols\":%u,"\
-        "\"crc\":%u,"\
-        "\"epoch\":%llu,"\
-        "\"perm\":{\"dev\":%u,\"p2p\":%u,\"io\":%u,\"net\":%u},"\
-        "\"hotpath\":{\"window_ms\":%.1f,\"cpu_avg\":%.6f,\"cpu_peak\":%.6f,\"entropy\":%.6f,\"overhead_us\":%.3f},"\
-        "\"p2p_overlay\":\"tor-metadata-only\","\
-        "\"matrix\":[",
+        "\"tag\":\"%s\"," // tag for routing
+        "\"severity\":%u," // risk tier
+        "\"rows\":%u," // row count
+        "\"cols\":%u," // column count
+        "\"crc\":%u," // crc for tamper resistance
+        "\"epoch\":%llu," // monotonic epoch
+        "\"perm\":{\"dev\":%u,\"p2p\":%u,\"io\":%u,\"net\":%u}," // permissions snapshot
+        "\"hotpath\":{\"window_ms\":%.1f,\"cpu_avg\":%.6f,\"cpu_peak\":%.6f,\"entropy\":%.6f,\"overhead_us\":%.3f}," // hot-path metrics
+        "\"p2p_overlay\":\"tor-metadata-only\"," // overlay hint
+        "\"matrix\":["; // matrix header
+
+    int prefix = snprintf(NULL, 0, json_prefix,
         f->tag,
         sev,
         f->r_used,
@@ -353,18 +355,7 @@ static int j(const DField *f, char *out, size_t out_len) {
         return 1; // overflow prevented
     }
 
-    int w = snprintf(out, out_len,
-        "{"
-        "\"tag\":\"%s\","\
-        "\"severity\":%u,"\
-        "\"rows\":%u,"\
-        "\"cols\":%u,"\
-        "\"crc\":%u,"\
-        "\"epoch\":%llu,"\
-        "\"perm\":{\"dev\":%u,\"p2p\":%u,\"io\":%u,\"net\":%u},"\
-        "\"hotpath\":{\"window_ms\":%.1f,\"cpu_avg\":%.6f,\"cpu_peak\":%.6f,\"entropy\":%.6f,\"overhead_us\":%.3f},"\
-        "\"p2p_overlay\":\"tor-metadata-only\","\
-        "\"matrix\":[",
+    int w = snprintf(out, out_len, json_prefix,
         f->tag,
         sev,
         f->r_used,
