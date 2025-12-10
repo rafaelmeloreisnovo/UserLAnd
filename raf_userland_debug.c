@@ -99,9 +99,15 @@ static int v(const char *line, RField *f) {
     // Example: "12.5, 35.0, 120.0, 15.0" (ts, CPU%, IO MB/s, NET MB/s)
     float ts = 0.0f, cpu = 0.0f, io = 0.0f, net = 0.0f;
     int n = sscanf(line, "%f , %f , %f , %f", &ts, &cpu, &io, &net);
-    if (n < 3) {
-        // At least ts, cpu, io are required.
+    if (n < 2) {
+        // At least timestamp and CPU are required.
         return -3;
+    }
+    if (n < 3) {
+        io = 0.0f; // default when missing
+    }
+    if (n < 4) {
+        net = 0.0f; // default when missing
     }
 
     if (!f->has_t0) {
