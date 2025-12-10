@@ -46,6 +46,67 @@ static float c01(float v, float lo, float hi) {
 }
 
 // -------------------------------
+// Contiguous-friendly scalar kernels
+// -------------------------------
+static float k_sum(const float *in, uint32_t n) {
+    float acc = 0.0f;
+    for (uint32_t i = 0; i < n; ++i) {
+        acc += in[i];
+    }
+    return acc;
+}
+
+static float k_mean(float sum, uint32_t n) {
+    return (n == 0u) ? 0.0f : sum / (float)n;
+}
+
+static void k_minmax(const float *in, uint32_t n, float *mn, float *mx) {
+    if (n == 0u || !mn || !mx) {
+        if (mn) *mn = 0.0f;
+        if (mx) *mx = 0.0f;
+        return;
+    }
+    float lo = in[0];
+    float hi = in[0];
+    for (uint32_t i = 1u; i < n; ++i) {
+        float v = in[i];
+        lo = (v < lo) ? v : lo;
+        hi = (v > hi) ? v : hi;
+    }
+    *mn = lo;
+    *mx = hi;
+}
+
+static float k_variance(const float *in, uint32_t n, float mean) {
+    if (n == 0u) return 0.0f;
+    float acc = 0.0f;
+    for (uint32_t i = 0; i < n; ++i) {
+        float d = in[i] - mean;
+        acc += d * d;
+    }
+    return acc / (float)n;
+}
+
+static void k_conv1d(const float *in, uint32_t n,
+                     const float *k, uint32_t klen,
+                     float *out) {
+    if (!in || !k || !out || n == 0u || klen == 0u) {
+        return;
+    }
+    uint32_t half = klen / 2u;
+    for (uint32_t i = 0; i < n; ++i) {
+        float acc = 0.0f;
+        for (uint32_t j = 0; j < klen; ++j) {
+            int32_t pos = (int32_t)i + (int32_t)j - (int32_t)half;
+            if (pos >= 0 && (uint32_t)pos < n) {
+                acc += in[(uint32_t)pos] * k[j];
+            }
+        }
+        out[i] = acc;
+    }
+}
+
+// -------------------------------
 // Baseline permissions and tag
 // -------------------------------
 static void p(DField *f) {
@@ -60,27 +121,92 @@ static void p(DField *f) {
 // -------------------------------
 // Risk scoring based on aggregated energy
 // -------------------------------
+static uint32_t clamp_used(uint32_t v, uint32_t max_v) {
+    return (v <= max_v) ? v : max_v;
+}
+
 static float e(DField *f) {
+    uint32_t rows = clamp_used(f->r_used, D_ROWS);
+    uint32_t cols = clamp_used(f->c_used, D_COLS);
+    const float *m = &f->m[0][0];
+    uint32_t total = rows * cols;
     float acc = 0.0f;
-    for (uint32_t i = 0; i < f->r_used; ++i) {
-        for (uint32_t j = 0; j < f->c_used; ++j) {
-            float v = f->m[i][j];
-            acc += v * v; // energy-like metric; stable and cheap
-        }
+    for (uint32_t idx = 0; idx < total; ++idx) {
+        float v = m[idx];
+        acc += v * v; // energy-like metric; stable and cheap
     }
     return acc;
 }
 
 static void k(DField *f) {
+    uint32_t rows = clamp_used(f->r_used, D_ROWS);
+    uint32_t cols = clamp_used(f->c_used, D_COLS);
     f->crc_state = raf_fast_crc32(0u, f->m,
-        (size_t)(sizeof(float) * f->r_used * f->c_used));
+        (size_t)(sizeof(float) * rows * cols));
+}
+
+// -------------------------------
+// Metric vector mapping (cpu,mem,io,net,jank)
+// -------------------------------
+static void m_stats(const DField *f,
+                    float *mean_out,
+                    float *var_out,
+                    float *min_out,
+                    float *max_out,
+                    float *conv_tail) {
+    if (!f) return;
+
+    static const uint32_t cols[] = {0u, 1u, 2u, 3u, 6u};
+    const float smooth_k[] = {0.25f, 0.50f, 0.25f};
+    float scratch[D_ROWS];
+    float conv[D_ROWS];
+
+    uint32_t samples = clamp_used(f->r_used, D_ROWS);
+    uint32_t col_count = clamp_used(f->c_used, D_COLS);
+    if (samples == 0u || col_count == 0u) {
+        return;
+    }
+
+    for (uint32_t m = 0; m < (sizeof(cols) / sizeof(cols[0])); ++m) {
+        if (cols[m] >= col_count) {
+            continue; // skip unavailable column
+        }
+        for (uint32_t i = 0; i < samples; ++i) {
+            scratch[i] = f->m[i][cols[m]]; // contiguous column slice
+        }
+
+        float sum = k_sum(scratch, samples);
+        float mean = k_mean(sum, samples);
+        float variance = k_variance(scratch, samples, mean);
+        float mn = 0.0f, mx = 0.0f;
+        k_minmax(scratch, samples, &mn, &mx);
+        k_conv1d(scratch, samples, smooth_k,
+                 (uint32_t)(sizeof(smooth_k) / sizeof(smooth_k[0])), conv);
+
+        if (mean_out) mean_out[m] = mean;
+        if (var_out) var_out[m] = variance;
+        if (min_out) min_out[m] = mn;
+        if (max_out) max_out[m] = mx;
+        if (conv_tail) conv_tail[m] = (samples == 0u) ? 0.0f : conv[samples - 1u];
+    }
 }
 
 static void s(DField *f) {
     const float warn_e = 96.0f;   // conservative threshold for warning
     const float crit_e = 384.0f;  // stricter for critical
 
+    float mean_out[5] = {0};
+    float var_out[5] = {0};
+    float min_out[5] = {0};
+    float max_out[5] = {0};
+    float conv_tail[5] = {0};
+
+    m_stats(f, mean_out, var_out, min_out, max_out, conv_tail);
+
     float energy = e(f);
+    for (uint32_t i = 0; i < 5u; ++i) {
+        energy += mean_out[i] + var_out[i] + (max_out[i] - min_out[i]) + conv_tail[i];
+    }
     if (energy >= crit_e) {
         f->severity = 2u;
     } else if (energy >= warn_e) {
@@ -258,10 +384,11 @@ static int h(void) {
         f.r_used = cases[idx].rows;
         f.c_used = cases[idx].cols;
         f.t_epoch = 1u;
-        for (uint32_t r = 0; r < f.r_used && r < D_ROWS; ++r) {
-            for (uint32_t c = 0; c < f.c_used && c < D_COLS; ++c) {
-                f.m[r][c] = 0.123456f * (float)(r + 1u + c);
-            }
+        uint32_t total = (f.r_used < D_ROWS ? f.r_used : D_ROWS) *
+                         (f.c_used < D_COLS ? f.c_used : D_COLS);
+        float *base = &f.m[0][0];
+        for (uint32_t pos = 0; pos < total; ++pos) {
+            base[pos] = 0.123456f * (float)(pos + 1u);
         }
         char tmp[D_JSON];
         memset(tmp, 0, sizeof(tmp));
