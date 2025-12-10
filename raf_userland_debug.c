@@ -114,7 +114,8 @@ static int v(const char *line, RField *f) {
         rel = 0.0f; // clamp backwards drift
     }
 
-    uint32_t idx = (uint32_t)(rel / R_TS_DELTA + 0.5f); // nearest slot
+    // Map timestamp to the fixed delta grid (floor to keep deterministic bins).
+    uint32_t idx = (uint32_t)floorf(rel / R_TS_DELTA + 1e-6f);
     if (idx >= R_MAX_ROWS) {
         return -4; // out of buffer
     }
@@ -181,7 +182,7 @@ static void j_stats(const RField *f, const float *stats_vec, char *out, size_t o
     if (!tag) tag = "userland_debug";
 
     int w = snprintf(out, out_len,
-        "{""\"tag\":\"%s\",""\"severity\":%u,""\"rows\":%u,""\"cols\":%u,""\"crc\":%u,""\"epoch\":%llu,""\"stats\":[%.6f,%.6f,%.6f,%.6f]}",
+        "{\"tag\":\"%s\",\"severity\":%u,\"rows\":%u,\"cols\":%u,\"crc\":%u,\"epoch\":%llu,\"stats\":[%.6f,%.6f,%.6f,%.6f]}",
         tag,
         sev,
         f->r_used,
@@ -217,6 +218,7 @@ int main(int argc, char **argv) {
 
     RField f;
     memset(&f, 0, sizeof(f));
+    f.c_used = R_STATE_COLS; // Always report full state width
 
     // Time snapshot for traceability (ISO 27001 logging).
     f.t_epoch = (uint64_t)time(NULL);
