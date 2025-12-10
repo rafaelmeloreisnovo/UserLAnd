@@ -2,12 +2,23 @@
 // Draft – RAFAELIA Developer Mode low-level performance matrix (ISO/NIST compliant)
 // English comments per function block; no external deps; C11 minimal footprint.
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "raf_core.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
+
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#define RAF_HAS_NEON 1
+#include <arm_neon.h>
+#elif defined(__SSE4_2__)
+#define RAF_HAS_SSE42 1
+#include <immintrin.h>
+#endif
 
 // -------------------------------
 // Constants and scoped limits
@@ -31,6 +42,11 @@ typedef struct {
     uint8_t perm_p2p;          // P2P allowed (tor-like overlay)
     uint8_t perm_io;           // IO read allowed
     uint8_t perm_net;          // network monitor allowed
+    float hot_cpu_avg;         // normalized cpu avg (hot path, 100 ms window)
+    float hot_cpu_peak;        // normalized cpu peak (hot path, 100 ms window)
+    float hot_entropy;         // entropy of log distribution (normalized)
+    float hot_overhead_us;     // microseconds spent in hot-path detector
+    float hot_window_ms;       // window used for aggregation
     char tag[D_TAG];           // label for JSON
 } DField;
 
@@ -54,7 +70,150 @@ static void p(DField *f) {
     f->perm_p2p = 1u;   // allow P2P handoff when toggled in dev options
     f->perm_io  = 1u;   // allow /proc sampling in ethical mode
     f->perm_net = 1u;   // allow metadata-only network metrics
+    f->hot_cpu_avg = 0.0f;
+    f->hot_cpu_peak = 0.0f;
+    f->hot_entropy = 0.0f;
+    f->hot_overhead_us = 0.0f;
+    f->hot_window_ms = 100.0f; // default 100ms micro-window for CPU aggregation
     snprintf(f->tag, sizeof(f->tag), "raf_devperf");
+}
+
+// -------------------------------
+// Time helper for deterministic overhead measurement
+// -------------------------------
+static uint64_t raf_monotonic_ns(void) {
+    struct timespec ts;
+#ifdef CLOCK_MONOTONIC_RAW
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+#else
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+#endif
+    return (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
+}
+
+// -------------------------------
+// Hot path helpers – scalar + SIMD variants
+// -------------------------------
+static float raf_sum_scalar(const float *v, size_t n) {
+    float acc = 0.0f;
+    for (size_t i = 0; i < n; ++i) {
+        acc += v[i];
+    }
+    return acc;
+}
+
+#if defined(RAF_HAS_NEON)
+static float raf_sum_neon(const float *v, size_t n) {
+    size_t i = 0;
+    float32x4_t acc = vdupq_n_f32(0.0f);
+    for (; i + 4u <= n; i += 4u) {
+        float32x4_t x = vld1q_f32(v + i);
+        acc = vaddq_f32(acc, x);
+    }
+    float32x2_t low = vget_low_f32(acc);
+    float32x2_t high = vget_high_f32(acc);
+    float32x2_t pair = vadd_f32(low, high);
+    float32x2_t sum2 = vpadd_f32(pair, pair);
+    float acc_scalar = vget_lane_f32(sum2, 0);
+    for (; i < n; ++i) {
+        acc_scalar += v[i];
+    }
+    return acc_scalar;
+}
+#elif defined(RAF_HAS_SSE42)
+static float raf_sum_sse(const float *v, size_t n) {
+    size_t i = 0;
+    __m128 acc = _mm_setzero_ps();
+    for (; i + 4u <= n; i += 4u) {
+        __m128 x = _mm_loadu_ps(v + i);
+        acc = _mm_add_ps(acc, x);
+    }
+    acc = _mm_hadd_ps(acc, acc); // SSE3+ horizontal add
+    acc = _mm_hadd_ps(acc, acc);
+    float acc_scalar = _mm_cvtss_f32(acc);
+    for (; i < n; ++i) {
+        acc_scalar += v[i];
+    }
+    return acc_scalar;
+}
+#endif
+
+static float raf_sum_hot(const float *v, size_t n) {
+#if defined(RAF_HAS_NEON)
+    return raf_sum_neon(v, n);
+#elif defined(RAF_HAS_SSE42)
+    return raf_sum_sse(v, n);
+#else
+    return raf_sum_scalar(v, n);
+#endif
+}
+
+static float raf_entropy_hot(const float *v, size_t n) {
+    float norm = raf_sum_hot(v, n);
+    if (norm <= 0.0f) {
+        return 0.0f; // deterministic fallback
+    }
+
+    float tmp[D_ROWS]; // bounded by dataset size; keeps deterministic footprint
+    size_t limit = (n < D_ROWS) ? n : D_ROWS;
+    for (size_t i = 0; i < limit; ++i) {
+        float p = v[i] / norm;
+        if (p > 0.0f) {
+            tmp[i] = -p * (logf(p) / logf(2.0f)); // log2 via change of base
+        } else {
+            tmp[i] = 0.0f;
+        }
+    }
+    return raf_sum_hot(tmp, limit);
+}
+
+// -------------------------------
+// Hot path analyzers (100ms cpu window + entropy)
+// -------------------------------
+static void hp_cpu(const DField *f, float *avg, float *peak) {
+    if (!f || !avg || !peak) return;
+    size_t n = (f->r_used < D_ROWS) ? f->r_used : D_ROWS;
+    if (n == 0u) {
+        *avg = 0.0f;
+        *peak = 0.0f;
+        return;
+    }
+
+    float window[D_ROWS];
+    for (size_t i = 0; i < n; ++i) {
+        window[i] = f->m[i][0];
+    }
+    *avg = raf_sum_hot(window, n) / (float)n;
+
+    float p = window[0];
+    for (size_t i = 1; i < n; ++i) {
+        if (window[i] > p) p = window[i];
+    }
+    *peak = p;
+}
+
+static void hp_entropy(const DField *f, float *ent_out) {
+    if (!f || !ent_out) return;
+    size_t n = (f->r_used < D_ROWS) ? f->r_used : D_ROWS;
+    if (n == 0u) {
+        *ent_out = 0.0f;
+        return;
+    }
+
+    float log_bins[D_ROWS];
+    for (size_t i = 0; i < n; ++i) {
+        log_bins[i] = f->m[i][7];
+    }
+    *ent_out = raf_entropy_hot(log_bins, n);
+}
+
+static void hp_measure(DField *f) {
+    if (!f) return;
+    uint64_t start_ns = raf_monotonic_ns();
+    hp_cpu(f, &f->hot_cpu_avg, &f->hot_cpu_peak);
+    hp_entropy(f, &f->hot_entropy);
+    uint64_t end_ns = raf_monotonic_ns();
+    f->hot_overhead_us = (float)(end_ns - start_ns) / 1000.0f;
 }
 
 // -------------------------------
@@ -145,6 +304,7 @@ static int j(const DField *f, char *out, size_t out_len) {
         "\"crc\":%u,"\
         "\"epoch\":%llu,"\
         "\"perm\":{\"dev\":%u,\"p2p\":%u,\"io\":%u,\"net\":%u},"\
+        "\"hotpath\":{\"window_ms\":%.1f,\"cpu_avg\":%.6f,\"cpu_peak\":%.6f,\"entropy\":%.6f,\"overhead_us\":%.3f},"\
         "\"p2p_overlay\":\"tor-metadata-only\","\
         "\"matrix\":[",
         f->tag,
@@ -156,10 +316,15 @@ static int j(const DField *f, char *out, size_t out_len) {
         f->perm_dev,
         f->perm_p2p,
         f->perm_io,
-        f->perm_net
+        f->perm_net,
+        f->hot_window_ms,
+        f->hot_cpu_avg,
+        f->hot_cpu_peak,
+        f->hot_entropy,
+        f->hot_overhead_us
     );
     if (prefix < 0) {
-        out[0] = '\\0';
+        out[0] = '\0';
         return -2; // encoding failure
     }
 
@@ -171,7 +336,7 @@ static int j(const DField *f, char *out, size_t out_len) {
                                 (c + 1u < f->c_used) ? "%.6f," : "%.6f",
                                 f->m[i][c]);
             if (cell < 0) {
-                out[0] = '\\0';
+                out[0] = '\0';
                 return -2;
             }
             need += (size_t)cell;
@@ -184,7 +349,7 @@ static int j(const DField *f, char *out, size_t out_len) {
     need += 2u; // closing ]}
 
     if (need + 1u > out_len) { // +1 for NUL
-        out[0] = '\\0';
+        out[0] = '\0';
         return 1; // overflow prevented
     }
 
@@ -197,6 +362,7 @@ static int j(const DField *f, char *out, size_t out_len) {
         "\"crc\":%u,"\
         "\"epoch\":%llu,"\
         "\"perm\":{\"dev\":%u,\"p2p\":%u,\"io\":%u,\"net\":%u},"\
+        "\"hotpath\":{\"window_ms\":%.1f,\"cpu_avg\":%.6f,\"cpu_peak\":%.6f,\"entropy\":%.6f,\"overhead_us\":%.3f},"\
         "\"p2p_overlay\":\"tor-metadata-only\","\
         "\"matrix\":[",
         f->tag,
@@ -208,10 +374,15 @@ static int j(const DField *f, char *out, size_t out_len) {
         f->perm_dev,
         f->perm_p2p,
         f->perm_io,
-        f->perm_net
+        f->perm_net,
+        f->hot_window_ms,
+        f->hot_cpu_avg,
+        f->hot_cpu_peak,
+        f->hot_entropy,
+        f->hot_overhead_us
     );
     if (w < 0 || (size_t)w >= out_len) {
-        out[0] = '\\0';
+        out[0] = '\0';
         return -2;
     }
 
@@ -223,7 +394,7 @@ static int j(const DField *f, char *out, size_t out_len) {
                              (c + 1u < f->c_used) ? "%.6f," : "%.6f",
                              f->m[i][c]);
             if (z < 0 || (size_t)z >= (out_len - pos)) {
-                out[0] = '\\0';
+                out[0] = '\0';
                 return -2;
             }
             pos += (size_t)z;
@@ -236,7 +407,7 @@ static int j(const DField *f, char *out, size_t out_len) {
 
     out[pos++] = ']';
     out[pos++] = '}';
-    out[pos] = '\\0';
+    out[pos] = '\0';
     return 0;
 }
 
@@ -303,6 +474,7 @@ int main(int argc, char **argv) {
     }
 
     s(&f);
+    hp_measure(&f);
 
     char json[D_JSON];
     int js = j(&f, json, sizeof(json));
