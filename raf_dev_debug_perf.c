@@ -1,8 +1,11 @@
 // raf_dev_debug_perf.c
 // Draft – RAFAELIA Developer Mode low-level performance matrix (ISO/NIST compliant)
 // English comments per function block; no external deps; C11 minimal footprint.
+#define _POSIX_C_SOURCE 200809L
 
 #include "raf_core.h"
+#include <inttypes.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -16,6 +19,49 @@
 #define D_COLS 8u       // metrics per slice
 #define D_JSON 4096u    // JSON buffer
 #define D_TAG  32u      // label length
+#define D_TOL  1e-3f     // fixed tolerance for numeric equivalence
+#define D_WARN_E 96.0f   // warning energy threshold
+#define D_CRIT_E 384.0f  // critical energy threshold
+
+// -------------------------------
+// Profiling toggle and budget
+// -------------------------------
+typedef struct {
+    uint8_t  enabled;
+    uint64_t threshold_ns;   // hard limit for internal overhead
+    uint64_t last_overhead;  // measured overhead for diagnostics
+} ProfileMode;
+
+static uint64_t nsec_now(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
+}
+
+static uint64_t measure_timer_overhead(void) {
+    const int samples = 256;
+    uint64_t acc = 0;
+    for (int i = 0; i < samples; ++i) {
+        uint64_t a = nsec_now();
+        uint64_t b = nsec_now();
+        acc += (b - a);
+    }
+    return acc / (uint64_t)samples;
+}
+
+static int profile_guard(ProfileMode *p) {
+    if (!p || !p->enabled) {
+        return 0;
+    }
+    p->last_overhead = measure_timer_overhead();
+    if (p->last_overhead > p->threshold_ns) {
+        fprintf(stderr,
+                "[RAF_DEVPERF] profiling_overhead=%" PRIu64 "ns threshold=%" PRIu64 "ns (abort)\n",
+                p->last_overhead, p->threshold_ns);
+        return -1;
+    }
+    return 0;
+}
 
 // -------------------------------
 // Data field and permissions snapshot
@@ -71,23 +117,35 @@ static float e(DField *f) {
     return acc;
 }
 
+static float e_ref(const DField *f) {
+    double acc = 0.0;
+    for (uint32_t i = 0; i < f->r_used; ++i) {
+        for (uint32_t j = 0; j < f->c_used; ++j) {
+            double v = (double)f->m[i][j];
+            acc += v * v;
+        }
+    }
+    return (float)acc;
+}
+
+static uint32_t sev_from_energy(float energy) {
+    if (energy >= D_CRIT_E) {
+        return 2u;
+    }
+    if (energy >= D_WARN_E) {
+        return 1u;
+    }
+    return 0u;
+}
+
 static void k(DField *f) {
     f->crc_state = raf_fast_crc32(0u, f->m,
         (size_t)(sizeof(float) * f->r_used * f->c_used));
 }
 
 static void s(DField *f) {
-    const float warn_e = 96.0f;   // conservative threshold for warning
-    const float crit_e = 384.0f;  // stricter for critical
-
     float energy = e(f);
-    if (energy >= crit_e) {
-        f->severity = 2u;
-    } else if (energy >= warn_e) {
-        f->severity = 1u;
-    } else {
-        f->severity = 0u;
-    }
+    f->severity = sev_from_energy(energy);
     k(f);
 }
 
@@ -119,6 +177,28 @@ static int v(const char *line, DField *f) {
     f->m[r][7] = c01(ent, 0.0f, 10.0f);
 
     f->r_used++;
+    return 0;
+}
+
+// -------------------------------
+// Numeric equivalence guard (old vs. new paths)
+// -------------------------------
+static int q(const DField *f, float tol) {
+    DField ref;
+    memcpy(&ref, f, sizeof(ref));
+
+    float energy_old = e_ref(&ref);
+    float energy_new = e((DField *)&ref);
+    float delta = fabsf(energy_old - energy_new);
+    uint32_t sev_old = sev_from_energy(energy_old);
+    uint32_t sev_new = sev_from_energy(energy_new);
+
+    if (delta > tol || sev_old != sev_new) {
+        fprintf(stderr,
+                "[RAF_DEVPERF] equivalence_failed delta=%.6f sev_old=%u sev_new=%u\n",
+                delta, sev_old, sev_new);
+        return -1;
+    }
     return 0;
 }
 
@@ -159,7 +239,7 @@ static int j(const DField *f, char *out, size_t out_len) {
         f->perm_net
     );
     if (prefix < 0) {
-        out[0] = '\\0';
+        out[0] = '\0';
         return -2; // encoding failure
     }
 
@@ -171,7 +251,7 @@ static int j(const DField *f, char *out, size_t out_len) {
                                 (c + 1u < f->c_used) ? "%.6f," : "%.6f",
                                 f->m[i][c]);
             if (cell < 0) {
-                out[0] = '\\0';
+                out[0] = '\0';
                 return -2;
             }
             need += (size_t)cell;
@@ -184,7 +264,7 @@ static int j(const DField *f, char *out, size_t out_len) {
     need += 2u; // closing ]}
 
     if (need + 1u > out_len) { // +1 for NUL
-        out[0] = '\\0';
+        out[0] = '\0';
         return 1; // overflow prevented
     }
 
@@ -211,7 +291,7 @@ static int j(const DField *f, char *out, size_t out_len) {
         f->perm_net
     );
     if (w < 0 || (size_t)w >= out_len) {
-        out[0] = '\\0';
+        out[0] = '\0';
         return -2;
     }
 
@@ -223,7 +303,7 @@ static int j(const DField *f, char *out, size_t out_len) {
                              (c + 1u < f->c_used) ? "%.6f," : "%.6f",
                              f->m[i][c]);
             if (z < 0 || (size_t)z >= (out_len - pos)) {
-                out[0] = '\\0';
+                out[0] = '\0';
                 return -2;
             }
             pos += (size_t)z;
@@ -236,7 +316,7 @@ static int j(const DField *f, char *out, size_t out_len) {
 
     out[pos++] = ']';
     out[pos++] = '}';
-    out[pos] = '\\0';
+    out[pos] = '\0';
     return 0;
 }
 
@@ -275,14 +355,88 @@ static int h(void) {
 }
 
 // -------------------------------
+// Synthetic microbenchmarks (no external deps)
+// -------------------------------
+static void g(char *line, size_t len, uint32_t idx) {
+    // deterministic synthetic row, covers full metric set
+    float cpu = 25.0f + (float)(idx % 50u);
+    float mem = 512.0f + 8.0f * (float)(idx % 32u);
+    float io  = 100.0f + 5.5f * (float)(idx % 40u);
+    float net = 10.0f * (float)(idx % 60u);
+    float gpu = 5.0f * (float)(idx % 10u);
+    float tmp = 45.0f + (float)(idx % 8u);
+    float jnk = 2.0f * (float)(idx % 30u);
+    float ent = 0.5f * (float)(idx % 12u);
+    snprintf(line, len, "%0.2f , %0.2f , %0.2f , %0.2f , %0.2f , %0.2f , %0.2f , %0.2f",
+             cpu, mem, io, net, gpu, tmp, jnk, ent);
+}
+
+static void b(ProfileMode *profile) {
+    DField f;
+    memset(&f, 0, sizeof(f));
+    p(&f);
+
+    char line[160];
+    uint64_t t_parse = 0;
+    uint64_t t_calc = 0;
+    uint64_t t_json = 0;
+
+    for (uint32_t i = 0; i < D_ROWS; ++i) {
+        g(line, sizeof(line), i);
+        uint64_t t0 = nsec_now();
+        (void)v(line, &f);
+        t_parse += nsec_now() - t0;
+    }
+
+    uint64_t t0 = nsec_now();
+    s(&f);
+    t_calc = nsec_now() - t0;
+
+    char json[D_JSON];
+    t0 = nsec_now();
+    (void)j(&f, json, sizeof(json));
+    t_json = nsec_now() - t0;
+
+    fprintf(stderr,
+            "[RAF_DEVPERF] microbench parse=%" PRIu64 "ns calc=%" PRIu64 "ns json=%" PRIu64 "ns\n",
+            t_parse, t_calc, t_json);
+
+    if (profile && profile_guard(profile) != 0) {
+        exit(2);
+    }
+
+    if (q(&f, D_TOL) != 0) {
+        exit(3);
+    }
+}
+
+// -------------------------------
 // Main entry – pipeline friendly
 // -------------------------------
 int main(int argc, char **argv) {
-    (void)argc;
-    (void)argv;
+    ProfileMode profile = {0, 200000ull, 0}; // ~0.2 ms budget for timing overhead
+    int run_bench = 0;
+
+    for (int i = 1; i < argc; ++i) {
+        if (strcmp(argv[i], "--profile") == 0) {
+            profile.enabled = 1u;
+        } else if (strcmp(argv[i], "--microbench") == 0) {
+            run_bench = 1;
+        } else if (strncmp(argv[i], "--profile-threshold=", 21) == 0) {
+            profile.threshold_ns = (uint64_t)strtoull(argv[i] + 21, NULL, 10);
+        }
+    }
+
+    if (profile.enabled && profile_guard(&profile) != 0) {
+        return 2; // profiling overhead too high
+    }
 
     if (h() != 0) {
         fprintf(stderr, "[RAF_DEVPERF] serializer_selftest_failed\n");
+    }
+
+    if (run_bench) {
+        b(&profile);
     }
 
     DField f;
@@ -300,6 +454,10 @@ int main(int argc, char **argv) {
         if (r != 0) {
             fprintf(stderr, "[RAF_DEVPERF] parse_error=%d\n", r);
         }
+    }
+
+    if (q(&f, D_TOL) != 0) {
+        return 2;
     }
 
     s(&f);
