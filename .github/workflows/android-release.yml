@@ -3,6 +3,11 @@ name: Android Release APK
 on:
   workflow_dispatch:
 
+env:
+  JAVA_VERSION: "8"
+  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+  NDK_VERSION: 26.1.10909125
+
 jobs:
   build:
     name: Build release APK
@@ -12,8 +17,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prepare Android SDK and NDK
-        uses: ./.github/actions/setup-android-env
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+
+      - name: Install Android SDK and NDK
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+          NDK_VERSION: ${{ env.NDK_VERSION }}
+        run: |
+          yes | sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;${NDK_VERSION}"
+          printf "ndk.dir=%s/ndk/%s\n" "${ANDROID_SDK_ROOT}" "${NDK_VERSION}" > local.properties
 
       - name: Restore keystore file
         run: |

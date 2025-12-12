@@ -25,12 +25,21 @@ references:
       TERM: dumb
       _JAVA_OPTIONS: "-Xmx2048m -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=1"
       GRADLE_OPTS: '-Dorg.gradle.jvmargs="-Xmx2048m"'
+      ANDROID_SDK_ROOT: /opt/android/sdk
 
   # Dependencies
   android_dependencies: &android_dependencies
     run:
       name: Download Android dependencies
       command: ./gradlew androidDependencies
+
+  configure_ndk: &configure_ndk
+    run:
+      name: Install Android SDK and NDK
+      command: |
+        export ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-$ANDROID_HOME}
+        yes | sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125"
+        printf "ndk.dir=%s/ndk/26.1.10909125\n" "${ANDROID_SDK_ROOT}" > local.properties
 
 jobs:
   build_debug:
@@ -39,6 +48,7 @@ jobs:
       - checkout
       - *restore_cache
       - *android_dependencies
+      - *configure_ndk
       - *save_cache
 
       - run:
@@ -59,6 +69,7 @@ jobs:
       - checkout
       - *restore_cache
       - *android_dependencies
+      - *configure_ndk
       - *save_cache
 
       - run:
