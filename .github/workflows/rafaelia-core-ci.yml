@@ -4,7 +4,11 @@ on:
   push:
     branches: [ master ]
   pull_request:
-    branches: [ master ]
+    paths:
+      - "raf_*"
+      - "rafael_*"
+      - "rafael*/**"
+      - ".github/workflows/rafaelia-core-ci.yml"
 
 jobs:
   build-core:
@@ -31,3 +35,4 @@ jobs:
           $CC $CFLAGS -c raf_cpu_core.c
           $CC $CFLAGS -c raf_dev_debug_perf.c
           $CC $CFLAGS -c raf_userland_debug.c
+          $CC $CFLAGS -c rafael_userland_debug_runner.c
