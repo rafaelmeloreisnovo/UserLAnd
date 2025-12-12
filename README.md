@@ -40,6 +40,13 @@ scripts/build_unsigned_apk.sh             # assembleRelease without signing
 scripts/build_unsigned_apk.sh --task :app:bundleRelease --skip-sdk
 ```
 
+The wrapper forwards `-PunsignedApk=true` to Gradle and also exports
+`USERLAND_UNSIGNED_APK=1` for compatibility with the legacy
+`-PuserlandUnsignedApk` flag. Gradle prioritizes `unsignedApk`: when present it
+skips signing even if release keystore credentials are available. The
+`USERLAND_UNSIGNED_APK` variable (or `-PuserlandUnsignedApk`) is only consulted
+after that check, so if you have valid signing credentials but omit
+`-PunsignedApk=true`, the release build will still be signed.
 ### Build an unsigned release APK
 
 For offline or sideloaded experiments that must remain unsigned even when

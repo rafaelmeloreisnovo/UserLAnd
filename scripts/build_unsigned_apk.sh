@@ -10,6 +10,8 @@ usage() {
 Usage: scripts/build_unsigned_apk.sh [options]
 
 Builds an unsigned APK by forwarding most options to scripts/build_apk.sh and
+disabling signing via -PunsignedApk=true (and USERLAND_UNSIGNED_APK=1 for
+compatibility).
 forcing signing to be disabled via -PunsignedApk=true and USERLAND_UNSIGNED_APK.
 
 Options:
@@ -52,6 +54,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+USERLAND_UNSIGNED_APK=1 "${ROOT_DIR}/scripts/build_apk.sh" --task "$BUILD_TASK" --gradle-arg "-PunsignedApk=true" "${FORWARDED_ARGS[@]}"
 USERLAND_UNSIGNED_APK=1 "${ROOT_DIR}/scripts/build_apk.sh" \
   --gradle-arg "-PunsignedApk=true" \
   --task "$BUILD_TASK" "${FORWARDED_ARGS[@]}"
