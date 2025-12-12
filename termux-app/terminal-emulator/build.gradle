@@ -9,7 +9,8 @@ android {
 
         externalNativeBuild {
             ndkBuild {
-                cFlags "-std=c11", "-Wall", "-Wextra", "-Werror", "-Os", "-fno-stack-protector", "-Wl,--gc-sections"
+                cFlags "-std=c11", "-Wall", "-Wextra", "-Werror", "-Os", "-fstack-protector-strong", "-D_FORTIFY_SOURCE=2", "-Wl,--gc-sections"
+                ldFlags "-Wl,-z,relro", "-Wl,-z,now"
             }
         }
 
