@@ -40,17 +40,13 @@ scripts/build_unsigned_apk.sh             # assembleRelease without signing
 scripts/build_unsigned_apk.sh --task :app:bundleRelease --skip-sdk
 ```
 
-### Build an unsigned release APK
-
-For offline or sideloaded experiments that must remain unsigned even when
-release signing credentials are present, use:
-
-```sh
-scripts/build_unsigned_apk.sh
-```
-
-This wraps `build_apk.sh` and forwards `-PunsignedApk=true` to Gradle so the
-release variant is packaged without a keystore.
+The wrapper forwards `-PunsignedApk=true` to Gradle and also exports
+`USERLAND_UNSIGNED_APK=1` for compatibility with the legacy
+`-PuserlandUnsignedApk` flag. Gradle prioritizes `unsignedApk`: when present it
+skips signing even if release keystore credentials are available. The
+`USERLAND_UNSIGNED_APK` variable (or `-PuserlandUnsignedApk`) is only consulted
+after that check, so if you have valid signing credentials but omit
+`-PunsignedApk=true`, the release build will still be signed.
 
 ## Start using UserLAnd
 See our [Getting Started](https://github.com/CypherpunkArmory/UserLAnd/wiki/Getting-Started-in-UserLAnd) page.
