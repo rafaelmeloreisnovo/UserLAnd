@@ -3,6 +3,9 @@ name: Android Debug APK
 on:
   push:
     branches: [ "master" ]
+    paths:
+      - "app/**"
+      - ".github/workflows/android-debug.yml"
   pull_request:
     paths:
       - "app/**"

@@ -3,6 +3,11 @@ name: RAFAELIA Core CI
 on:
   push:
     branches: [ master ]
+    paths:
+      - "*.c"
+      - "*.h"
+      - "scripts/**"
+      - ".github/workflows/rafaelia-core-ci.yml"
   pull_request:
     paths:
       - "raf_*"
