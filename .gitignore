@@ -25,6 +25,10 @@ app/.DS_Store
 .gradle/
 build/
 
+# Local Android SDK/NDK drops
+ndk/**
+!ndk/README.md
+
 # Local configuration file (sdk path, etc)
 local.properties
 

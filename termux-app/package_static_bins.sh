@@ -9,6 +9,8 @@ mkdir -p "$ASSETS_BIN"
 
 "$ROOT_DIR/scripts/build_static.sh"
 
+echo "NDK hints: set NDK_DIR/ANDROID_NDK_HOME/NDK_HOME or drop an NDK under ./ndk to cross-compile the helpers." >&2
+
 for bin in raf_cpu_core raf_mem_core raf_disk_core; do
   install -m 0755 "$ROOT_DIR/build/bin/$bin" "$ASSETS_BIN/$bin"
 done
