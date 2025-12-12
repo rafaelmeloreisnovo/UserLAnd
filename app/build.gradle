@@ -62,6 +62,7 @@ android {
     def hasSigningCredentials = keystoreFile.exists() && [
             'ANDROID_KEY_ALIAS', 'ANDROID_STORE_PASSWORD', 'ANDROID_KEY_PASSWORD'
     ].every { System.getenv(it) }
+    def forceUnsigned = project.hasProperty('unsignedApk') && project.property('unsignedApk').toString() == 'true'
     def disableSigning = project.hasProperty('userlandUnsignedApk') || System.getenv('USERLAND_UNSIGNED_APK') == '1'
 
     signingConfigs {
@@ -93,7 +94,7 @@ android {
             debuggable false
             minifyEnabled true
             shrinkResources true
-            if (hasSigningCredentials && !disableSigning) {
+            if (hasSigningCredentials && !forceUnsigned) {
                 signingConfig signingConfigs.beta
             } else if (disableSigning) {
                 println "Beta signing disabled via USERLAND_UNSIGNED_APK or -PuserlandUnsignedApk"
@@ -104,7 +105,7 @@ android {
             debuggable false
             minifyEnabled true
             shrinkResources true
-            if (hasSigningCredentials && !disableSigning) {
+            if (hasSigningCredentials && !forceUnsigned) {
                 signingConfig signingConfigs.release
             } else if (disableSigning) {
                 println "Release signing disabled via USERLAND_UNSIGNED_APK or -PuserlandUnsignedApk"

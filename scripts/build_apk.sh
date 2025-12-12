@@ -8,6 +8,7 @@ TOOLS_DIR=""
 BUILD_TASK="assembleDebug"
 SKIP_SDK=false
 SKIP_BUILD=false
+GRADLE_ARGS=()
 
 usage() {
   cat <<'USAGE'
@@ -17,6 +18,7 @@ Prepares a local Android SDK and runs the Gradle task needed to build the APK.
 
 Options:
   --task <gradle_task>   Gradle task to run (default: assembleDebug).
+  --gradle-arg <arg>     Additional argument to forward to Gradle (repeatable).
   --sdk-dir <path>       Location to install or reuse the Android SDK
                          (default: build/android-sdk).
   --skip-sdk             Do not download or update the Android SDK.
@@ -34,6 +36,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --task)
       BUILD_TASK="$2"
+      shift 2
+      ;;
+    --gradle-arg)
+      GRADLE_ARGS+=("$2")
       shift 2
       ;;
     --sdk-dir)
@@ -141,4 +147,4 @@ if [[ "$SKIP_BUILD" == true ]]; then
   exit 0
 fi
 
-"$ROOT_DIR/gradlew" "$BUILD_TASK"
+"$ROOT_DIR/gradlew" "$BUILD_TASK" ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"}
