@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEFAULT_SDK_DIR="$ROOT_DIR/build/android-sdk"
 SDK_DIR="${SDK_DIR:-$DEFAULT_SDK_DIR}"
+TOOLS_DIR=""
 BUILD_TASK="assembleDebug"
 SKIP_SDK=false
 SKIP_BUILD=false
@@ -59,6 +60,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+TOOLS_DIR="$SDK_DIR/cmdline-tools/latest"
+
 find_java_home() {
   local candidate
   for candidate in "${JAVA_HOME_11_X64:-}" "${JAVA_HOME:-}" "$(/usr/libexec/java_home -v 11 2>/dev/null || true)" \
@@ -85,7 +88,6 @@ echo "Using JAVA_HOME=$JAVA_HOME"
 
 if [[ "$SKIP_SDK" == false ]]; then
   mkdir -p "$SDK_DIR"
-  TOOLS_DIR="$SDK_DIR/cmdline-tools/latest"
   if [[ ! -x "$TOOLS_DIR/bin/sdkmanager" ]]; then
     echo "Downloading Android command line tools into $SDK_DIR ..."
     tmpdir=$(mktemp -d)
@@ -101,14 +103,38 @@ if [[ "$SKIP_SDK" == false ]]; then
   export ANDROID_SDK_ROOT="$SDK_DIR"
   yes | "$TOOLS_DIR/bin/sdkmanager" --licenses >/dev/null
   "$TOOLS_DIR/bin/sdkmanager" --install "platform-tools" "platforms;android-30" "build-tools;30.0.3"
+else
+  echo "Skipping SDK install/update as requested."
+  if [[ ! -x "$TOOLS_DIR/bin/sdkmanager" ]]; then
+    if [[ ! -d "$SDK_DIR" ]]; then
+      echo "SDK directory $SDK_DIR does not exist. Remove --skip-sdk or provide --sdk-dir pointing to a valid SDK." >&2
+    else
+      echo "Android command line tools not found in $TOOLS_DIR. Remove --skip-sdk to bootstrap them." >&2
+    fi
+    exit 1
+  fi
+fi
+
+export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$SDK_DIR}"
+
+write_local_properties() {
+  local existing_sdk_dir=""
+  if [[ -f "$ROOT_DIR/local.properties" ]]; then
+    existing_sdk_dir=$(grep '^sdk.dir=' "$ROOT_DIR/local.properties" | head -n1 | cut -d'=' -f2-)
+  fi
+
+  if [[ "$existing_sdk_dir" == "$SDK_DIR" ]]; then
+    echo "local.properties already points at $SDK_DIR"
+    return
+  fi
 
   cat > "$ROOT_DIR/local.properties" <<EOF_LOCAL
 sdk.dir=$SDK_DIR
 EOF_LOCAL
   echo "Wrote local.properties pointing at $SDK_DIR"
-else
-  echo "Skipping SDK install/update as requested."
-fi
+}
+
+write_local_properties
 
 if [[ "$SKIP_BUILD" == true ]]; then
   echo "Skipping Gradle build (--skip-build)."
