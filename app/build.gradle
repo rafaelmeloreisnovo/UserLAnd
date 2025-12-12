@@ -12,8 +12,11 @@ apply plugin: 'jacoco'
 
 apply plugin: 'de.undercouch.download'
 
+def resolvedNdkVersion = project.findProperty('ndkVersion') ?: '21.4.7075529'
+
 android {
     compileSdkVersion 30
+    ndkVersion resolvedNdkVersion
 
     defaultConfig {
         // Version code is generated as time since June 1, 2019. These allows for constantly

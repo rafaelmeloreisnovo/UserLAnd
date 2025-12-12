@@ -22,13 +22,20 @@ See our [CONTRIBUTING](https://github.com/CypherpunkArmory/UserLAnd/blob/master/
 UserLAnd depends on legacy Android Gradle Plugin tooling that expects Java 11 and
 Android SDK platform 30. To build from a clean machine:
 
- 1. Install a Java 11 JDK and ensure `JAVA_HOME` points to it (or export
+1. Install a Java 11 JDK and ensure `JAVA_HOME` points to it (or export
   `JAVA_HOME_11_X64` on Windows).
 2. Run `scripts/build_apk.sh` to download the Android command-line tools into
   `build/android-sdk`, accept licenses, generate `local.properties`, and invoke
   `assembleDebug`.
 3. Pass `--skip-sdk` if you already have an SDK available, or `--skip-build` if
   you only want to bootstrap the SDK without running Gradle.
+
+The native helpers and terminal emulator JNI sources are built against Android
+NDK `21.4.7075529`, pinned in `gradle.properties` for reproducibility across CI
+and local machines. If you already have that NDK locally, point `ANDROID_NDK_HOME`
+or `ndk.dir` in `local.properties` to the install location. To test a newer NDK
+release, invoke Gradle with `-PndkVersion=<version>`; builds stay unsigned when
+you pair that flag with `scripts/build_unsigned_apk.sh`.
 
 ### Build an unsigned APK
 
