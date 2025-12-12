@@ -49,8 +49,11 @@ release signing credentials are present, use:
 scripts/build_unsigned_apk.sh
 ```
 
-This wraps `build_apk.sh` and forwards `-PunsignedApk=true` to Gradle so the
-release variant is packaged without a keystore.
+This wraps `build_apk.sh`, sets `USERLAND_UNSIGNED_APK=1`, and forwards
+`-PunsignedApk=true` to Gradle so the release variant is packaged without a
+keystore. The `-PunsignedApk=true` property has priority when release signing
+credentials exist; otherwise `USERLAND_UNSIGNED_APK=1` (or `-PuserlandUnsignedApk`)
+keeps signing disabled.
 
 ## Start using UserLAnd
 See our [Getting Started](https://github.com/CypherpunkArmory/UserLAnd/wiki/Getting-Started-in-UserLAnd) page.
