@@ -151,7 +151,22 @@ static void p(DField *f) {
 // -------------------------------
 // Risk scoring based on aggregated energy
 // -------------------------------
+static uint32_t clamp_used(uint32_t v, uint32_t max_v) {
+    return (v <= max_v) ? v : max_v;
+}
+
+static void clamp_dims(DField *f) {
+    if (!f) return;
+    f->r_used = clamp_used(f->r_used, D_ROWS);
+    f->c_used = clamp_used(f->c_used, D_COLS);
+}
+
 static float e(DField *f) {
+    clamp_dims(f);
+    uint32_t rows = f->r_used;
+    uint32_t cols = f->c_used;
+    const float *m = &f->m[0][0];
+    uint32_t total = rows * cols;
     const float *m = &f->m[0][0];
     uint32_t total = f->r_used * f->c_used;
     float acc = 0.0f;
@@ -168,6 +183,11 @@ static float e(DField *f) {
 }
 
 static void k(DField *f) {
+    clamp_dims(f);
+    uint32_t rows = f->r_used;
+    uint32_t cols = f->c_used;
+    f->crc_state = raf_fast_crc32(0u, f->m,
+        (size_t)(sizeof(float) * rows * cols));
     size_t bytes = (size_t)(sizeof(float) * f->r_used * f->c_used);
     f->crc_state = raf_fast_crc32(0u, f->series.payload.f32, bytes);
 }
@@ -200,6 +220,16 @@ static void m_stats(const DField *f,
     float scratch[D_ROWS];
     float conv[D_ROWS];
 
+    uint32_t samples = clamp_used(f->r_used, D_ROWS);
+    uint32_t col_count = clamp_used(f->c_used, D_COLS);
+    if (samples == 0u || col_count == 0u) {
+        return;
+    }
+
+    for (uint32_t m = 0; m < (sizeof(cols) / sizeof(cols[0])); ++m) {
+        if (cols[m] >= col_count) {
+            continue; // skip unavailable column
+        }
     uint32_t samples = f->r_used;
     for (uint32_t m = 0; m < (sizeof(cols) / sizeof(cols[0])); ++m) {
         for (uint32_t i = 0; i < samples; ++i) {
@@ -280,6 +310,7 @@ static int v(const char *line, DField *f) {
     row[7] = c01(ent, 0.0f, 10.0f);
 
     f->r_used++;
+    clamp_dims(f);
     f->series.header.len = f->r_used * f->c_used;
     return 0;
 }
@@ -292,6 +323,8 @@ static int j(const DField *f, char *out, size_t out_len) {
         return -1; // invalid args
     }
 
+    uint32_t rows = clamp_used(f->r_used, D_ROWS);
+    uint32_t cols = clamp_used(f->c_used, D_COLS);
     uint32_t sev = f->severity;
 
     /*
@@ -311,8 +344,8 @@ static int j(const DField *f, char *out, size_t out_len) {
         "\"matrix\":[",
         f->tag,
         sev,
-        f->r_used,
-        f->c_used,
+        rows,
+        cols,
         f->crc_state,
         (unsigned long long)f->t_epoch,
         f->perm_dev,
@@ -326,10 +359,12 @@ static int j(const DField *f, char *out, size_t out_len) {
     }
 
     size_t need = (size_t)prefix;
-    for (uint32_t i = 0; i < f->r_used; ++i) {
+    for (uint32_t i = 0; i < rows; ++i) {
         need += 1u; // '['
-        for (uint32_t c = 0; c < f->c_used; ++c) {
+        for (uint32_t c = 0; c < cols; ++c) {
             int cell = snprintf(NULL, 0,
+                                (c + 1u < cols) ? "%.6f," : "%.6f",
+                                f->m[i][c]);
                                 (c + 1u < f->c_used) ? "%.6f," : "%.6f",
                                 f->series.payload.f32[(size_t)i * f->c_used + c]);
             if (cell < 0) {
@@ -339,7 +374,7 @@ static int j(const DField *f, char *out, size_t out_len) {
             need += (size_t)cell;
         }
         need += 1u; // ']'
-        if (i + 1u < f->r_used) {
+        if (i + 1u < rows) {
             need += 1u; // ',' between rows
         }
     }
@@ -363,8 +398,8 @@ static int j(const DField *f, char *out, size_t out_len) {
         "\"matrix\":[",
         f->tag,
         sev,
-        f->r_used,
-        f->c_used,
+        rows,
+        cols,
         f->crc_state,
         (unsigned long long)f->t_epoch,
         f->perm_dev,
@@ -378,10 +413,12 @@ static int j(const DField *f, char *out, size_t out_len) {
     }
 
     size_t pos = (size_t)w;
-    for (uint32_t i = 0; i < f->r_used; ++i) {
+    for (uint32_t i = 0; i < rows; ++i) {
         out[pos++] = '[';
-        for (uint32_t c = 0; c < f->c_used; ++c) {
+        for (uint32_t c = 0; c < cols; ++c) {
             int z = snprintf(out + pos, out_len - pos,
+                             (c + 1u < cols) ? "%.6f," : "%.6f",
+                             f->m[i][c]);
                              (c + 1u < f->c_used) ? "%.6f," : "%.6f",
                              f->series.payload.f32[(size_t)i * f->c_used + c]);
             if (z < 0 || (size_t)z >= (out_len - pos)) {
@@ -391,7 +428,7 @@ static int j(const DField *f, char *out, size_t out_len) {
             pos += (size_t)z;
         }
         out[pos++] = ']';
-        if (i + 1u < f->r_used) {
+        if (i + 1u < rows) {
             out[pos++] = ',';
         }
     }
@@ -471,6 +508,7 @@ int main(int argc, char **argv) {
         }
     }
 
+    clamp_dims(&f);
     finalize_ts_block(&f, 1000000000ull);
     s(&f);
 
