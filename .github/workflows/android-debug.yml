@@ -3,8 +3,13 @@ name: Android Debug APK
 on:
   push:
     branches: [ "master" ]
+    paths:
+      - "app/**"
+      - ".github/workflows/android-debug.yml"
   pull_request:
-    branches: [ "master" ]
+    paths:
+      - "app/**"
+      - ".github/workflows/android-debug.yml"
 
 env:
   JAVA_VERSION: "8"
