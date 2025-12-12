@@ -325,7 +325,7 @@ dependencies {
     implementation "androidx.preference:preference:$preference_version"
 
     implementation "com.google.android.material:material:$support_library_version"
-    ktlint "com.pinterest:ktlint:0.32.0"
+    ktlint "com.pinterest:ktlint:0.51.0-FINAL"
     implementation "com.squareup.okhttp3:okhttp:$okhttp_version"
     implementation "com.squareup.moshi:moshi:$moshi_version"
     kapt "com.squareup.moshi:moshi-kotlin-codegen:$moshi_version"
