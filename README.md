@@ -30,6 +30,18 @@ Android SDK platform 30. To build from a clean machine:
 3. Pass `--skip-sdk` if you already have an SDK available, or `--skip-build` if
    you only want to bootstrap the SDK without running Gradle.
 
+### Build an unsigned release APK
+
+For offline or sideloaded experiments that must remain unsigned even when
+release signing credentials are present, use:
+
+```sh
+scripts/build_unsigned_apk.sh
+```
+
+This wraps `build_apk.sh` and forwards `-PunsignedApk=true` to Gradle so the
+release variant is packaged without a keystore.
+
 ## Start using UserLAnd
 See our [Getting Started](https://github.com/CypherpunkArmory/UserLAnd/wiki/Getting-Started-in-UserLAnd) page.
 
@@ -43,6 +55,12 @@ Distribution or application specific assets are found under CypherpunkArmory/Use
 ## Static musl/clang utilities
 
 We ship tiny, static helpers compiled with musl/clang and invoked by thin shell scripts (no Python wrappers).
+
+* `raf_bitraf_vector.c` é um vetorizar minimalista (C puro) que mapeia buffers
+  arbitrários de entrada — incluindo pixels crus — para um espaço BITRAF de
+  1024 estados com duas paridades internas. Ele serve como módulo de
+  ultra-baixo nível para reduzir dependências externas em pipelines de
+  processamento.
 
 Build them all in one reproducible step:
 

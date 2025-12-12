@@ -62,6 +62,7 @@ android {
     def hasSigningCredentials = keystoreFile.exists() && [
             'ANDROID_KEY_ALIAS', 'ANDROID_STORE_PASSWORD', 'ANDROID_KEY_PASSWORD'
     ].every { System.getenv(it) }
+    def forceUnsigned = project.hasProperty('unsignedApk') && project.property('unsignedApk').toString() == 'true'
 
     signingConfigs {
         if (hasSigningCredentials) {
@@ -92,7 +93,7 @@ android {
             debuggable false
             minifyEnabled true
             shrinkResources true
-            if (hasSigningCredentials) {
+            if (hasSigningCredentials && !forceUnsigned) {
                 signingConfig signingConfigs.beta
             }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -101,7 +102,7 @@ android {
             debuggable false
             minifyEnabled true
             shrinkResources true
-            if (hasSigningCredentials) {
+            if (hasSigningCredentials && !forceUnsigned) {
                 signingConfig signingConfigs.release
             }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
