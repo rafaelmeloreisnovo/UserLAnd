@@ -1,369 +1,391 @@
-// raf_dev_debug_perf.c
-// Draft – RAFAELIA Developer Mode low-level performance matrix (ISO/NIST compliant)
-// English comments per function block; no external deps; C11 minimal footprint.
+/*
+ * raf_dev_omni_perf.c
+ * RAFAELIA • Omni-Architecture Mode • Universal Polyglot C
+ *
+ * Compliance: ISO/IEC 9899:2011 (C11) strict.
+ * Standards: IEEE 754 (Float), ISO 25010 (Portability), NIST 800-53 (SA-8).
+ * Targets: x64, ARM64, RISC-V, MIPS, PowerPC, SPARC, WASM, AVR.
+ */
 
-#include "raf_core.h"
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-// -------------------------------
-// Constants and scoped limits
-// -------------------------------
-#define D_ROWS 64u      // time slices
-#define D_COLS 8u       // metrics per slice
-#define D_JSON 4096u    // JSON buffer
-#define D_TAG  32u      // label length
-
-// -------------------------------
-// Time-series block layout (row-major, SIMD friendly)
-// -------------------------------
-typedef struct {
-    uint32_t len;          // total elements stored (rows * cols)
-    uint32_t stride;       // element stride in bytes
-    uint64_t ts_start;     // epoch base for first sample
-    uint64_t ts_delta;     // delta between rows (nanoseconds)
-} TSBlockHeader;
-
-typedef struct {
-    TSBlockHeader header;          // [len | stride | ts_start | ts_delta]
-    union {                       // contiguous row-major payload, 64B aligned
-        float    f32[D_ROWS * D_COLS];
-        double   f64[D_ROWS * D_COLS];
-        int16_t  i16[D_ROWS * D_COLS];
-    } payload;
-} TSBlock;
-
-#if defined(__GNUC__) || defined(__clang__)
-typedef TSBlock TSBlockAligned __attribute__((aligned(64)));
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+    #include <stdalign.h> /* C11: alignas, alignof */
+    #include <stdatomic.h>
 #else
-typedef __declspec(align(64)) TSBlock TSBlockAligned;
+    /* Fallback para C99/ANSI */
+    #define alignas(x)
+    #define _Atomic
 #endif
 
-// -------------------------------
-// Data field and permissions snapshot
-// -------------------------------
+#include <stdint.h>
+#include <string.h>
+#include <stdbool.h>
+#include <stdio.h>  /* Standard IO fallback */
+#include <time.h>
+
+/* ------------------------------- */
+/* 1. Camada de Abstração de Hardware (HAL) */
+/* ------------------------------- */
+
+/* Detecção de Endianness (Crucial para RISC vs CISC) */
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    #define RAF_BIG_ENDIAN 1
+#else
+    #define RAF_LITTLE_ENDIAN 1
+#endif
+
+/* Otimização de Branch (Compilador Agnostic) */
+#if defined(__GNUC__) || defined(__clang__)
+    #define LIKELY(x)   __builtin_expect(!!(x), 1)
+    #define UNLIKELY(x) __builtin_expect(!!(x), 0)
+    #define RAF_RESTRICT __restrict__
+    #define RAF_INLINE inline __attribute__((always_inline))
+#elif defined(_MSC_VER)
+    #define LIKELY(x)   (x)
+    #define UNLIKELY(x) (x)
+    #define RAF_RESTRICT __restrict
+    #define RAF_INLINE __forceinline
+#else
+    #define LIKELY(x)   (x)
+    #define UNLIKELY(x) (x)
+    #define RAF_RESTRICT
+    #define RAF_INLINE inline
+#endif
+
+/* Abstração de I/O de Baixo Nível */
+#if defined(_WIN32)
+    #include <io.h>
+    #define raf_read  _read
+    #define raf_write _write
+    #define RAF_FD_IN  0
+    #define RAF_FD_OUT 1
+#elif defined(__unix__) || defined(__APPLE__) || defined(__linux__)
+    #include <unistd.h>
+    #define raf_read  read
+    #define raf_write write
+    #define RAF_FD_IN  STDIN_FILENO
+    #define RAF_FD_OUT STDOUT_FILENO
+#else
+    /* Bare Metal / WASM / Unknown - Fallback para stdio */
+    #define RAF_USE_STDIO_FALLBACK 1
+#endif
+
+/* ------------------------------- */
+/* 2. Definições de Memória */
+/* ------------------------------- */
+#define RAF_ROWS 64
+#define RAF_COLS 8
+#define RAF_BUF_SIZE 16384 /* 16KB universal page fit */
+
+/* Alinhamento Adaptativo:
+   AVX-512 (x64) precisa de 64.
+   NEON (ARM) prefere 16 ou 64.
+   RISC-V Vector prefere alinhamento à largura do vetor (VLEN).
+   Cache lines geralmente são 64 bytes.
+*/
+#define RAF_ALIGNMENT 64
+
 typedef struct {
-    TSBlockAligned series;   // aligned time-series buffer
-    uint32_t r_used;         // active rows
-    uint32_t c_used;         // active cols
-    uint32_t severity;       // 0 ok / 1 warn / 2 critical
-    uint32_t crc_state;      // crc over matrix
-    uint64_t t_epoch;        // epoch seconds
-    uint8_t perm_dev;        // developer mode asserted
-    uint8_t perm_p2p;        // P2P allowed (tor-like overlay)
-    uint8_t perm_io;         // IO read allowed
-    uint8_t perm_net;        // network monitor allowed
-    char tag[D_TAG];         // label for JSON
-} DField;
+    alignas(RAF_ALIGNMENT) float    matrix[RAF_ROWS * RAF_COLS];
+    alignas(8)             uint64_t epoch;
+    uint32_t rows_count;
+    uint32_t severity;
+    /* Scales for optimization */
+    float ranges_lo[RAF_COLS];
+    float ranges_scale[RAF_COLS];
+} RafCore;
 
-// -------------------------------
-// Clamp helpers – deterministic, no heap
-// -------------------------------
-static float c01(float v, float lo, float hi) {
-    if (hi <= lo) return 0.0f; // mitigation: avoid div0
-    float x = (v - lo) / (hi - lo);
-    if (x < 0.0f) x = 0.0f;
-    if (x > 1.0f) x = 1.0f;
-    return x;
-}
+/* Buffers na BSS (Zero Overhead Startup) */
+alignas(RAF_ALIGNMENT) static uint8_t g_in_buf[RAF_BUF_SIZE];
+alignas(RAF_ALIGNMENT) static uint8_t g_out_buf[RAF_BUF_SIZE];
+static size_t g_out_pos = 0;
 
-// -------------------------------
-// Baseline permissions and tag
-// -------------------------------
-static void p(DField *f) {
-    if (!f) return;
-    f->perm_dev = 1u;   // developer mode required (Zero Trust precondition)
-    f->perm_p2p = 1u;   // allow P2P handoff when toggled in dev options
-    f->perm_io  = 1u;   // allow /proc sampling in ethical mode
-    f->perm_net = 1u;   // allow metadata-only network metrics
-    snprintf(f->tag, sizeof(f->tag), "raf_devperf");
+/* ------------------------------- */
+/* 3. Lógica Atemporal (Algoritmos) */
+/* ------------------------------- */
 
-    f->series.header.len     = 0u;
-    f->series.header.stride  = (uint32_t)sizeof(float);
-    f->series.header.ts_start= 0u;
-    f->series.header.ts_delta= 0u;
-}
+/* Parser de Float (mínimo, rápido): [-]ddd[.ddd]
+   - Robustez: garante avanço do ponteiro em lixo para não travar.
+*/
+static RAF_INLINE const char* fast_parse_float(const char* RAF_RESTRICT p, float* RAF_RESTRICT out) {
+    const char* start = p;
 
-// -------------------------------
-// Risk scoring based on aggregated energy
-// -------------------------------
-static float e(DField *f) {
-    float acc = 0.0f;
-    for (uint32_t i = 0; i < f->r_used; ++i) {
-        for (uint32_t j = 0; j < f->c_used; ++j) {
-            float v = f->series.payload.f32[(size_t)i * f->c_used + j];
-            acc += v * v; // energy-like metric; stable and cheap
+    float res  = 0.0f;
+    float fact = 1.0f;
+    bool sign  = false;
+
+    /* Skip whitespace */
+    while (*p <= ' ' && *p != 0) p++;
+    if (*p == 0) { *out = 0.0f; return p; }
+
+    /* Optional '+' or '-' */
+    if (*p == '-') { sign = true; p++; }
+    else if (*p == '+') { p++; }
+
+    /* Integer part */
+    bool any = false;
+    while (*p >= '0' && *p <= '9') {
+        any = true;
+        res = res * 10.0f + (float)(*p++ - '0');
+    }
+
+    /* Fractional part */
+    if (*p == '.') {
+        p++;
+        while (*p >= '0' && *p <= '9') {
+            any = true;
+            fact *= 0.1f;
+            res += (float)(*p++ - '0') * fact;
         }
     }
-    return acc;
-}
 
-static void k(DField *f) {
-    size_t bytes = (size_t)(sizeof(float) * f->r_used * f->c_used);
-    f->crc_state = raf_fast_crc32(0u, f->series.payload.f32, bytes);
-}
-
-static void finalize_ts_block(DField *f, uint64_t delta_ns) {
-    if (!f) return;
-    f->series.header.stride = (uint32_t)sizeof(float);
-    f->series.header.len = f->r_used * f->c_used;
-    if (f->series.header.ts_start == 0u) {
-        f->series.header.ts_start = f->t_epoch * 1000000000ull; // epoch to ns
+    /* Se não consumiu nada numérico, avança 1 byte (anti-loop em lixo) */
+    if (!any) {
+        *out = 0.0f;
+        if (*p != 0) return p + 1;
+        return start; /* fim */
     }
-    if (f->series.header.ts_delta == 0u) {
-        f->series.header.ts_delta = delta_ns;
-    }
+
+    *out = sign ? -res : res;
+    return p;
 }
 
-static void s(DField *f) {
-    const float warn_e = 96.0f;   // conservative threshold for warning
-    const float crit_e = 384.0f;  // stricter for critical
+/* Emissor de Float (Universal) - Evita sprintf
+   - Sem UB por INT_MIN (usa uint64 para parte inteira)
+   - 6 casas com arredondamento simples e clamp
+*/
+static RAF_INLINE void fast_emit_float(float v) {
+    if (g_out_pos + 32 > RAF_BUF_SIZE) return;
 
-    float energy = e(f);
-    if (energy >= crit_e) {
-        f->severity = 2u;
-    } else if (energy >= warn_e) {
-        f->severity = 1u;
+    /* NaN -> 0 */
+    if (v != v) v = 0.0f;
+
+    uint8_t* b = &g_out_buf[g_out_pos];
+    int n = 0;
+
+    /* sinal */
+    if (v < 0.0f) { b[n++] = '-'; v = -v; }
+
+    /* parte inteira em 64-bit (evita UB) */
+    uint64_t ip = (uint64_t)v;
+
+    if (ip == 0) {
+        b[n++] = '0';
     } else {
-        f->severity = 0u;
+        char buf[24];
+        int k = 0;
+        while (ip > 0) {
+            buf[k++] = (char)('0' + (char)(ip % 10));
+            ip /= 10;
+        }
+        while (k > 0) b[n++] = (uint8_t)buf[--k];
     }
-    k(f);
+
+    b[n++] = '.';
+
+    /* fração */
+    float frac = v - (float)((uint64_t)v);
+    if (frac < 0.0f) frac = 0.0f;
+    if (frac > 0.9999999f) frac = 0.9999999f;
+
+    uint32_t fv = (uint32_t)(frac * 1000000.0f + 0.5f);
+
+    uint32_t div = 100000;
+    for (int i = 0; i < 6; ++i) {
+        b[n++] = (uint8_t)('0' + (char)((fv / div) % 10));
+        div /= 10;
+    }
+
+    g_out_pos += (size_t)n;
 }
 
-// -------------------------------
-// Parse CSV rows (cpu,mem,io,net,gpu,temp,jank,entropy)
-// -------------------------------
-static int v(const char *line, DField *f) {
-    if (!line || !f) return -1;
-    if (f->r_used >= D_ROWS) return -2;
+/* Core Processing: Otimizado para Pipeline Superescalar (CISC & RISC) */
+static void raf_process_batch(RafCore* core) {
+    const uint32_t total = core->rows_count * (uint32_t)RAF_COLS;
+    float* RAF_RESTRICT data       = core->matrix;
+    const float* RAF_RESTRICT lo   = core->ranges_lo;
+    const float* RAF_RESTRICT sc   = core->ranges_scale;
 
-    float cpu = 0.0f, mem = 0.0f, io = 0.0f, net = 0.0f;
-    float gpu = 0.0f, tmp = 0.0f, jank = 0.0f, ent = 0.0f;
-    int n = sscanf(line, "%f , %f , %f , %f , %f , %f , %f , %f",
-                   &cpu, &mem, &io, &net, &gpu, &tmp, &jank, &ent);
-    if (n < 4) {
-        return -3; // require at least cpu,mem,io,net to be meaningful
+    for (uint32_t i = 0; i < total; i += (uint32_t)RAF_COLS) {
+        for (int c = 0; c < RAF_COLS; ++c) {
+            float val  = data[i + (uint32_t)c];
+            float norm = (val - lo[c]) * sc[c];
+
+            /* clamp 0..1 */
+            if (norm < 0.0f) norm = 0.0f;
+            if (norm > 1.0f) norm = 1.0f;
+
+            data[i + (uint32_t)c] = norm;
+        }
     }
-
-    uint32_t r = f->r_used;
-    f->c_used = 8u;
-
-    // Decode /proc or dumpsys rows directly into the aligned row-major buffer
-    // to keep SIMD/NEON loads contiguous.
-    float *row = f->series.payload.f32 + ((size_t)r * f->c_used);
-
-    row[0] = c01(cpu, 0.0f, 100.0f);
-    row[1] = c01(mem, 0.0f, 8192.0f);
-    row[2] = c01(io,  0.0f, 2000.0f);
-    row[3] = c01(net, 0.0f, 1000.0f);
-    row[4] = c01(gpu, 0.0f, 100.0f);
-    row[5] = c01(tmp, 0.0f, 110.0f);
-    row[6] = c01(jank,0.0f, 120.0f);
-    row[7] = c01(ent, 0.0f, 10.0f);
-
-    f->r_used++;
-    f->series.header.len = f->r_used * f->c_used;
-    return 0;
 }
 
-// -------------------------------
-// JSON writer (W3C/JSON, RFC 8259 safe subset)
-// -------------------------------
-static int j(const DField *f, char *out, size_t out_len) {
-    if (!f || !out || out_len == 0) {
-        return -1; // invalid args
+/* ------------------------------- */
+/* 4. I/O System (Poly-Interface) */
+/* ------------------------------- */
+
+static void raf_io_flush(void) {
+    if (g_out_pos == 0) return;
+
+#if defined(RAF_USE_STDIO_FALLBACK)
+    (void)fwrite(g_out_buf, 1, g_out_pos, stdout);
+#else
+    /* write completo (evita perda em writes parciais) */
+    size_t off = 0;
+    while (off < g_out_pos) {
+        /* raf_write é int em POSIX/Windows; evita size_t direto */
+        int w = (int)raf_write(RAF_FD_OUT, (const void*)(g_out_buf + off),
+                               (unsigned)(g_out_pos - off));
+        if (w <= 0) break;
+        off += (size_t)w;
+    }
+#endif
+
+    g_out_pos = 0;
+}
+
+static RAF_INLINE void raf_io_put(char c) {
+    if (UNLIKELY(g_out_pos >= RAF_BUF_SIZE)) raf_io_flush();
+    g_out_buf[g_out_pos++] = (uint8_t)c;
+}
+
+static void raf_io_puts(const char* s) {
+    while (*s) raf_io_put(*s++);
+}
+
+static void raf_io_put_u32(uint32_t v) {
+    char tmp[16];
+    int k = 0;
+    if (v == 0) tmp[k++] = '0';
+    else {
+        while (v) { tmp[k++] = (char)('0' + (char)(v % 10)); v /= 10; }
+    }
+    while (k) raf_io_put(tmp[--k]);
+}
+
+static void raf_io_put_u64(uint64_t v) {
+    char tmp[32];
+    int k = 0;
+    if (v == 0) tmp[k++] = '0';
+    else {
+        while (v) { tmp[k++] = (char)('0' + (char)(v % 10)); v /= 10; }
+    }
+    while (k) raf_io_put(tmp[--k]);
+}
+
+/* ------------------------------- */
+/* Main Entry Point */
+/* ------------------------------- */
+int main(void) {
+    /* garante alinhamento do core na stack (C11) */
+    alignas(RAF_ALIGNMENT) RafCore core;
+
+    memset(&core, 0, sizeof(core));
+    core.epoch = (uint64_t)time(NULL);
+
+    /* Setup Ranges */
+    const float hi_defs[RAF_COLS] = {100.f, 8192.f, 2000.f, 1000.f, 100.f, 110.f, 120.f, 10.f};
+    for (int i = 0; i < RAF_COLS; ++i) {
+        core.ranges_lo[i] = 0.0f;
+        core.ranges_scale[i] = (hi_defs[i] > 1e-5f) ? (1.0f / hi_defs[i]) : 0.0f;
     }
 
-    uint32_t sev = f->severity;
-
-    /*
-     * Predict total length to avoid ambiguous partial writes (ISO/IEEE/NIST defensive).
-     * snprintf(NULL,0,...) is C11-compliant and keeps footprint minimal.
-     */
-    int prefix = snprintf(NULL, 0,
-        "{"
-        "\"tag\":\"%s\","\
-        "\"severity\":%u,"\
-        "\"rows\":%u,"\
-        "\"cols\":%u,"\
-        "\"crc\":%u,"\
-        "\"epoch\":%llu,"\
-        "\"perm\":{\"dev\":%u,\"p2p\":%u,\"io\":%u,\"net\":%u},"\
-        "\"p2p_overlay\":\"tor-metadata-only\","\
-        "\"matrix\":[",
-        f->tag,
-        sev,
-        f->r_used,
-        f->c_used,
-        f->crc_state,
-        (unsigned long long)f->t_epoch,
-        f->perm_dev,
-        f->perm_p2p,
-        f->perm_io,
-        f->perm_net
-    );
-    if (prefix < 0) {
-        out[0] = '\0';
-        return -2; // encoding failure
+    /* Leitura (Ingestion) */
+    size_t bytes_read = 0;
+#if defined(RAF_USE_STDIO_FALLBACK)
+    bytes_read = fread(g_in_buf, 1, RAF_BUF_SIZE, stdin);
+#else
+    {
+        int r = (int)raf_read(RAF_FD_IN, g_in_buf, (unsigned)RAF_BUF_SIZE);
+        bytes_read = (r > 0) ? (size_t)r : 0;
     }
+#endif
 
-    size_t need = (size_t)prefix;
-    for (uint32_t i = 0; i < f->r_used; ++i) {
-        need += 1u; // '['
-        for (uint32_t c = 0; c < f->c_used; ++c) {
-            int cell = snprintf(NULL, 0,
-                                (c + 1u < f->c_used) ? "%.6f," : "%.6f",
-                                f->series.payload.f32[(size_t)i * f->c_used + c]);
-            if (cell < 0) {
-                out[0] = '\0';
-                return -2;
+    if (bytes_read > 0) {
+        const char* p   = (const char*)g_in_buf;
+        const char* end = p + bytes_read;
+
+        while (p < end && core.rows_count < (uint32_t)RAF_ROWS) {
+            /* Skip comments / empty lines */
+            if (*p == '#' || *p == '\n' || *p == '\r') {
+                while (p < end && *p != '\n') p++;
+                if (p < end) p++;
+                continue;
             }
-            need += (size_t)cell;
-        }
-        need += 1u; // ']'
-        if (i + 1u < f->r_used) {
-            need += 1u; // ',' between rows
-        }
-    }
-    need += 2u; // closing ]}
 
-    if (need + 1u > out_len) { // +1 for NUL
-        out[0] = '\0';
-        return 1; // overflow prevented
-    }
+            float* r = &core.matrix[core.rows_count * (uint32_t)RAF_COLS];
 
-    int w = snprintf(out, out_len,
-        "{"
-        "\"tag\":\"%s\","\
-        "\"severity\":%u,"\
-        "\"rows\":%u,"\
-        "\"cols\":%u,"\
-        "\"crc\":%u,"\
-        "\"epoch\":%llu,"\
-        "\"perm\":{\"dev\":%u,\"p2p\":%u,\"io\":%u,\"net\":%u},"\
-        "\"p2p_overlay\":\"tor-metadata-only\","\
-        "\"matrix\":[",
-        f->tag,
-        sev,
-        f->r_used,
-        f->c_used,
-        f->crc_state,
-        (unsigned long long)f->t_epoch,
-        f->perm_dev,
-        f->perm_p2p,
-        f->perm_io,
-        f->perm_net
-    );
-    if (w < 0 || (size_t)w >= out_len) {
-        out[0] = '\0';
-        return -2;
-    }
+            /* Unroll manual de 8 colunas */
+            p = fast_parse_float(p, &r[0]);
+            p = fast_parse_float(p, &r[1]);
+            p = fast_parse_float(p, &r[2]);
+            p = fast_parse_float(p, &r[3]);
+            p = fast_parse_float(p, &r[4]);
+            p = fast_parse_float(p, &r[5]);
+            p = fast_parse_float(p, &r[6]);
+            p = fast_parse_float(p, &r[7]);
 
-    size_t pos = (size_t)w;
-    for (uint32_t i = 0; i < f->r_used; ++i) {
-        out[pos++] = '[';
-        for (uint32_t c = 0; c < f->c_used; ++c) {
-            int z = snprintf(out + pos, out_len - pos,
-                             (c + 1u < f->c_used) ? "%.6f," : "%.6f",
-                             f->series.payload.f32[(size_t)i * f->c_used + c]);
-            if (z < 0 || (size_t)z >= (out_len - pos)) {
-                out[0] = '\0';
-                return -2;
-            }
-            pos += (size_t)z;
-        }
-        out[pos++] = ']';
-        if (i + 1u < f->r_used) {
-            out[pos++] = ',';
+            core.rows_count++;
+
+            /* Next line */
+            while (p < end && *p != '\n') p++;
+            if (p < end) p++;
         }
     }
 
-    out[pos++] = ']';
-    out[pos++] = '}';
-    out[pos] = '\0';
-    return 0;
-}
+    /* Processamento */
+    raf_process_batch(&core);
 
-// -------------------------------
-// In-process serializer guardrail (table driven)
-// -------------------------------
-static int h(void) {
-    typedef struct { size_t buf; uint32_t rows; uint32_t cols; int expect; } JCase;
-    static const JCase cases[] = {
-        {8u, 1u, 2u, 1},      // tiny buffer must fail
-        {64u, 4u, 4u, 1},     // mid buffer with multiple rows should fail fast
-        {D_JSON, 2u, 3u, 0}   // nominal case should pass
-    };
+    /* Energia e Severidade (Lógica Heurística) */
+    float energy = 0.0f;
+    uint32_t n = core.rows_count * (uint32_t)RAF_COLS;
+    for (uint32_t i = 0; i < n; ++i) energy += core.matrix[i] * core.matrix[i];
 
-    for (size_t idx = 0; idx < (sizeof(cases) / sizeof(cases[0])); ++idx) {
-        DField f;
-        memset(&f, 0, sizeof(f));
-        p(&f);
-        f.r_used = cases[idx].rows;
-        f.c_used = cases[idx].cols;
-        f.t_epoch = 1u;
-        for (uint32_t r = 0; r < f.r_used && r < D_ROWS; ++r) {
-            for (uint32_t c = 0; c < f.c_used && c < D_COLS; ++c) {
-                f.series.payload.f32[(size_t)r * f.c_used + c] =
-                    0.123456f * (float)(r + 1u + c);
-            }
+    if (energy > 384.0f) core.severity = 2;
+    else if (energy > 96.0f) core.severity = 1;
+    else core.severity = 0;
+
+    /* Saída JSON (Serialização Manual Zero-Copy) */
+    raf_io_puts("{\"tag\":\"raf_omni\",\"arch\":");
+
+#if defined(__x86_64__) || defined(_M_X64)
+    raf_io_puts("\"x64\"");
+#elif defined(__aarch64__) || defined(_M_ARM64)
+    raf_io_puts("\"arm64\"");
+#elif defined(__riscv)
+    raf_io_puts("\"riscv\"");
+#elif defined(__wasm__)
+    raf_io_puts("\"wasm\"");
+#else
+    raf_io_puts("\"generic\"");
+#endif
+
+    raf_io_puts(",\"epoch\":");
+    raf_io_put_u64(core.epoch);
+
+    raf_io_puts(",\"rows\":");
+    raf_io_put_u32(core.rows_count);
+
+    raf_io_puts(",\"severity\":");
+    raf_io_put_u32(core.severity);
+
+    raf_io_puts(",\"energy\":");
+    fast_emit_float(energy);
+
+    raf_io_puts(",\"data\":[");
+    for (uint32_t r = 0; r < core.rows_count; ++r) {
+        if (r > 0) raf_io_put(',');
+        raf_io_put('[');
+
+        float* row = &core.matrix[r * (uint32_t)RAF_COLS];
+        for (int c = 0; c < RAF_COLS; ++c) {
+            if (c > 0) raf_io_put(',');
+            fast_emit_float(row[c]);
         }
-        finalize_ts_block(&f, 1000000000ull);
-        char tmp[D_JSON];
-        memset(tmp, 0, sizeof(tmp));
-        size_t limit = (cases[idx].buf < sizeof(tmp)) ? cases[idx].buf : sizeof(tmp);
-        int status = j(&f, tmp, limit);
-        if (status != cases[idx].expect) {
-            return -1; // harness failure
-        }
+
+        raf_io_put(']');
     }
-    return 0;
-}
+    raf_io_puts("]}\n");
 
-// -------------------------------
-// Main entry – pipeline friendly
-// -------------------------------
-int main(int argc, char **argv) {
-    (void)argc;
-    (void)argv;
-
-    if (h() != 0) {
-        fprintf(stderr, "[RAF_DEVPERF] serializer_selftest_failed\n");
-    }
-
-    DField f;
-    memset(&f, 0, sizeof(f));
-    p(&f);
-    f.t_epoch = (uint64_t)time(NULL);
-    f.c_used = D_COLS;
-
-    char line[256];
-    while (f.r_used < D_ROWS && fgets(line, sizeof(line), stdin)) {
-        if (line[0] == '#' || line[0] == '\n') {
-            continue; // skip comments/blank for stability
-        }
-        int r = v(line, &f);
-        if (r != 0) {
-            fprintf(stderr, "[RAF_DEVPERF] parse_error=%d\n", r);
-        }
-    }
-
-    finalize_ts_block(&f, 1000000000ull);
-    s(&f);
-
-    char json[D_JSON];
-    int js = j(&f, json, sizeof(json));
-    if (js != 0) {
-        fprintf(stderr, "[RAF_DEVPERF] serialize_error=%d buffer=%zu rows=%u cols=%u\n",
-                js, sizeof(json), f.r_used, f.c_used);
-        fputs("{}\n", stdout);
-        return 1;
-    }
-
-    fputs(json, stdout);
-    fputc('\n', stdout);
+    raf_io_flush();
     return 0;
 }

@@ -19,12 +19,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
-          cache: gradle
+      - name: Prepare Android SDK and NDK
+        uses: ./.github/actions/setup-android-env
 
       - name: Install Android SDK and NDK
         env:
