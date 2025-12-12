@@ -17,7 +17,7 @@
 // -------------------------------
 #define D_ROWS 64u      // time slices
 #define D_COLS 8u       // metrics per slice
-#define D_JSON 4096u    // JSON buffer
+#define D_JSON 12288u   // JSON buffer (covers worst-case 64x8 matrix with headroom)
 #define D_TAG  32u      // label length
 #define D_TOL  1e-3f     // fixed tolerance for numeric equivalence
 #define D_WARN_E 96.0f   // warning energy threshold
@@ -424,6 +424,14 @@ static int j(const DField *f, char *out, size_t out_len) {
      */
     int prefix = snprintf(NULL, 0,
         "{"
+        "\"tag\":\"%s\","
+        "\"severity\":%u,"
+        "\"rows\":%u,"
+        "\"cols\":%u,"
+        "\"crc\":%u,"
+        "\"epoch\":%llu,"
+        "\"perm\":{\"dev\":%u,\"p2p\":%u,\"io\":%u,\"net\":%u},"
+        "\"p2p_overlay\":\"tor-metadata-only\","
         "\"tag\":\"%s\","\
         "\"severity\":%u,"\
         "\"rows\":%u,"\
@@ -450,6 +458,12 @@ static int j(const DField *f, char *out, size_t out_len) {
     }
 
     size_t need = (size_t)prefix;
+    for (uint32_t i = 0; i < f->r_used; ++i) {
+        need += 1u; // '['
+        for (uint32_t c = 0; c < f->c_used; ++c) {
+            int cell = snprintf(NULL, 0,
+                                (c + 1u < f->c_used) ? "%.6f," : "%.6f",
+                                f->m[i][c]);
     for (uint32_t i = 0; i < rows; ++i) {
         need += 1u; // '['
         for (uint32_t c = 0; c < cols; ++c) {
@@ -465,6 +479,7 @@ static int j(const DField *f, char *out, size_t out_len) {
             need += (size_t)cell;
         }
         need += 1u; // ']'
+        if (i + 1u < f->r_used) {
         if (i + 1u < rows) {
             need += 1u; // ',' between rows
         }
@@ -625,6 +640,7 @@ static void b(ProfileMode *profile) {
     if (q(&f, D_TOL) != 0) {
         exit(3);
     }
+    return 0;
 }
 
 // -------------------------------
@@ -654,6 +670,10 @@ int main(int argc, char **argv) {
 
     if (run_bench) {
         b(&profile);
+    }
+
+    if (h() != 0) {
+        fprintf(stderr, "[RAF_DEVPERF] serializer_selftest_failed\n");
     }
 
     DField f;
