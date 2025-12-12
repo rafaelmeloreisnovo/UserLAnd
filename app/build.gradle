@@ -361,6 +361,6 @@ dependencies {
     }
     androidTestUtil "androidx.test:orchestrator:$androidx_test_version"
 
-    implementation 'com.google.code.gson:gson:2.8.6'
+    implementation 'com.google.code.gson:gson:2.13.2'
 
 }
