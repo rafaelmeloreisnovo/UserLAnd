@@ -2,17 +2,17 @@ name: RAFAELIA Core CI
 
 on:
   push:
+    branches: [ master ]
     paths:
-      - "core/**"
-      - "raf_*"
-      - "rafael_userland_debug_runner.c"
+      - "*.c"
+      - "*.h"
+      - "scripts/**"
       - ".github/workflows/rafaelia-core-ci.yml"
   pull_request:
-    types: [opened, synchronize, reopened]
     paths:
-      - "core/**"
-      - "raf_*"
-      - "rafael_userland_debug_runner.c"
+      - "*.c"
+      - "*.h"
+      - "scripts/**"
       - ".github/workflows/rafaelia-core-ci.yml"
 
 jobs:
