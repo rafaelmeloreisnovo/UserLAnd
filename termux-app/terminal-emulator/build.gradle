@@ -1,7 +1,10 @@
 apply plugin: 'com.android.library'
 
+def resolvedNdkVersion = rootProject.findProperty('ndkVersion') ?: '21.4.7075529'
+
 android {
     compileSdkVersion 29
+    ndkVersion resolvedNdkVersion
 
     defaultConfig {
         minSdkVersion 21
