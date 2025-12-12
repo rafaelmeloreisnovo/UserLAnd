@@ -157,9 +157,12 @@ All helpers emit stable JSON payloads so monitoring tools can parse the same sch
   ```
 
 * `raf_bitraf_store` absorbs a raw byte vector (or synthetic gradient), applies
-  a programmable verb (`pass`, `shift`, or `fractalize`), derives four fractal
-  fingerprints plus two parity rails, and appends a compact ZipRafStore record
-  to `databaseraf.bin` without any external dependencies:
+  a programmable verb (`pass`, `shift`, `fractalize`, or `bitwise`), derives
+  four fractal fingerprints plus two parity rails, and appends a compact
+  ZipRafStore record to `databaseraf.bin` without any external dependencies.
+  The `bitwise` verb materializes a 10x10x10 BITRAF matrix (1024-state, base²⁰)
+  and passes it through a deterministic kernel so the stored payload keeps the
+  same parity rails and four fractal levels mentioned above:
 
   ```sh
   cc -std=c11 -O2 raf_bitraf_store.c -o raf_bitraf_store
