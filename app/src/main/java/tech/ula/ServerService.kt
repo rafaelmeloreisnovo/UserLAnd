@@ -1,4 +1,4 @@
-is .ula
+package tech.ula
 
 /*
  * This file is part of UserLAnd.
