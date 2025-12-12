@@ -28,16 +28,23 @@
 #define BITRAF_STATES 1024
 #define BITRAF_BASE 20
 #define BITRAF_FRACTALS 4
+#define BITRAF_DIM 10
+#define BITRAF_VOLUME (BITRAF_DIM * BITRAF_DIM * BITRAF_DIM)
 #define ZIPRAF_MAGIC 0x5A525354u /* 'ZRST' -> ZipRafSTore */
 
 typedef struct {
     uint16_t state[BITRAF_STATES];
 } bitraf_vector;
 
+typedef struct {
+    uint16_t cell[BITRAF_DIM][BITRAF_DIM][BITRAF_DIM];
+} bitraf_matrix;
+
 typedef enum {
     VERB_PASS = 0,
     VERB_SHIFT,
-    VERB_FRACTALIZE
+    VERB_FRACTALIZE,
+    VERB_BITWISE
 } bitraf_verb;
 
 typedef struct {
@@ -101,7 +108,71 @@ static bitraf_verb parse_verb(const char *verb) {
     if (strcmp(verb, "fractalize") == 0) {
         return VERB_FRACTALIZE;
     }
+    if (strcmp(verb, "bitwise") == 0) {
+        return VERB_BITWISE;
+    }
     return VERB_PASS;
+}
+
+static void vector_to_matrix(const bitraf_vector *src, bitraf_matrix *dst, uint16_t *padding_fold) {
+    memset(dst->cell, 0, sizeof(dst->cell));
+    uint16_t fold = 0;
+
+    for (size_t i = 0; i < BITRAF_STATES; ++i) {
+        uint16_t value = (uint16_t)(src->state[i] % BITRAF_BASE);
+        if (i < BITRAF_VOLUME) {
+            size_t xy = i / BITRAF_DIM;
+            size_t z = i % BITRAF_DIM;
+            size_t x = xy / BITRAF_DIM;
+            size_t y = xy % BITRAF_DIM;
+            dst->cell[x][y][z] = value;
+        } else {
+            /* Fold the padding tail into a deterministic seed without UB shifts. */
+            uint16_t offset = (uint16_t)((i - BITRAF_VOLUME) % 15u);
+            uint16_t rotated = (uint16_t)((value << offset) | (value >> (15u - offset)));
+            fold ^= rotated;
+            fold = (uint16_t)((fold << 1) | (fold >> 15));
+        }
+    }
+
+    if (padding_fold) {
+        *padding_fold = fold;
+    }
+}
+
+static void bitwise_kernel(const bitraf_vector *src, bitraf_vector *dst) {
+    bitraf_matrix m;
+    uint16_t padding_seed = 0;
+    vector_to_matrix(src, &m, &padding_seed);
+
+    size_t idx = 0;
+    uint16_t parity_even = 0, parity_odd = 0;
+    for (size_t x = 0; x < BITRAF_DIM; ++x) {
+        for (size_t y = 0; y < BITRAF_DIM; ++y) {
+            for (size_t z = 0; z < BITRAF_DIM; ++z) {
+                uint16_t base = m.cell[x][y][z];
+                uint16_t nx = m.cell[(x + 1) % BITRAF_DIM][(y + 1) % BITRAF_DIM][z];
+                uint16_t ny = m.cell[x][(y + 2) % BITRAF_DIM][(z + 3) % BITRAF_DIM];
+                uint16_t parity_mask = (uint16_t)(((x << 3) ^ (y << 1) ^ z) & 0x1Fu);
+                uint16_t mixed = (uint16_t)((base ^ nx ^ ny ^ padding_seed ^ parity_mask) % BITRAF_BASE);
+                mixed = (uint16_t)((mixed + (uint16_t)((x + y + z) % BITRAF_BASE)) % BITRAF_BASE);
+
+                dst->state[idx] = mixed;
+                if ((idx & 1u) == 0) {
+                    parity_even ^= mixed;
+                } else {
+                    parity_odd ^= mixed;
+                }
+                ++idx;
+            }
+        }
+    }
+
+    /* Recycle parity lanes for the remaining 24 states. */
+    while (idx < BITRAF_STATES) {
+        uint16_t spill = (uint16_t)((padding_seed ^ parity_even ^ parity_odd ^ idx) % BITRAF_BASE);
+        dst->state[idx++] = spill;
+    }
 }
 
 static void apply_verb(bitraf_vector *dst, const bitraf_vector *src, bitraf_verb verb) {
@@ -121,6 +192,9 @@ static void apply_verb(bitraf_vector *dst, const bitraf_vector *src, bitraf_verb
             acc = (uint16_t)((acc + src->state[(i * 11 + 31) % BITRAF_STATES]) % BITRAF_BASE);
             dst->state[i] = acc;
         }
+        break;
+    case VERB_BITWISE:
+        bitwise_kernel(src, dst);
         break;
     case VERB_PASS:
     default:

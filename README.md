@@ -47,6 +47,20 @@ skips signing even if release keystore credentials are available. The
 `USERLAND_UNSIGNED_APK` variable (or `-PuserlandUnsignedApk`) is only consulted
 after that check, so if you have valid signing credentials but omit
 `-PunsignedApk=true`, the release build will still be signed.
+### Build an unsigned release APK
+
+For offline or sideloaded experiments that must remain unsigned even when
+release signing credentials are present, use:
+
+```sh
+scripts/build_unsigned_apk.sh
+```
+
+This wraps `build_apk.sh`, sets `USERLAND_UNSIGNED_APK=1`, and forwards
+`-PunsignedApk=true` to Gradle so the release variant is packaged without a
+keystore. The `-PunsignedApk=true` property has priority when release signing
+credentials exist; otherwise `USERLAND_UNSIGNED_APK=1` (or `-PuserlandUnsignedApk`)
+keeps signing disabled.
 
 ## Start using UserLAnd
 See our [Getting Started](https://github.com/CypherpunkArmory/UserLAnd/wiki/Getting-Started-in-UserLAnd) page.
@@ -150,9 +164,12 @@ All helpers emit stable JSON payloads so monitoring tools can parse the same sch
   ```
 
 * `raf_bitraf_store` absorbs a raw byte vector (or synthetic gradient), applies
-  a programmable verb (`pass`, `shift`, or `fractalize`), derives four fractal
-  fingerprints plus two parity rails, and appends a compact ZipRafStore record
-  to `databaseraf.bin` without any external dependencies:
+  a programmable verb (`pass`, `shift`, `fractalize`, or `bitwise`), derives
+  four fractal fingerprints plus two parity rails, and appends a compact
+  ZipRafStore record to `databaseraf.bin` without any external dependencies.
+  The `bitwise` verb materializes a 10x10x10 BITRAF matrix (1024-state, base²⁰)
+  and passes it through a deterministic kernel so the stored payload keeps the
+  same parity rails and four fractal levels mentioned above:
 
   ```sh
   cc -std=c11 -O2 raf_bitraf_store.c -o raf_bitraf_store
