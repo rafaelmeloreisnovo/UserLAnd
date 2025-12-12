@@ -1,0 +1,25 @@
+name: "Setup Android environment"
+description: "Install Java, Android SDK, and NDK for consistent builds"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up JDK 8
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: "8"
+        cache: gradle
+
+    - name: Install Android SDK and NDK
+      uses: android-actions/setup-android@v3
+      with:
+        packages: |-
+          platform-tools
+          platforms;android-30
+          build-tools;30.0.3
+          ndk;21.4.7075529
+
+    - name: Expose NDK path
+      shell: bash
+      run: echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/21.4.7075529" >> "$GITHUB_ENV"

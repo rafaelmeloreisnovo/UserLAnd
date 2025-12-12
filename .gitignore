@@ -2,6 +2,9 @@
 *.apk
 *.ap_
 
+# macOS artifacts
+.DS_Store
+
 # Files for the ART/Dalvik VM
 *.dex
 
@@ -12,6 +15,7 @@
 bin/
 gen/
 out/
+termux-app/terminal-term/src/main/assets/bin/
 
 app/release/
 app/debug/
@@ -20,6 +24,10 @@ app/.DS_Store
 # Gradle files
 .gradle/
 build/
+
+# Local Android SDK/NDK drops
+ndk/**
+!ndk/README.md
 
 # Local configuration file (sdk path, etc)
 local.properties

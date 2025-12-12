@@ -8,7 +8,7 @@ android {
     }
 
     dependencies {
-        implementation "androidx.annotation:annotation:1.0.2"
+        implementation "androidx.annotation:annotation:1.9.1"
         implementation "androidx.legacy:legacy-support-core-ui:1.0.0"
         implementation project(":terminal-view")
     }
@@ -33,3 +33,30 @@ android {
 dependencies {
     testImplementation 'junit:junit:4.12'
 }
+
+// Compile the native raf_* helpers and package them into the APK assets so they
+// are always available in Termux sessions bundled with the app.
+def packageStaticBins = tasks.register("packageStaticBins", Exec) {
+    group = "build"
+    description = "Build raf_*_core binaries and copy them into assets/bin before packaging."
+    workingDir rootDir
+    commandLine "bash", "${rootDir}/termux-app/package_static_bins.sh"
+
+    // Re-run when the helper sources or scripts change.
+    inputs.files(
+            fileTree(dir: rootDir, includes: [
+                    "raf_cpu_core.c",
+                    "raf_mem_core.c",
+                    "raf_disk_core.c"
+            ]),
+            fileTree(dir: "${rootDir}/scripts", includes: [
+                    "build_static.sh",
+                    "raf_cpu_core.sh",
+                    "raf_mem_core.sh",
+                    "raf_disk_core.sh"
+            ])
+    )
+    outputs.dir "${projectDir}/src/main/assets/bin"
+}
+
+preBuild.dependsOn packageStaticBins

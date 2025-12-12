@@ -1,0 +1,49 @@
+name: Android Debug APK
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - "app/**"
+      - ".github/workflows/android-debug.yml"
+  pull_request:
+    paths:
+      - "app/**"
+      - ".github/workflows/android-debug.yml"
+
+env:
+  JAVA_VERSION: "8"
+  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+  NDK_VERSION: 26.1.10909125
+
+jobs:
+  build:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Prepare Android SDK and NDK
+        uses: ./.github/actions/setup-android-env
+
+      - name: Install Android SDK and NDK
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+          NDK_VERSION: ${{ env.NDK_VERSION }}
+        run: |
+          yes | sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;${NDK_VERSION}"
+          printf "ndk.dir=%s/ndk/%s\n" "${ANDROID_SDK_ROOT}" "${NDK_VERSION}" > local.properties
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Build debug APK
+        run: ./gradlew clean assembleDebug --stacktrace --no-daemon
+
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: userland-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
