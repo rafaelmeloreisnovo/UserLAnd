@@ -47,6 +47,7 @@ build rafaelia_hyper_core_v800.c     raf_hyper_core_v800
 build rafaelia_infinite_core.c       raf_infinite_core
 build rafaelia_infinite_tuner.c      raf_infinite_tuner
 build rafaelia_omni_core.c           raf_omni_core
+build rafaelia_kernel_v22.c          raf_kernel_v22
 build raf_vector_core.c              raf_vec
 build rafaelia_matrix_core.c         raf_mtx_core
 build rafaelia_trinity_ultimate.c   raf_trinity_ultimate
@@ -131,11 +132,13 @@ bench_vector_core() {
   # Aqui assumimos que você tem um modo --bench similar ao log que mostrou.
   log "RUN    raf_vec --bench 10000"
   ./raf_vec --bench 10000 | tee vec_bench.log || log "raf_vec --bench não implementado, apenas compilado"
-  if grep -q 'BEMCH' vec_bench.log 2>/dev/null; then
+  if grep -q 'BENCH' vec_bench.log 2>/dev/null; then
     local hash
     hash=$(grep 'Hash' vec_bench.log | awk '{print $3}')
     [[ -n "${hash:-}" ]] && matrix_send "VECTOR_CORE_HASH" "$hash"
     trinity_svg vec_bench.log vector_core_memory.svg
+  else
+    log "Saída de benchmark não encontrada em vec_bench.log; pulando envio de hash e SVG"
   fi
 }
 
