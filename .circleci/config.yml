@@ -26,12 +26,6 @@ reference:
         - app/build/outputs/apk
         - app/build/outputs/code-coverage
         - app/build/test-results
-  attach_debug_workspace: &attach_debug_workspace
-    attach_workspace:
-      at: *workspace
-  attach_release_workspace: &attach_release_workspace
-    attach_workspace:
-      at: *workspace
   persist_release_workspace: &persist_release_workspace
     persist_to_workspace:
       root: *workspace
@@ -39,9 +33,6 @@ reference:
         - app/build/outputs/apk
         - app/versionCode.txt
         - app/versionName.txt
-  attach_firebase_workspace: &attach_firebase_workspace
-    attach_workspace:
-      at: *workspace
   persist_firebase_workspace: &persist_firebase_workspace
     persist_to_workspace:
       root: *workspace
@@ -55,7 +46,6 @@ reference:
       - image: circleci/android@sha256:fa7a00c75f4b28cc4f2a15a382fb76e830d62a77efd1a3f8549f7f5fdad4ca44
     environment:
       TERM: dumb
-      # Limit JVM heap size to prevent exceeding container memory
       _JAVA_OPTIONS: "-Xmx2048m -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=1"
       GRADLE_OPTS: '-Dorg.gradle.jvmargs="-Xmx2048m"'
 
@@ -80,48 +70,19 @@ reference:
       name: Decode Android key store
       command: echo $ANDROID_KEYSTORE | base64 -di > keystore.jks
 
-  export_github_release_token: &export_github_release_token
+  # Configure Sentry
+  configure_sentry: &configure_sentry
     run:
-      name: Export Github release key
-      command: echo 'export GITHUB_RELEASE_TOKEN="$GITHUB_RELEASE_TOKEN"' >> $BASH_ENV
-
-  export_gcloud_key: &export_gcloud_key
-    run:
-      name: Export Google Cloud Service key environment variable
-      command: echo 'export GCLOUD_SERVICE_ACCOUNT_KEY="$GCLOUD_SERVICE_ACCOUNT_KEY"' >> $BASH_ENV
-  decode_gcloud_key: &decode_gcloud_key
-    run:
-      name: Decode Google Cloud credentials
-      command: echo $GCLOUD_SERVICE_ACCOUNT_KEY | base64 -di > ${HOME}/client-secret.json
-
-  export_play_key: &export_play_key
-    run:
-      name: Export Play store key
-      command: echo 'export PLAY_KEY="$PLAY_KEY"' >> $BASH_ENV
-  decode_play_key: &decode_play_key
-    run:
-      name: Decode Play store key
-      command: echo $PLAY_KEY | base64 -di > ${HOME}/play-key.json
-
-  configure_sentry_beta: &configure_sentry_beta
-    run:
-      name: Configure Sentry for production use
+      name: Configure Sentry
       command: |
         mkdir -p app/src/main/resources
         echo "dsn=$SENTRY_DSN" >> app/src/main/resources/sentry.properties
-        echo "environment=beta" >> app/src/main/resources/sentry.properties
+        echo "environment=$SENTRY_ENV" >> app/src/main/resources/sentry.properties
 
-  configure_sentry_production: &configure_sentry_production
-    run:
-      name: Configure Sentry for production use
-      command: |
-        mkdir -p app/src/main/resources
-        echo "dsn=$SENTRY_DSN" >> app/src/main/resources/sentry.properties
-        echo "environment=production" >> app/src/main/resources/sentry.properties
-
+  # Early return for forked pull requests
   early_return_for_forked_pull_requests: &early_return_for_forked_pull_requests
     run:
-      name: Return early to avoid jobs that forked PRs will fail without secrets.
+      name: Return early to avoid jobs failing for forked PRs without secrets
       command: |
         if [ -n "$CIRCLE_PR_NUMBER" ]; then
           echo "Nothing to do for forked PRs. Skipping this step."
@@ -157,12 +118,12 @@ jobs:
       - *save_cache
       - *export_android_key
       - *decode_android_key
-      - *configure_sentry_beta
+      - *configure_sentry
       - run:
           name: Run ktlint
           command: ./gradlew ktlint
       - run:
-          name: Build
+          name: Build (beta)
           command: ./gradlew -PciBuild=true :app:assembleBeta
       - *persist_release_workspace
       - store_artifacts:
@@ -179,12 +140,12 @@ jobs:
       - *save_cache
       - *export_android_key
       - *decode_android_key
-      - *configure_sentry_production
+      - *configure_sentry
       - run:
           name: Run ktlint
           command: ./gradlew ktlint
       - run:
-          name: Build
+          name: Build (production)
           command: ./gradlew -PciBuild=true :app:assembleRelease
       - *persist_release_workspace
       - store_artifacts:
@@ -217,12 +178,6 @@ jobs:
       - *export_gcloud_key
       - *decode_gcloud_key
       - run:
-          name: Set Google Cloud target project
-          command: gcloud config set project userland-app
-      - run:
-          name: Authenticate with Google Cloud
-          command: gcloud auth activate-service-account --key-file ${HOME}/client-secret.json
-      - run:
           name: Run instrumented test on Firebase Test Lab
           command: >
             gcloud firebase test android run
@@ -237,10 +192,6 @@ jobs:
       - run:
           name: Create directory to store test results
           command: mkdir firebase
-      # Run this command if coverages are failing
-      - run:
-          name: Clear any old objects generated by manual tests in web client
-          command: gsutil rm -r "gs://test-lab-5114im9qa55t6-h6m476ja1a8jm/web-build*" || true
       - run:
           name: Download instrumented test results from Firebase Test Lab
           command: gsutil -m cp -r -U "`gsutil ls gs://test-lab-5114im9qa55t6-h6m476ja1a8jm | tail -1`*" ${HOME}/workspace/firebase/
@@ -249,28 +200,7 @@ jobs:
           path: firebase/
           destination: /firebase/
 
-  report_coverage:
-    <<: *android_config
-    steps:
-      - *early_return_for_forked_pull_requests
-      - checkout
-      - *restore_cache
-      - *android_dependencies
-      - *save_cache
-      - *attach_debug_workspace
-      - *export_gcloud_key
-      - *decode_gcloud_key
-      - run:
-          name: Generate JaCoCo report
-          command: ./gradlew -PciBuild=true :app:jacocoCoverageReportForCi
-      - run:
-          name: Upload coverage to Codecov
-          command: bash <(curl -s https://codecov.io/bash)
-      - store_artifacts:
-          path: app/build/reports/
-          destination: /reports/
-
-  deploy-beta:
+  deploy_beta:
     <<: *android_config
     steps:
       - *early_return_for_forked_pull_requests
@@ -284,7 +214,7 @@ jobs:
           name: Deploy to Play store beta
           command: bundle exec fastlane deploy_beta
 
-  deploy-production:
+  deploy_production:
     <<: *android_config
     steps:
       - *early_return_for_forked_pull_requests
