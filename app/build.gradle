@@ -58,18 +58,27 @@ android {
         }
     }
 
+    def keystoreFile = project.file('../keystore.jks')
+    def hasSigningCredentials = keystoreFile.exists() && [
+            'ANDROID_KEY_ALIAS', 'ANDROID_STORE_PASSWORD', 'ANDROID_KEY_PASSWORD'
+    ].every { System.getenv(it) }
+    def forceUnsigned = project.hasProperty('unsignedApk') && project.property('unsignedApk').toString() == 'true'
+    def disableSigning = project.hasProperty('userlandUnsignedApk') || System.getenv('USERLAND_UNSIGNED_APK') == '1'
+
     signingConfigs {
-        beta {
-            storeFile project.file('../keystore.jks')
-            keyAlias System.getenv('ANDROID_KEY_ALIAS')
-            storePassword System.getenv('ANDROID_STORE_PASSWORD')
-            keyPassword System.getenv('ANDROID_KEY_PASSWORD')
-        }
-        release {
-            storeFile project.file('../keystore.jks')
-            keyAlias System.getenv('ANDROID_KEY_ALIAS')
-            storePassword System.getenv('ANDROID_STORE_PASSWORD')
-            keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+        if (hasSigningCredentials) {
+            beta {
+                storeFile keystoreFile
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                storePassword System.getenv('ANDROID_STORE_PASSWORD')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+            release {
+                storeFile keystoreFile
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                storePassword System.getenv('ANDROID_STORE_PASSWORD')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
         }
     }
 
@@ -83,15 +92,25 @@ android {
         beta {
             versionNameSuffix "-beta-$defaultConfig.versionCode"
             debuggable false
-            minifyEnabled false
-            signingConfig signingConfigs.beta
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            minifyEnabled true
+            shrinkResources true
+            if (hasSigningCredentials && !forceUnsigned) {
+                signingConfig signingConfigs.beta
+            } else if (disableSigning) {
+                println "Beta signing disabled via USERLAND_UNSIGNED_APK or -PuserlandUnsignedApk"
+            }
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         release {
             debuggable false
-            minifyEnabled false
-            signingConfig signingConfigs.release
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            minifyEnabled true
+            shrinkResources true
+            if (hasSigningCredentials && !forceUnsigned) {
+                signingConfig signingConfigs.release
+            } else if (disableSigning) {
+                println "Release signing disabled via USERLAND_UNSIGNED_APK or -PuserlandUnsignedApk"
+            }
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 
@@ -109,6 +128,11 @@ android {
         unitTests {
             includeAndroidResources = true
         }
+    }
+
+    kotlinOptions {
+        jvmTarget = "1.8"
+        freeCompilerArgs += ["-Xjvm-default=all"]
     }
 }
 

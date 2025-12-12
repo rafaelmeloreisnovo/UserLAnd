@@ -64,20 +64,45 @@ static int profile_guard(ProfileMode *p) {
 }
 
 // -------------------------------
+// Time-series block layout (row-major, SIMD friendly)
+// -------------------------------
+typedef struct {
+    uint32_t len;          // total elements stored (rows * cols)
+    uint32_t stride;       // element stride in bytes
+    uint64_t ts_start;     // epoch base for first sample
+    uint64_t ts_delta;     // delta between rows (nanoseconds)
+} TSBlockHeader;
+
+typedef struct {
+    TSBlockHeader header;          // [len | stride | ts_start | ts_delta]
+    union {                       // contiguous row-major payload, 64B aligned
+        float    f32[D_ROWS * D_COLS];
+        double   f64[D_ROWS * D_COLS];
+        int16_t  i16[D_ROWS * D_COLS];
+    } payload;
+} TSBlock;
+
+#if defined(__GNUC__) || defined(__clang__)
+typedef TSBlock TSBlockAligned __attribute__((aligned(64)));
+#else
+typedef __declspec(align(64)) TSBlock TSBlockAligned;
+#endif
+
+// -------------------------------
 // Data field and permissions snapshot
 // -------------------------------
 typedef struct {
-    float m[D_ROWS][D_COLS];   // metric matrix (cpu,mem,io,net,gpu,temp,jank,entropy)
-    uint32_t r_used;           // active rows
-    uint32_t c_used;           // active cols
-    uint32_t severity;         // 0 ok / 1 warn / 2 critical
-    uint32_t crc_state;        // crc over matrix
-    uint64_t t_epoch;          // epoch seconds
-    uint8_t perm_dev;          // developer mode asserted
-    uint8_t perm_p2p;          // P2P allowed (tor-like overlay)
-    uint8_t perm_io;           // IO read allowed
-    uint8_t perm_net;          // network monitor allowed
-    char tag[D_TAG];           // label for JSON
+    TSBlockAligned series;   // aligned time-series buffer
+    uint32_t r_used;         // active rows
+    uint32_t c_used;         // active cols
+    uint32_t severity;       // 0 ok / 1 warn / 2 critical
+    uint32_t crc_state;      // crc over matrix
+    uint64_t t_epoch;        // epoch seconds
+    uint8_t perm_dev;        // developer mode asserted
+    uint8_t perm_p2p;        // P2P allowed (tor-like overlay)
+    uint8_t perm_io;         // IO read allowed
+    uint8_t perm_net;        // network monitor allowed
+    char tag[D_TAG];         // label for JSON
 } DField;
 
 // -------------------------------
@@ -92,6 +117,67 @@ static float c01(float v, float lo, float hi) {
 }
 
 // -------------------------------
+// Contiguous-friendly scalar kernels
+// -------------------------------
+static float k_sum(const float *in, uint32_t n) {
+    float acc = 0.0f;
+    for (uint32_t i = 0; i < n; ++i) {
+        acc += in[i];
+    }
+    return acc;
+}
+
+static float k_mean(float sum, uint32_t n) {
+    return (n == 0u) ? 0.0f : sum / (float)n;
+}
+
+static void k_minmax(const float *in, uint32_t n, float *mn, float *mx) {
+    if (n == 0u || !mn || !mx) {
+        if (mn) *mn = 0.0f;
+        if (mx) *mx = 0.0f;
+        return;
+    }
+    float lo = in[0];
+    float hi = in[0];
+    for (uint32_t i = 1u; i < n; ++i) {
+        float v = in[i];
+        lo = (v < lo) ? v : lo;
+        hi = (v > hi) ? v : hi;
+    }
+    *mn = lo;
+    *mx = hi;
+}
+
+static float k_variance(const float *in, uint32_t n, float mean) {
+    if (n == 0u) return 0.0f;
+    float acc = 0.0f;
+    for (uint32_t i = 0; i < n; ++i) {
+        float d = in[i] - mean;
+        acc += d * d;
+    }
+    return acc / (float)n;
+}
+
+static void k_conv1d(const float *in, uint32_t n,
+                     const float *k, uint32_t klen,
+                     float *out) {
+    if (!in || !k || !out || n == 0u || klen == 0u) {
+        return;
+    }
+    uint32_t half = klen / 2u;
+    for (uint32_t i = 0; i < n; ++i) {
+        float acc = 0.0f;
+        for (uint32_t j = 0; j < klen; ++j) {
+            int32_t pos = (int32_t)i + (int32_t)j - (int32_t)half;
+            if (pos >= 0 && (uint32_t)pos < n) {
+                acc += in[(uint32_t)pos] * k[j];
+            }
+        }
+        out[i] = acc;
+    }
+}
+
+// -------------------------------
 // Baseline permissions and tag
 // -------------------------------
 static void p(DField *f) {
@@ -101,16 +187,41 @@ static void p(DField *f) {
     f->perm_io  = 1u;   // allow /proc sampling in ethical mode
     f->perm_net = 1u;   // allow metadata-only network metrics
     snprintf(f->tag, sizeof(f->tag), "raf_devperf");
+
+    f->series.header.len     = 0u;
+    f->series.header.stride  = (uint32_t)sizeof(float);
+    f->series.header.ts_start= 0u;
+    f->series.header.ts_delta= 0u;
 }
 
 // -------------------------------
 // Risk scoring based on aggregated energy
 // -------------------------------
+static uint32_t clamp_used(uint32_t v, uint32_t max_v) {
+    return (v <= max_v) ? v : max_v;
+}
+
+static void clamp_dims(DField *f) {
+    if (!f) return;
+    f->r_used = clamp_used(f->r_used, D_ROWS);
+    f->c_used = clamp_used(f->c_used, D_COLS);
+}
+
 static float e(DField *f) {
+    clamp_dims(f);
+    uint32_t rows = f->r_used;
+    uint32_t cols = f->c_used;
+    const float *m = &f->m[0][0];
+    uint32_t total = rows * cols;
+    const float *m = &f->m[0][0];
+    uint32_t total = f->r_used * f->c_used;
     float acc = 0.0f;
+    for (uint32_t idx = 0; idx < total; ++idx) {
+        float v = m[idx];
+        acc += v * v; // energy-like metric; stable and cheap
     for (uint32_t i = 0; i < f->r_used; ++i) {
         for (uint32_t j = 0; j < f->c_used; ++j) {
-            float v = f->m[i][j];
+            float v = f->series.payload.f32[(size_t)i * f->c_used + j];
             acc += v * v; // energy-like metric; stable and cheap
         }
     }
@@ -139,13 +250,100 @@ static uint32_t sev_from_energy(float energy) {
 }
 
 static void k(DField *f) {
+    clamp_dims(f);
+    uint32_t rows = f->r_used;
+    uint32_t cols = f->c_used;
     f->crc_state = raf_fast_crc32(0u, f->m,
-        (size_t)(sizeof(float) * f->r_used * f->c_used));
+        (size_t)(sizeof(float) * rows * cols));
+    size_t bytes = (size_t)(sizeof(float) * f->r_used * f->c_used);
+    f->crc_state = raf_fast_crc32(0u, f->series.payload.f32, bytes);
+}
+
+static void finalize_ts_block(DField *f, uint64_t delta_ns) {
+    if (!f) return;
+    f->series.header.stride = (uint32_t)sizeof(float);
+    f->series.header.len = f->r_used * f->c_used;
+    if (f->series.header.ts_start == 0u) {
+        f->series.header.ts_start = f->t_epoch * 1000000000ull; // epoch to ns
+    }
+    if (f->series.header.ts_delta == 0u) {
+        f->series.header.ts_delta = delta_ns;
+    }
+}
+
+// -------------------------------
+// Metric vector mapping (cpu,mem,io,net,jank)
+// -------------------------------
+static void m_stats(const DField *f,
+                    float *mean_out,
+                    float *var_out,
+                    float *min_out,
+                    float *max_out,
+                    float *conv_tail) {
+    if (!f) return;
+
+    static const uint32_t cols[] = {0u, 1u, 2u, 3u, 6u};
+    const float smooth_k[] = {0.25f, 0.50f, 0.25f};
+    float scratch[D_ROWS];
+    float conv[D_ROWS];
+
+    uint32_t samples = clamp_used(f->r_used, D_ROWS);
+    uint32_t col_count = clamp_used(f->c_used, D_COLS);
+    if (samples == 0u || col_count == 0u) {
+        return;
+    }
+
+    for (uint32_t m = 0; m < (sizeof(cols) / sizeof(cols[0])); ++m) {
+        if (cols[m] >= col_count) {
+            continue; // skip unavailable column
+        }
+    uint32_t samples = f->r_used;
+    for (uint32_t m = 0; m < (sizeof(cols) / sizeof(cols[0])); ++m) {
+        for (uint32_t i = 0; i < samples; ++i) {
+            scratch[i] = f->m[i][cols[m]]; // contiguous column slice
+        }
+
+        float sum = k_sum(scratch, samples);
+        float mean = k_mean(sum, samples);
+        float variance = k_variance(scratch, samples, mean);
+        float mn = 0.0f, mx = 0.0f;
+        k_minmax(scratch, samples, &mn, &mx);
+        k_conv1d(scratch, samples, smooth_k,
+                 (uint32_t)(sizeof(smooth_k) / sizeof(smooth_k[0])), conv);
+
+        if (mean_out) mean_out[m] = mean;
+        if (var_out) var_out[m] = variance;
+        if (min_out) min_out[m] = mn;
+        if (max_out) max_out[m] = mx;
+        if (conv_tail) conv_tail[m] = (samples == 0u) ? 0.0f : conv[samples - 1u];
+    }
 }
 
 static void s(DField *f) {
     float energy = e(f);
     f->severity = sev_from_energy(energy);
+    const float warn_e = 96.0f;   // conservative threshold for warning
+    const float crit_e = 384.0f;  // stricter for critical
+
+    float mean_out[5] = {0};
+    float var_out[5] = {0};
+    float min_out[5] = {0};
+    float max_out[5] = {0};
+    float conv_tail[5] = {0};
+
+    m_stats(f, mean_out, var_out, min_out, max_out, conv_tail);
+
+    float energy = e(f);
+    for (uint32_t i = 0; i < 5u; ++i) {
+        energy += mean_out[i] + var_out[i] + (max_out[i] - min_out[i]) + conv_tail[i];
+    }
+    if (energy >= crit_e) {
+        f->severity = 2u;
+    } else if (energy >= warn_e) {
+        f->severity = 1u;
+    } else {
+        f->severity = 0u;
+    }
     k(f);
 }
 
@@ -167,16 +365,22 @@ static int v(const char *line, DField *f) {
     uint32_t r = f->r_used;
     f->c_used = 8u;
 
-    f->m[r][0] = c01(cpu, 0.0f, 100.0f);
-    f->m[r][1] = c01(mem, 0.0f, 8192.0f);
-    f->m[r][2] = c01(io,  0.0f, 2000.0f);
-    f->m[r][3] = c01(net, 0.0f, 1000.0f);
-    f->m[r][4] = c01(gpu, 0.0f, 100.0f);
-    f->m[r][5] = c01(tmp, 0.0f, 110.0f);
-    f->m[r][6] = c01(jank,0.0f, 120.0f);
-    f->m[r][7] = c01(ent, 0.0f, 10.0f);
+    // Decode /proc or dumpsys rows directly into the aligned row-major buffer
+    // to keep SIMD/NEON loads contiguous.
+    float *row = f->series.payload.f32 + ((size_t)r * f->c_used);
+
+    row[0] = c01(cpu, 0.0f, 100.0f);
+    row[1] = c01(mem, 0.0f, 8192.0f);
+    row[2] = c01(io,  0.0f, 2000.0f);
+    row[3] = c01(net, 0.0f, 1000.0f);
+    row[4] = c01(gpu, 0.0f, 100.0f);
+    row[5] = c01(tmp, 0.0f, 110.0f);
+    row[6] = c01(jank,0.0f, 120.0f);
+    row[7] = c01(ent, 0.0f, 10.0f);
 
     f->r_used++;
+    clamp_dims(f);
+    f->series.header.len = f->r_used * f->c_used;
     return 0;
 }
 
@@ -210,6 +414,8 @@ static int j(const DField *f, char *out, size_t out_len) {
         return -1; // invalid args
     }
 
+    uint32_t rows = clamp_used(f->r_used, D_ROWS);
+    uint32_t cols = clamp_used(f->c_used, D_COLS);
     uint32_t sev = f->severity;
 
     /*
@@ -229,8 +435,8 @@ static int j(const DField *f, char *out, size_t out_len) {
         "\"matrix\":[",
         f->tag,
         sev,
-        f->r_used,
-        f->c_used,
+        rows,
+        cols,
         f->crc_state,
         (unsigned long long)f->t_epoch,
         f->perm_dev,
@@ -244,12 +450,14 @@ static int j(const DField *f, char *out, size_t out_len) {
     }
 
     size_t need = (size_t)prefix;
-    for (uint32_t i = 0; i < f->r_used; ++i) {
+    for (uint32_t i = 0; i < rows; ++i) {
         need += 1u; // '['
-        for (uint32_t c = 0; c < f->c_used; ++c) {
+        for (uint32_t c = 0; c < cols; ++c) {
             int cell = snprintf(NULL, 0,
-                                (c + 1u < f->c_used) ? "%.6f," : "%.6f",
+                                (c + 1u < cols) ? "%.6f," : "%.6f",
                                 f->m[i][c]);
+                                (c + 1u < f->c_used) ? "%.6f," : "%.6f",
+                                f->series.payload.f32[(size_t)i * f->c_used + c]);
             if (cell < 0) {
                 out[0] = '\0';
                 return -2;
@@ -257,7 +465,7 @@ static int j(const DField *f, char *out, size_t out_len) {
             need += (size_t)cell;
         }
         need += 1u; // ']'
-        if (i + 1u < f->r_used) {
+        if (i + 1u < rows) {
             need += 1u; // ',' between rows
         }
     }
@@ -281,8 +489,8 @@ static int j(const DField *f, char *out, size_t out_len) {
         "\"matrix\":[",
         f->tag,
         sev,
-        f->r_used,
-        f->c_used,
+        rows,
+        cols,
         f->crc_state,
         (unsigned long long)f->t_epoch,
         f->perm_dev,
@@ -296,12 +504,14 @@ static int j(const DField *f, char *out, size_t out_len) {
     }
 
     size_t pos = (size_t)w;
-    for (uint32_t i = 0; i < f->r_used; ++i) {
+    for (uint32_t i = 0; i < rows; ++i) {
         out[pos++] = '[';
-        for (uint32_t c = 0; c < f->c_used; ++c) {
+        for (uint32_t c = 0; c < cols; ++c) {
             int z = snprintf(out + pos, out_len - pos,
-                             (c + 1u < f->c_used) ? "%.6f," : "%.6f",
+                             (c + 1u < cols) ? "%.6f," : "%.6f",
                              f->m[i][c]);
+                             (c + 1u < f->c_used) ? "%.6f," : "%.6f",
+                             f->series.payload.f32[(size_t)i * f->c_used + c]);
             if (z < 0 || (size_t)z >= (out_len - pos)) {
                 out[0] = '\0';
                 return -2;
@@ -309,7 +519,7 @@ static int j(const DField *f, char *out, size_t out_len) {
             pos += (size_t)z;
         }
         out[pos++] = ']';
-        if (i + 1u < f->r_used) {
+        if (i + 1u < rows) {
             out[pos++] = ',';
         }
     }
@@ -338,11 +548,18 @@ static int h(void) {
         f.r_used = cases[idx].rows;
         f.c_used = cases[idx].cols;
         f.t_epoch = 1u;
+        uint32_t total = (f.r_used < D_ROWS ? f.r_used : D_ROWS) *
+                         (f.c_used < D_COLS ? f.c_used : D_COLS);
+        float *base = &f.m[0][0];
+        for (uint32_t pos = 0; pos < total; ++pos) {
+            base[pos] = 0.123456f * (float)(pos + 1u);
         for (uint32_t r = 0; r < f.r_used && r < D_ROWS; ++r) {
             for (uint32_t c = 0; c < f.c_used && c < D_COLS; ++c) {
-                f.m[r][c] = 0.123456f * (float)(r + 1u + c);
+                f.series.payload.f32[(size_t)r * f.c_used + c] =
+                    0.123456f * (float)(r + 1u + c);
             }
         }
+        finalize_ts_block(&f, 1000000000ull);
         char tmp[D_JSON];
         memset(tmp, 0, sizeof(tmp));
         size_t limit = (cases[idx].buf < sizeof(tmp)) ? cases[idx].buf : sizeof(tmp);
@@ -460,6 +677,8 @@ int main(int argc, char **argv) {
         return 2;
     }
 
+    clamp_dims(&f);
+    finalize_ts_block(&f, 1000000000ull);
     s(&f);
 
     char json[D_JSON];
