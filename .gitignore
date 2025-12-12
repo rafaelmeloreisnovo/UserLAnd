@@ -15,6 +15,7 @@
 bin/
 gen/
 out/
+termux-app/terminal-term/src/main/assets/bin/
 
 app/release/
 app/debug/

@@ -94,10 +94,11 @@ android {
             debuggable false
             minifyEnabled true
             shrinkResources true
-            if (hasSigningCredentials && !forceUnsigned) {
+            if (hasSigningCredentials && !forceUnsigned && !disableSigning) {
                 signingConfig signingConfigs.beta
-            } else if (disableSigning) {
-                println "Beta signing disabled via USERLAND_UNSIGNED_APK or -PuserlandUnsignedApk"
+            } else if (disableSigning || forceUnsigned) {
+                signingConfig null
+                println "Beta signing disabled; producing unsigned APK"
             }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -105,10 +106,11 @@ android {
             debuggable false
             minifyEnabled true
             shrinkResources true
-            if (hasSigningCredentials && !forceUnsigned) {
+            if (hasSigningCredentials && !forceUnsigned && !disableSigning) {
                 signingConfig signingConfigs.release
-            } else if (disableSigning) {
-                println "Release signing disabled via USERLAND_UNSIGNED_APK or -PuserlandUnsignedApk"
+            } else if (disableSigning || forceUnsigned) {
+                signingConfig null
+                println "Release signing disabled; producing unsigned APK"
             }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -265,7 +267,27 @@ task checkIfAssetsMissing {
     }
 }
 
+task packageStaticBins(type: Exec) {
+    group = "build"
+    description = "Build static C helpers and copy them into the APK assets."
+    workingDir rootProject.rootDir
+    commandLine "bash", "termux-app/package_static_bins.sh"
+
+    inputs.files fileTree(dir: rootProject.rootDir, includes: [
+            "raf_cpu_core.c",
+            "raf_mem_core.c",
+            "raf_disk_core.c",
+            "scripts/build_static.sh",
+            "scripts/raf_cpu_core.sh",
+            "scripts/raf_mem_core.sh",
+            "scripts/raf_disk_core.sh",
+            "termux-app/package_static_bins.sh"
+    ])
+    outputs.dir "$rootProject.rootDir/termux-app/terminal-term/src/main/assets/bin"
+}
+
 preBuild.dependsOn checkIfAssetsMissing
+preBuild.dependsOn packageStaticBins
 
 dependencies {
     def moshi_version = '1.8.0'
