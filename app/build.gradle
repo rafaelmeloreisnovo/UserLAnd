@@ -63,6 +63,7 @@ android {
             'ANDROID_KEY_ALIAS', 'ANDROID_STORE_PASSWORD', 'ANDROID_KEY_PASSWORD'
     ].every { System.getenv(it) }
     def forceUnsigned = project.hasProperty('unsignedApk') && project.property('unsignedApk').toString() == 'true'
+    def disableSigning = project.hasProperty('userlandUnsignedApk') || System.getenv('USERLAND_UNSIGNED_APK') == '1'
 
     signingConfigs {
         if (hasSigningCredentials) {
@@ -95,6 +96,8 @@ android {
             shrinkResources true
             if (hasSigningCredentials && !forceUnsigned) {
                 signingConfig signingConfigs.beta
+            } else if (disableSigning) {
+                println "Beta signing disabled via USERLAND_UNSIGNED_APK or -PuserlandUnsignedApk"
             }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -104,6 +107,8 @@ android {
             shrinkResources true
             if (hasSigningCredentials && !forceUnsigned) {
                 signingConfig signingConfigs.release
+            } else if (disableSigning) {
+                println "Release signing disabled via USERLAND_UNSIGNED_APK or -PuserlandUnsignedApk"
             }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

@@ -22,13 +22,23 @@ See our [CONTRIBUTING](https://github.com/CypherpunkArmory/UserLAnd/blob/master/
 UserLAnd depends on legacy Android Gradle Plugin tooling that expects Java 11 and
 Android SDK platform 30. To build from a clean machine:
 
-1. Install a Java 11 JDK and ensure `JAVA_HOME` points to it (or export
-   `JAVA_HOME_11_X64` on Windows).
+ 1. Install a Java 11 JDK and ensure `JAVA_HOME` points to it (or export
+  `JAVA_HOME_11_X64` on Windows).
 2. Run `scripts/build_apk.sh` to download the Android command-line tools into
-   `build/android-sdk`, accept licenses, generate `local.properties`, and invoke
-   `assembleDebug`.
+  `build/android-sdk`, accept licenses, generate `local.properties`, and invoke
+  `assembleDebug`.
 3. Pass `--skip-sdk` if you already have an SDK available, or `--skip-build` if
-   you only want to bootstrap the SDK without running Gradle.
+  you only want to bootstrap the SDK without running Gradle.
+
+### Build an unsigned APK
+
+To force an unsigned variant (helpful when you want to inject a custom signing
+step), use the helper wrapper:
+
+```sh
+scripts/build_unsigned_apk.sh             # assembleRelease without signing
+scripts/build_unsigned_apk.sh --task :app:bundleRelease --skip-sdk
+```
 
 ### Build an unsigned release APK
 
@@ -141,6 +151,16 @@ All helpers emit stable JSON payloads so monitoring tools can parse the same sch
       }
     ]
   }
+  ```
+
+* `raf_bitraf_store` absorbs a raw byte vector (or synthetic gradient), applies
+  a programmable verb (`pass`, `shift`, or `fractalize`), derives four fractal
+  fingerprints plus two parity rails, and appends a compact ZipRafStore record
+  to `databaseraf.bin` without any external dependencies:
+
+  ```sh
+  cc -std=c11 -O2 raf_bitraf_store.c -o raf_bitraf_store
+  ./raf_bitraf_store input.raw --verb fractalize
   ```
 
 Each binary has a matching shell entrypoint (`scripts/raf_cpu_core.sh`, `scripts/raf_mem_core.sh`, `scripts/raf_disk_core.sh`) that prefers the local `build/bin` artifacts but also falls back to whatever is on the `$PATH`, ensuring consistent invocation names everywhere.
