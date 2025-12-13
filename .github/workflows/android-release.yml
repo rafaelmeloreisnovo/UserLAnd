@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
 
 env:
-  JAVA_VERSION: "8"
+  JAVA_VERSION: "17"
   ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-  NDK_VERSION: 26.1.10909125
+  NDK_VERSION: 27.3.13750724
 
 jobs:
   build:

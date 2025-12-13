@@ -4,7 +4,7 @@ description: "Install Java, Android SDK, and NDK for consistent builds"
 inputs:
   java-version:
     description: "Java version to install"
-    default: "8"
+    default: "17"
   build-tools-version:
     description: "Android build tools version"
     default: "34.0.0"
@@ -13,7 +13,7 @@ inputs:
     default: "34"
   ndk-version:
     description: "Android NDK version"
-    default: "26.1.10909125"
+    default: "27.3.13750724"
 
 runs:
   using: "composite"
