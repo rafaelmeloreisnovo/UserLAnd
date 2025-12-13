@@ -1,14 +1,15 @@
 apply plugin: 'com.android.library'
 
-def resolvedNdkVersion = rootProject.findProperty('ndkVersion') ?: '21.4.7075529'
+def resolvedNdkVersion = rootProject.findProperty('ndkVersion') ?: '27.3.13750724'
 
 android {
-    compileSdkVersion 29
+    namespace 'com.termux.terminal.emulator'
+    compileSdk 34
     ndkVersion resolvedNdkVersion
 
     defaultConfig {
-        minSdkVersion 21
-        targetSdkVersion 29
+        minSdk 21
+        targetSdk 34
 
         externalNativeBuild {
             ndkBuild {
@@ -48,8 +49,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 }
 
@@ -60,5 +61,5 @@ tasks.withType(Test) {
 }
 
 dependencies {
-    testImplementation 'junit:junit:4.12'
+    testImplementation 'junit:junit:4.13.2'
 }

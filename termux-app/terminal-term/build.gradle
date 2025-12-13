@@ -1,14 +1,15 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 29
+    namespace 'com.termux.terminal.term'
+    compileSdk 34
     defaultConfig {
-        minSdkVersion 21
-        targetSdkVersion 29
+        minSdk 21
+        targetSdk 34
     }
 
     dependencies {
-        implementation "androidx.annotation:annotation:1.9.1"
+        implementation "androidx.annotation:annotation:1.7.1"
         implementation "androidx.legacy:legacy-support-core-ui:1.0.0"
         implementation project(":terminal-view")
     }
@@ -25,13 +26,13 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 }
 
 dependencies {
-    testImplementation 'junit:junit:4.12'
+    testImplementation 'junit:junit:4.13.2'
 }
 
 // Compile the native raf_* helpers and package them into the APK assets so they
