@@ -293,7 +293,7 @@ preBuild.dependsOn packageStaticBins
 
 dependencies {
     def moshi_version = '1.15.2'
-    def okhttp_version = '4.12.0'
+    def okhttp_version = '3.14.9'
     def sentry_version = '7.2.0'
     def slf4j_version = '2.0.9'
 
@@ -328,15 +328,15 @@ dependencies {
     implementation "com.squareup.okhttp3:okhttp:$okhttp_version"
     implementation "com.squareup.moshi:moshi:$moshi_version"
     kapt "com.squareup.moshi:moshi-kotlin-codegen:$moshi_version"
-    implementation 'org.rauschig:jarchivelib:1.2.0'
+    implementation 'org.rauschig:jarchivelib:0.8.0' // v1.0.0+ requires API 26+, keep 0.8.0 for minSdk 21 compatibility
     implementation "io.sentry:sentry-android:$sentry_version"
     implementation "org.slf4j:slf4j-nop:$slf4j_version"
 
     implementation "com.android.billingclient:billing-ktx:$billing_version"
     implementation "com.google.android.gms:play-services-base:18.3.0"
 
-    def mockito_version = '5.10.0'
-    def mockito_kotlin_version = '5.2.1'
+    def mockito_version = '4.11.0'
+    def mockito_kotlin_version = '2.2.0'
     def core_testing_version = '2.2.0'
     def androidx_test_version = '1.5.0'
     def androidx_test_ext_version = '1.1.5'
@@ -344,7 +344,7 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     testImplementation "org.mockito:mockito-core:$mockito_version"
     testImplementation "org.mockito:mockito-inline:$mockito_version"
-    testImplementation "org.mockito.kotlin:mockito-kotlin:$mockito_kotlin_version"
+    testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:$mockito_kotlin_version"
     testImplementation "androidx.arch.core:core-testing:$core_testing_version"
     testImplementation "com.squareup.okhttp3:mockwebserver:$okhttp_version"
     androidTestImplementation "androidx.arch.core:core-testing:$core_testing_version"
@@ -354,7 +354,7 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidx_test_ext_version"
     // Barista packages espresso-core and espresso-contrib
     androidTestImplementation 'androidx.test.espresso:espresso-intents:3.5.1'
-    androidTestImplementation('com.adevinta.android:barista:4.3.0') {
+    androidTestImplementation('com.schibsted.spain:barista:4.3.0') {
         exclude group: 'com.android.support'
         exclude group: 'org.jetbrains.kotlin'
     }
