@@ -3,14 +3,14 @@
 buildscript {
     repositories {
         google()
-        jcenter()
+        mavenCentral()
     }
 
     ext {
-        kotlin_version = '2.2.21'
-        android_plugin = '8.13.2'
-        jacoco_version = '0.8.4'
-        navigation_version = '2.1.0-alpha05'
+        kotlin_version = '1.9.24'
+        android_plugin = '8.5.2'
+        jacoco_version = '0.8.11'
+        navigation_version = '2.7.7'
     }
 
     dependencies {
@@ -18,14 +18,14 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath "androidx.navigation:navigation-safe-args-gradle-plugin:$navigation_version"
         classpath "org.jacoco:org.jacoco.core:$jacoco_version"
-        classpath 'de.undercouch:gradle-download-task:3.4.3'
+        classpath 'de.undercouch:gradle-download-task:5.6.0'
     }
 }
 
 allprojects {
     repositories {
         google()
-        jcenter()
+        mavenCentral()
     }
 }
 
