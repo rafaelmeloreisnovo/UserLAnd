@@ -127,11 +127,14 @@ if [[ -f "$SIGNING_PROPS" ]]; then
   # Ler propriedades ignorando comentários e linhas vazias
   while IFS='=' read -r key value; do
     # Ignorar linhas vazias e comentários
-    [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
+    if [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]]; then
+      continue
+    fi
     # Remover espaços em branco
     key=$(echo "$key" | xargs)
     value=$(echo "$value" | xargs)
     # Exportar variável se não estiver definida
+    # Usando expansão indireta ${!key} para verificar se a variável já existe
     if [[ -z "${!key:-}" ]]; then
       export "$key=$value"
     fi
@@ -172,16 +175,25 @@ find_apksigner() {
     return 0
   fi
 
-  # Tentar encontrar no Android SDK
-  if [[ -n "${ANDROID_SDK_ROOT:-}" ]]; then
-    local build_tools_dir="${ANDROID_SDK_ROOT}/build-tools"
+  # Função auxiliar para encontrar a versão mais recente do build-tools
+  find_latest_build_tools_apksigner() {
+    local build_tools_dir="$1"
     if [[ -d "$build_tools_dir" ]]; then
-      # Encontrar a versão mais recente do build-tools
       local latest_version=$(ls -1 "$build_tools_dir" | sort -V | tail -n 1)
       if [[ -n "$latest_version" && -f "${build_tools_dir}/${latest_version}/apksigner" ]]; then
         echo "${build_tools_dir}/${latest_version}/apksigner"
         return 0
       fi
+    fi
+    return 1
+  }
+
+  # Tentar encontrar no Android SDK
+  if [[ -n "${ANDROID_SDK_ROOT:-}" ]]; then
+    local apksigner_path=$(find_latest_build_tools_apksigner "${ANDROID_SDK_ROOT}/build-tools")
+    if [[ -n "$apksigner_path" ]]; then
+      echo "$apksigner_path"
+      return 0
     fi
   fi
 
@@ -189,13 +201,10 @@ find_apksigner() {
   if [[ -f "${ROOT_DIR}/local.properties" ]]; then
     local sdk_dir=$(grep '^sdk.dir=' "${ROOT_DIR}/local.properties" | cut -d'=' -f2-)
     if [[ -n "$sdk_dir" ]]; then
-      local build_tools_dir="${sdk_dir}/build-tools"
-      if [[ -d "$build_tools_dir" ]]; then
-        local latest_version=$(ls -1 "$build_tools_dir" | sort -V | tail -n 1)
-        if [[ -n "$latest_version" && -f "${build_tools_dir}/${latest_version}/apksigner" ]]; then
-          echo "${build_tools_dir}/${latest_version}/apksigner"
-          return 0
-        fi
+      local apksigner_path=$(find_latest_build_tools_apksigner "${sdk_dir}/build-tools")
+      if [[ -n "$apksigner_path" ]]; then
+        echo "$apksigner_path"
+        return 0
       fi
     fi
   fi
