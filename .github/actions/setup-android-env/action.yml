@@ -32,6 +32,8 @@ runs:
     - name: Install required SDK components
       shell: bash
       run: |
+        # CI-only: accept required Android SDK licenses non-interactively
+        yes | sdkmanager --licenses >/dev/null
         yes | sdkmanager --install \
           "platform-tools" \
           "platforms;android-${{ inputs.platform-version }}" \
