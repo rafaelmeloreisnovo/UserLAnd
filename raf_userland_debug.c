@@ -14,12 +14,23 @@
 // Local constants and types
 // -------------------------------
 
-#define R_MAX_ROWS     64u    // Matrix rows (time windows / signals)
+#define R_MAX_ROWS     64u    // Matrix rows (individual metric samples)
 #define R_MAX_COLS     16u    // Matrix cols (metrics per signal)
 #define R_JSON_BUF     4096u  // Output buffer size for JSON
 #define R_TAG_LEN      32u    // Small tag buffers
 #define R_METRIC_COUNT 4u     // cpu, mem, io, threads
 #define R_MIN_FIELDS   2u     // minimum required metrics
+#define R_THREAD_IDX   3u
+#define R_CPU_MAX      100.0f
+#define R_MEM_MAX      4096.0f
+#define R_IO_MAX       1000.0f
+#define R_THR_MAX      4096.0f
+#if R_METRIC_COUNT == 0
+#error "R_METRIC_COUNT must be positive"
+#endif
+#if R_METRIC_COUNT > R_MAX_COLS
+#error "R_METRIC_COUNT must not exceed R_MAX_COLS"
+#endif
 
 typedef struct {
     float m[R_MAX_ROWS][R_MAX_COLS];   // Main matrix (metrics)
@@ -231,8 +242,8 @@ static void k(RField *f) {
 // Interpret matrix as debug "frame" and derive severity.
 static void s(RField *f) {
     // In a real build, thresholds come from config.
-    const float warn_e = 128.0f;
-    const float crit_e = 512.0f;
+    const float warn_e = 64.0f;
+    const float crit_e = 256.0f;
 
     float energy = e(f);
 
@@ -251,13 +262,13 @@ static void s(RField *f) {
 // Input mapping (from simple CSV-like lines)
 // -------------------------------
 
-// Parse a single line "cpu,mem,io,threads" (normalized to 0-1) into one matrix row.
+// Parse a single line "cpu,mem,io,threads" into one matrix row (normalized to 0-1 internally).
 static int v(const char *line, RField *f) {
     if (!line || !f) return -1;
-    if (f->r_used >= R_MAX_ROWS) return -2;
+    if (f->r_used == R_MAX_ROWS) return -2;
 
     const char *p = line;
-    float vals[R_METRIC_COUNT] = {0.0f, 0.0f, 0.0f, 0.0f};
+    float vals[R_METRIC_COUNT] = {0};
     int count = 0;
     while (count < (int)R_METRIC_COUNT) {
         if (!parse_float(&p, &vals[count])) {
@@ -277,14 +288,31 @@ static int v(const char *line, RField *f) {
         return -3;
     }
 
-    uint32_t r = f->r_used;
-    f->c_used = R_METRIC_COUNT; // fixed 4 metrics for now
+    uint32_t used_cols = (uint32_t)count;
+    if (used_cols > R_MAX_COLS) {
+        return -4;
+    }
+    if (used_cols > f->c_used) {
+        f->c_used = used_cols;
+    }
 
+    float cpu = vals[0];
+    float mem = (count > 1) ? vals[1] : 0.0f;
+    float io  = (count > 2) ? vals[2] : 0.0f;
+    float thr = (count > 3) ? vals[3] : 0.0f;
+
+    uint32_t r = f->r_used;
     // Normalize to [0,1] in a simple way; real thresholds should be configurable.
-    f->m[r][0] = n01(vals[0], 0.0f, 100.0f);     // CPU %
-    f->m[r][1] = n01(vals[1], 0.0f, 4096.0f);    // Memory MB
-    f->m[r][2] = n01(vals[2], 0.0f, 1000.0f);    // I/O ops
-    f->m[r][3] = n01(vals[3], 0.0f, 4096.0f);    // Thread count
+    f->m[r][0] = n01(cpu, 0.0f, R_CPU_MAX);      // CPU %
+    if (used_cols > 1u) {
+        f->m[r][1] = n01(mem, 0.0f, R_MEM_MAX); // Memory MB
+    }
+    if (used_cols > 2u) {
+        f->m[r][2] = n01(io,  0.0f, R_IO_MAX); // I/O ops
+    }
+    if (f->c_used > R_THREAD_IDX) {
+        f->m[r][R_THREAD_IDX] = n01(thr, 0.0f, R_THR_MAX); // Thread count
+    }
 
     f->r_used++;
     return 0;
