@@ -32,8 +32,9 @@ runs:
     - name: Install required SDK components
       shell: bash
       run: |
+        set -euo pipefail
         # CI-only: accept required Android SDK licenses non-interactively
-        yes | sdkmanager --licenses >/dev/null
+        yes | sdkmanager --licenses 2>/dev/null
         yes | sdkmanager --install \
           "platform-tools" \
           "platforms;android-${{ inputs.platform-version }}" \
