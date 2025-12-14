@@ -69,3 +69,4 @@ app/src/main/resources/sentry.properties
 
 # Lib resources should be left out of source tree
 app/src/main/jniLibs/*
+_codeql_detected_source_root
