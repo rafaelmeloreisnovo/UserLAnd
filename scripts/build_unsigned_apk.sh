@@ -54,7 +54,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-USERLAND_UNSIGNED_APK=1 "${ROOT_DIR}/scripts/build_apk.sh" --task "$BUILD_TASK" --gradle-arg "-PunsignedApk=true" "${FORWARDED_ARGS[@]}"
 USERLAND_UNSIGNED_APK=1 "${ROOT_DIR}/scripts/build_apk.sh" \
   --gradle-arg "-PunsignedApk=true" \
   --task "$BUILD_TASK" "${FORWARDED_ARGS[@]}"
