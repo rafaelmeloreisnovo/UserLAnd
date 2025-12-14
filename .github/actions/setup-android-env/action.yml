@@ -34,8 +34,8 @@ runs:
       run: |
         set -euo pipefail
         # CI-only: accept required Android SDK licenses non-interactively
-        yes | sdkmanager --licenses 2>/dev/null
-        yes | sdkmanager --install \
+        yes | sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --licenses
+        yes | sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --install \
           "platform-tools" \
           "platforms;android-${{ inputs.platform-version }}" \
           "build-tools;${{ inputs.build-tools-version }}" \
