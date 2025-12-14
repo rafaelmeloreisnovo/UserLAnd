@@ -1,0 +1,19 @@
+# Template de propriedades para assinatura de APK
+# Copie este arquivo para signing.properties e preencha com seus valores reais
+# IMPORTANTE: signing.properties NÃO deve ser commitado no repositório
+
+# Caminho para o arquivo Keystore (.jks)
+# Pode ser um caminho absoluto ou relativo ao diretório raiz do projeto
+KEYSTORE_FILE=keystore.jks
+
+# Alias do keystore
+# O alias identifica a chave específica dentro do keystore
+KEY_ALIAS=my-key-alias
+
+# Senha do keystore
+# Senha usada para acessar o arquivo keystore
+KEYSTORE_PASSWORD=your-keystore-password
+
+# Senha do alias/chave
+# Senha da chave específica dentro do keystore
+KEY_PASSWORD=your-key-password
