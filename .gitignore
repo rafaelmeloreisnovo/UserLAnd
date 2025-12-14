@@ -10,6 +10,7 @@
 
 # Java class files
 *.class
+*.o
 
 # Generated files
 bin/

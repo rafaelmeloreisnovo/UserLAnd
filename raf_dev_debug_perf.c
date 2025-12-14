@@ -211,19 +211,12 @@ static float e(DField *f) {
     clamp_dims(f);
     uint32_t rows = f->r_used;
     uint32_t cols = f->c_used;
-    const float *m = &f->m[0][0];
+    const float *m = f->series.payload.f32;
     uint32_t total = rows * cols;
-    const float *m = &f->m[0][0];
-    uint32_t total = f->r_used * f->c_used;
     float acc = 0.0f;
     for (uint32_t idx = 0; idx < total; ++idx) {
         float v = m[idx];
         acc += v * v; // energy-like metric; stable and cheap
-    for (uint32_t i = 0; i < f->r_used; ++i) {
-        for (uint32_t j = 0; j < f->c_used; ++j) {
-            float v = f->series.payload.f32[(size_t)i * f->c_used + j];
-            acc += v * v; // energy-like metric; stable and cheap
-        }
     }
     return acc;
 }
@@ -232,7 +225,7 @@ static float e_ref(const DField *f) {
     double acc = 0.0;
     for (uint32_t i = 0; i < f->r_used; ++i) {
         for (uint32_t j = 0; j < f->c_used; ++j) {
-            double v = (double)f->m[i][j];
+            double v = (double)f->series.payload.f32[(size_t)i * f->c_used + j];
             acc += v * v;
         }
     }
@@ -251,10 +244,6 @@ static uint32_t sev_from_energy(float energy) {
 
 static void k(DField *f) {
     clamp_dims(f);
-    uint32_t rows = f->r_used;
-    uint32_t cols = f->c_used;
-    f->crc_state = raf_fast_crc32(0u, f->m,
-        (size_t)(sizeof(float) * rows * cols));
     size_t bytes = (size_t)(sizeof(float) * f->r_used * f->c_used);
     f->crc_state = raf_fast_crc32(0u, f->series.payload.f32, bytes);
 }
@@ -297,10 +286,8 @@ static void m_stats(const DField *f,
         if (cols[m] >= col_count) {
             continue; // skip unavailable column
         }
-    uint32_t samples = f->r_used;
-    for (uint32_t m = 0; m < (sizeof(cols) / sizeof(cols[0])); ++m) {
         for (uint32_t i = 0; i < samples; ++i) {
-            scratch[i] = f->m[i][cols[m]]; // contiguous column slice
+            scratch[i] = f->series.payload.f32[(size_t)i * f->c_used + cols[m]]; // contiguous column slice
         }
 
         float sum = k_sum(scratch, samples);
@@ -333,7 +320,6 @@ static void s(DField *f) {
 
     m_stats(f, mean_out, var_out, min_out, max_out, conv_tail);
 
-    float energy = e(f);
     for (uint32_t i = 0; i < 5u; ++i) {
         energy += mean_out[i] + var_out[i] + (max_out[i] - min_out[i]) + conv_tail[i];
     }
@@ -432,14 +418,6 @@ static int j(const DField *f, char *out, size_t out_len) {
         "\"epoch\":%llu,"
         "\"perm\":{\"dev\":%u,\"p2p\":%u,\"io\":%u,\"net\":%u},"
         "\"p2p_overlay\":\"tor-metadata-only\","
-        "\"tag\":\"%s\","\
-        "\"severity\":%u,"\
-        "\"rows\":%u,"\
-        "\"cols\":%u,"\
-        "\"crc\":%u,"\
-        "\"epoch\":%llu,"\
-        "\"perm\":{\"dev\":%u,\"p2p\":%u,\"io\":%u,\"net\":%u},"\
-        "\"p2p_overlay\":\"tor-metadata-only\","\
         "\"matrix\":[",
         f->tag,
         sev,
@@ -458,19 +436,11 @@ static int j(const DField *f, char *out, size_t out_len) {
     }
 
     size_t need = (size_t)prefix;
-    for (uint32_t i = 0; i < f->r_used; ++i) {
-        need += 1u; // '['
-        for (uint32_t c = 0; c < f->c_used; ++c) {
-            int cell = snprintf(NULL, 0,
-                                (c + 1u < f->c_used) ? "%.6f," : "%.6f",
-                                f->m[i][c]);
     for (uint32_t i = 0; i < rows; ++i) {
         need += 1u; // '['
         for (uint32_t c = 0; c < cols; ++c) {
             int cell = snprintf(NULL, 0,
                                 (c + 1u < cols) ? "%.6f," : "%.6f",
-                                f->m[i][c]);
-                                (c + 1u < f->c_used) ? "%.6f," : "%.6f",
                                 f->series.payload.f32[(size_t)i * f->c_used + c]);
             if (cell < 0) {
                 out[0] = '\0';
@@ -479,7 +449,6 @@ static int j(const DField *f, char *out, size_t out_len) {
             need += (size_t)cell;
         }
         need += 1u; // ']'
-        if (i + 1u < f->r_used) {
         if (i + 1u < rows) {
             need += 1u; // ',' between rows
         }
@@ -493,14 +462,14 @@ static int j(const DField *f, char *out, size_t out_len) {
 
     int w = snprintf(out, out_len,
         "{"
-        "\"tag\":\"%s\","\
-        "\"severity\":%u,"\
-        "\"rows\":%u,"\
-        "\"cols\":%u,"\
-        "\"crc\":%u,"\
-        "\"epoch\":%llu,"\
-        "\"perm\":{\"dev\":%u,\"p2p\":%u,\"io\":%u,\"net\":%u},"\
-        "\"p2p_overlay\":\"tor-metadata-only\","\
+        "\"tag\":\"%s\","
+        "\"severity\":%u,"
+        "\"rows\":%u,"
+        "\"cols\":%u,"
+        "\"crc\":%u,"
+        "\"epoch\":%llu,"
+        "\"perm\":{\"dev\":%u,\"p2p\":%u,\"io\":%u,\"net\":%u},"
+        "\"p2p_overlay\":\"tor-metadata-only\","
         "\"matrix\":[",
         f->tag,
         sev,
@@ -524,8 +493,6 @@ static int j(const DField *f, char *out, size_t out_len) {
         for (uint32_t c = 0; c < cols; ++c) {
             int z = snprintf(out + pos, out_len - pos,
                              (c + 1u < cols) ? "%.6f," : "%.6f",
-                             f->m[i][c]);
-                             (c + 1u < f->c_used) ? "%.6f," : "%.6f",
                              f->series.payload.f32[(size_t)i * f->c_used + c]);
             if (z < 0 || (size_t)z >= (out_len - pos)) {
                 out[0] = '\0';
@@ -563,11 +530,6 @@ static int h(void) {
         f.r_used = cases[idx].rows;
         f.c_used = cases[idx].cols;
         f.t_epoch = 1u;
-        uint32_t total = (f.r_used < D_ROWS ? f.r_used : D_ROWS) *
-                         (f.c_used < D_COLS ? f.c_used : D_COLS);
-        float *base = &f.m[0][0];
-        for (uint32_t pos = 0; pos < total; ++pos) {
-            base[pos] = 0.123456f * (float)(pos + 1u);
         for (uint32_t r = 0; r < f.r_used && r < D_ROWS; ++r) {
             for (uint32_t c = 0; c < f.c_used && c < D_COLS; ++c) {
                 f.series.payload.f32[(size_t)r * f.c_used + c] =
@@ -640,7 +602,7 @@ static void b(ProfileMode *profile) {
     if (q(&f, D_TOL) != 0) {
         exit(3);
     }
-    return 0;
+    return;
 }
 
 // -------------------------------
