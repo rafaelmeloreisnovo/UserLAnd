@@ -14,10 +14,12 @@
 // Local constants and types
 // -------------------------------
 
-#define R_MAX_ROWS   64u     // Matrix rows (time windows / signals)
-#define R_MAX_COLS   16u     // Matrix cols (metrics per signal)
-#define R_JSON_BUF   4096u   // Output buffer size for JSON
-#define R_TAG_LEN    32u     // Small tag buffers
+#define R_MAX_ROWS     64u    // Matrix rows (time windows / signals)
+#define R_MAX_COLS     16u    // Matrix cols (metrics per signal)
+#define R_JSON_BUF     4096u  // Output buffer size for JSON
+#define R_TAG_LEN      32u    // Small tag buffers
+#define R_METRIC_COUNT 4u     // cpu, mem, io, threads
+#define R_MIN_FIELDS   2u     // minimum required metrics
 
 typedef struct {
     float m[R_MAX_ROWS][R_MAX_COLS];   // Main matrix (metrics)
@@ -249,15 +251,15 @@ static void s(RField *f) {
 // Input mapping (from simple CSV-like lines)
 // -------------------------------
 
-// Parse a single line "cpu,mem,io,threads" into one matrix row.
+// Parse a single line "cpu,mem,io,threads" (normalized to 0-1) into one matrix row.
 static int v(const char *line, RField *f) {
     if (!line || !f) return -1;
     if (f->r_used >= R_MAX_ROWS) return -2;
 
     const char *p = line;
-    float vals[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    float vals[R_METRIC_COUNT] = {0.0f, 0.0f, 0.0f, 0.0f};
     int count = 0;
-    while (count < 4) {
+    while (count < (int)R_METRIC_COUNT) {
         if (!parse_float(&p, &vals[count])) {
             break;
         }
@@ -270,13 +272,13 @@ static int v(const char *line, RField *f) {
         }
     }
 
-    if (count < 2) {
+    if (count < (int)R_MIN_FIELDS) {
         // At least CPU/mem required.
         return -3;
     }
 
     uint32_t r = f->r_used;
-    f->c_used = 4u; // fixed 4 metrics for now
+    f->c_used = R_METRIC_COUNT; // fixed 4 metrics for now
 
     // Normalize to [0,1] in a simple way; real thresholds should be configurable.
     f->m[r][0] = n01(vals[0], 0.0f, 100.0f);     // CPU %
