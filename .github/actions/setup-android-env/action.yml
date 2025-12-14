@@ -18,23 +18,12 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Clean up any problematic symlinks
-      shell: bash
-      run: |
-        # Remove CodeQL-generated symlinks that cause ELOOP errors
-        find . -maxdepth 1 -type l -name "_codeql*" -delete 2>/dev/null || true
-        echo "✓ Cleaned up problematic symlinks"
-
     - name: Set up JDK
       uses: actions/setup-java@v5
       with:
         distribution: temurin
         java-version: "${{ inputs.java-version }}"
         cache: gradle
-        cache-dependency-path: |
-          app/build.gradle
-          build.gradle
-          gradle/wrapper/gradle-wrapper.properties
 
     - name: Install Android SDK and NDK
       uses: android-actions/setup-android@v3
@@ -44,21 +33,16 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        echo "📦 Installing Android SDK components..."
         # CI-only: accept required Android SDK licenses non-interactively
         yes | sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --licenses || true
-        echo "📥 Installing platform-tools, platforms, build-tools, and NDK..."
         yes | sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --install \
           "platform-tools" \
           "platforms;android-${{ inputs.platform-version }}" \
           "build-tools;${{ inputs.build-tools-version }}" \
           "ndk;${{ inputs.ndk-version }}"
-        echo "✓ SDK components installed successfully"
 
     - name: Configure NDK path
       shell: bash
       run: |
-        echo "🔧 Configuring NDK paths..."
         echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${{ inputs.ndk-version }}" >> "$GITHUB_ENV"
         printf "ndk.dir=%s/ndk/%s\n" "${ANDROID_SDK_ROOT}" "${{ inputs.ndk-version }}" >> local.properties
-        echo "✓ NDK configured at ${ANDROID_SDK_ROOT}/ndk/${{ inputs.ndk-version }}"

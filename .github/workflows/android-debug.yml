@@ -37,20 +37,10 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build debug APK
-        run: |
-          echo "🔨 Building debug APK..."
-          ./gradlew clean assembleDebug --stacktrace --no-daemon
-          echo "✓ Debug APK built successfully"
-
-      - name: Verify APK exists
-        run: |
-          echo "🔍 Verifying APK artifacts..."
-          ls -lh app/build/outputs/apk/debug/*.apk
-          echo "✓ APK verification complete"
+        run: ./gradlew clean assembleDebug --stacktrace --no-daemon
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v6
         with:
           name: userland-debug-apk
           path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
