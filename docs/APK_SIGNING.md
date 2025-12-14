@@ -248,6 +248,22 @@ O projeto UserLAnd já possui suporte para assinatura via Gradle (veja `app/buil
 - Workflows customizados
 - Re-assinatura de APKs
 
+### Diferenças nas Variáveis de Ambiente
+
+**Gradle** (em `app/build.gradle`):
+- `ANDROID_KEY_ALIAS` - Alias da chave
+- `ANDROID_STORE_PASSWORD` - Senha do keystore
+- `ANDROID_KEY_PASSWORD` - Senha da chave
+- Keystore fixo: `../keystore.jks`
+
+**Script sign_apk.sh**:
+- `KEY_ALIAS` - Alias da chave
+- `KEYSTORE_PASSWORD` - Senha do keystore
+- `KEY_PASSWORD` - Senha da chave
+- `KEYSTORE_FILE` - Caminho configurável do keystore
+
+Ambos os métodos são independentes e podem ser usados conforme a necessidade.
+
 ## Suporte
 
 Para problemas ou dúvidas:

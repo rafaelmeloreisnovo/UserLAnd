@@ -205,9 +205,12 @@ find_apksigner() {
 
 APKSIGNER=$(find_apksigner || true)
 if [[ -z "$APKSIGNER" ]]; then
-  error "apksigner não encontrado. 
+  cat >&2 <<'EOF_ERROR'
+apksigner não encontrado. 
 Instale o Android SDK e configure ANDROID_SDK_ROOT ou adicione apksigner ao PATH.
-Consulte: https://developer.android.com/studio/command-line/apksigner"
+Consulte: https://developer.android.com/studio/command-line/apksigner
+EOF_ERROR
+  exit 1
 fi
 
 info "Usando apksigner: $APKSIGNER"
@@ -230,19 +233,11 @@ info "Assinando APK..."
   --ks-key-alias "$KEY_ALIAS" \
   --ks-pass "pass:$KEYSTORE_PASSWORD" \
   --key-pass "pass:$KEY_PASSWORD" \
-  "$OUTPUT_APK"
-
-if [[ $? -ne 0 ]]; then
-  error "Falha ao assinar o APK"
-fi
+  "$OUTPUT_APK" || error "Falha ao assinar o APK"
 
 # Verificar a assinatura
 info "Verificando assinatura..."
-"$APKSIGNER" verify "$OUTPUT_APK"
-
-if [[ $? -ne 0 ]]; then
-  error "Falha na verificação da assinatura do APK"
-fi
+"$APKSIGNER" verify "$OUTPUT_APK" || error "Falha na verificação da assinatura do APK"
 
 success "APK assinado com sucesso: $OUTPUT_APK"
 
