@@ -6,6 +6,7 @@
 
 #include "raf_core.h"   // Reuse AbsoluteMatrix, RNG, CRC helpers where possible.
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
