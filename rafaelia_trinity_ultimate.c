@@ -192,7 +192,7 @@ void _bind(HyperVector *tgt, const HyperVector *src) {
 
 // --- 6. FUNÇÕES DE SISTEMA ---
 
-void _init(TrinitySystem *S) {
+static void _init(TrinitySystem *S) {
     memset(S, 0, sizeof(TrinitySystem));
     strcpy(S->signature, "RAFAELIA_TRINITY_ULTIMATE");
     _load_config(S);
