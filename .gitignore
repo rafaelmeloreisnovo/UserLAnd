@@ -51,6 +51,7 @@ captures/
 
 # Keystore files
 *.jks
+signing.properties
 
 # Generated files for deployment
 app/versionCode.txt
