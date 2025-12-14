@@ -12,7 +12,6 @@ Usage: scripts/build_unsigned_apk.sh [options]
 Builds an unsigned APK by forwarding most options to scripts/build_apk.sh and
 disabling signing via -PunsignedApk=true (and USERLAND_UNSIGNED_APK=1 for
 compatibility).
-forcing signing to be disabled via -PunsignedApk=true and USERLAND_UNSIGNED_APK.
 
 Options:
   --task <gradle_task>   Gradle task to run (default: assembleRelease).
