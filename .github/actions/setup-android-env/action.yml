@@ -27,12 +27,16 @@ runs:
 
     - name: Install Android SDK and NDK
       uses: android-actions/setup-android@v3
-      with:
-        packages: |-
-          platform-tools
-          platforms;android-${{ inputs.platform-version }}
-          build-tools;${{ inputs.build-tools-version }}
-          ndk;${{ inputs.ndk-version }}
+      with: {}
+
+    - name: Install required SDK components
+      shell: bash
+      run: |
+        yes | sdkmanager --install \
+          "platform-tools" \
+          "platforms;android-${{ inputs.platform-version }}" \
+          "build-tools;${{ inputs.build-tools-version }}" \
+          "ndk;${{ inputs.ndk-version }}"
 
     - name: Configure NDK path
       shell: bash
