@@ -27,12 +27,19 @@ runs:
 
     - name: Install Android SDK and NDK
       uses: android-actions/setup-android@v3
-      with:
-        packages: |-
-          platform-tools
-          platforms;android-${{ inputs.platform-version }}
-          build-tools;${{ inputs.build-tools-version }}
-          ndk;${{ inputs.ndk-version }}
+      with: {}
+
+    - name: Install required SDK components
+      shell: bash
+      run: |
+        set -euo pipefail
+        # CI-only: accept required Android SDK licenses non-interactively
+        yes | sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --licenses || true
+        yes | sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --install \
+          "platform-tools" \
+          "platforms;android-${{ inputs.platform-version }}" \
+          "build-tools;${{ inputs.build-tools-version }}" \
+          "ndk;${{ inputs.ndk-version }}"
 
     - name: Configure NDK path
       shell: bash

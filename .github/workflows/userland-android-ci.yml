@@ -52,4 +52,5 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: userland-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
