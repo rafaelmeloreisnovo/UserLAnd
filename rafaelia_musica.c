@@ -14,6 +14,7 @@
 
 #define VEC_DIM 6
 #define PHI 1.6180339887498948482
+#define RAFA_MAGIC 0x52414641u
 /* Laplaciano menos dissipativo para manter o motor “vivo” */
 static const double LAPLACE_ALPHA = 0.28;
 
@@ -32,6 +33,7 @@ static uint32_t crc32_update(uint32_t prev, const void *data, size_t len) {
     uint32_t c = ~prev;
     while (len--) {
         c ^= *p++;
+        /* Reflected bitwise CRC32 using polynomial 0xEDB88320 */
         for (int k = 0; k < 8; k++) {
             c = (c >> 1) ^ (0xEDB88320u & (-(int32_t)(c & 1u)));
         }
@@ -141,11 +143,12 @@ int main(int argc, char **argv) {
 
     RafaeliaState R = {0};
     for (int i = 0; i < VEC_DIM; i++) {
-        seed = crc32_update(seed, &seed, sizeof(seed));
+        uint32_t tmp = seed;
+        seed = crc32_update(seed, &tmp, sizeof(tmp));
         R.v[i] = (double)(seed % 1000) / 5000.0;
     }
     R.angle = 0.37;
-    R.crc = 0x52414641u; /* "RAFA" */
+    R.crc = RAFA_MAGIC; /* "RAFA" */
 
     double verbo[VEC_DIM] = {0}; /* stdin opcional; fica zerado para demo */
 
