@@ -41,4 +41,12 @@ class ProotDebugLogger(defaultSharedPreferences: SharedPreferences, private val 
             if (file.name.contains(logName)) file.delete()
         }
     }
+
+    fun enable() {
+        prefs.edit().putBoolean("pref_proot_debug_enabled", true).apply()
+    }
+
+    fun disable() {
+        prefs.edit().putBoolean("pref_proot_debug_enabled", false).apply()
+    }
 }

@@ -38,6 +38,13 @@ class HttpStream {
         if (!file.exists()) file.createNewFile()
     }
 
+    @Throws(IOException::class)
+    suspend fun toInputStream(url: String): InputStream = withContext(Dispatchers.IO) {
+        val connection = URL(url).openConnection() as HttpURLConnection
+        connection.requestMethod = "GET"
+        return@withContext connection.inputStream
+    }
+
     private fun <T> fromUrl(url: String, block: (InputStream) -> T): T {
         val connection = URL(url).openConnection() as HttpURLConnection
         connection.requestMethod = "GET"

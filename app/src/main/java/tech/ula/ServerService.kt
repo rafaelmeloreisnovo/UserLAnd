@@ -74,9 +74,7 @@ class ServerService : Service() {
     }
 
     private val localServerManager by lazy {
-        // If your LocalServerManager has only (path, busyboxExecutor), remove forceOldCompat.
-        val forceOldCompat = this.defaultSharedPreferences.getBoolean(KEY_FORCE_OLD_COMPAT, false)
-        LocalServerManager(this.filesDir.path, busyboxExecutor, forceOldCompat)
+        LocalServerManager(this.filesDir.path, busyboxExecutor)
     }
 
     override fun onCreate() {

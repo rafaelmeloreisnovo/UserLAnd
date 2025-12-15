@@ -84,7 +84,7 @@ class AssetRepository(
     private suspend fun fetchAssetList(assetType: String): List<Asset> = withContext(Dispatchers.IO) {
         val downloadUrl = githubApiClient.getAssetsListDownloadUrl(assetType)
 
-        val inputStream = httpStream.fromUrl(downloadUrl)
+        val inputStream = httpStream.toInputStream(downloadUrl)
         val reader = BufferedReader(InputStreamReader(inputStream))
 
         val assetList = mutableListOf<Asset>()

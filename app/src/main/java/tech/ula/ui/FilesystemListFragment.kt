@@ -2,7 +2,7 @@ package tech.ula.ui
 
 import android.app.AlertDialog
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.ViewModelProvider
 import android.content.Intent
 import android.os.Bundle
 import androidx.fragment.app.Fragment
@@ -11,10 +11,10 @@ import android.widget.AdapterView
 import android.widget.Toast
 import androidx.core.os.bundleOf
 import androidx.navigation.fragment.findNavController
-import kotlinx.android.synthetic.main.frag_filesystem_list.* // ktlint-disable no-wildcard-imports
 import tech.ula.MainActivity
 import tech.ula.R
 import tech.ula.ServerService
+import tech.ula.databinding.FragFilesystemListBinding
 import tech.ula.model.entities.Filesystem
 import tech.ula.model.repositories.UlaDatabase
 import tech.ula.viewmodel.* // ktlint-disable no-wildcard-imports
@@ -32,6 +32,9 @@ class FilesystemListFragment : Fragment() {
         fun stopProgressFromFilesystemList()
     }
 
+    private var _binding: FragFilesystemListBinding? = null
+    private val binding get() = _binding!!
+
     private lateinit var activityContext: MainActivity
 
     private lateinit var filesystemList: List<Filesystem>
@@ -47,14 +50,14 @@ class FilesystemListFragment : Fragment() {
         val busyboxExecutor = BusyboxExecutor(ulaFiles, prootDebugLogger)
 
         val filesystemManager = FilesystemManager(ulaFiles, busyboxExecutor)
-        ViewModelProviders.of(this, FilesystemListViewmodelFactory(filesystemDao, sessionDao, filesystemManager)).get(FilesystemListViewModel::class.java)
+        ViewModelProvider(this, FilesystemListViewmodelFactory(filesystemDao, sessionDao, filesystemManager)).get(FilesystemListViewModel::class.java)
     }
 
     private val filesystemChangeObserver = Observer<List<Filesystem>> {
         it?.let { list ->
             filesystemList = list
 
-            list_filesystems.adapter = FilesystemListAdapter(activityContext, filesystemList)
+            binding.listFilesystems.adapter = FilesystemListAdapter(activityContext, filesystemList)
         }
     }
 
@@ -88,10 +91,12 @@ class FilesystemListFragment : Fragment() {
         } else super.onOptionsItemSelected(item)
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.frag_filesystem_list, container, false)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        _binding = FragFilesystemListBinding.inflate(inflater, container, false)
+        return binding.root
     }
 
+    @Suppress("DEPRECATION")
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
@@ -99,7 +104,12 @@ class FilesystemListFragment : Fragment() {
         filesystemListViewModel.getAllFilesystems().observe(viewLifecycleOwner, filesystemChangeObserver)
         filesystemListViewModel.getViewState().observe(viewLifecycleOwner, viewStateObserver)
         filesystemListViewModel.getAllActiveSessions().observe(viewLifecycleOwner, activeSessionObserver)
-        registerForContextMenu(list_filesystems)
+        registerForContextMenu(binding.listFilesystems)
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 
     override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo?) {
@@ -120,6 +130,7 @@ class FilesystemListFragment : Fragment() {
         return true
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == FILESYSTEM_EXPORT_REQUEST_CODE) {
@@ -153,6 +164,7 @@ class FilesystemListFragment : Fragment() {
         val suggestedFilesystemBackupName = filesystemListViewModel.getFilesystemBackupName(filesystem)
         val intent = createExportExternalIntent(suggestedFilesystemBackupName)
         filesystemListViewModel.setFilesystemToBackup(filesystem)
+        @Suppress("DEPRECATION")
         startActivityForResult(intent, FILESYSTEM_EXPORT_REQUEST_CODE)
     }
 

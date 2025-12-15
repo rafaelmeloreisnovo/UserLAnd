@@ -2,7 +2,7 @@ package tech.ula.ui
 
 import android.app.Activity
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.ViewModelProvider
 import android.graphics.Color
 import android.os.Bundle
 import androidx.fragment.app.Fragment
@@ -14,8 +14,8 @@ import androidx.core.os.bundleOf
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import kotlinx.android.synthetic.main.frag_session_edit.* // ktlint-disable no-wildcard-imports
 import tech.ula.R
+import tech.ula.databinding.FragSessionEditBinding
 import tech.ula.model.entities.Filesystem
 import tech.ula.model.entities.ServiceType
 import tech.ula.model.entities.Session
@@ -26,6 +26,9 @@ import tech.ula.viewmodel.SessionEditViewmodelFactory
 
 class SessionEditFragment : Fragment() {
 
+    private var _binding: FragSessionEditBinding? = null
+    private val binding get() = _binding!!
+
     private lateinit var activityContext: Activity
     private val args: SessionEditFragmentArgs by navArgs()
     private val session: Session by lazy { args.session!! }
@@ -35,39 +38,28 @@ class SessionEditFragment : Fragment() {
 
     private val sessionEditViewModel: SessionEditViewModel by lazy {
         val ulaDatabase = UlaDatabase.getInstance(activityContext)
-        ViewModelProviders.of(this, SessionEditViewmodelFactory(ulaDatabase)).get(SessionEditViewModel::class.java)
+        ViewModelProvider(this, SessionEditViewmodelFactory(ulaDatabase)).get(SessionEditViewModel::class.java)
     }
 
     private val filesystemChangeObserver = Observer<List<Filesystem>> {
         it?.let { newList ->
             val spinnerList = augmentFilesystemList(newList)
-
             getListDifferenceAndSetNewFilesystem(filesystemList, it)
-
             val filesystemAdapter = ArrayAdapter(activityContext, android.R.layout.simple_spinner_dropdown_item, spinnerList)
-            val filesystemNamePosition = it.indexOfFirst {
-                filesystem -> filesystem.id == session.filesystemId
-            }
-
+            val filesystemNamePosition = it.indexOfFirst { filesystem -> filesystem.id == session.filesystemId }
             val usedPosition = if (filesystemNamePosition < 0) 0 else filesystemNamePosition
-
-            spinner_filesystem_list.adapter = filesystemAdapter
-            spinner_filesystem_list.setSelection(usedPosition)
-
+            binding.spinnerFilesystemList.adapter = filesystemAdapter
+            binding.spinnerFilesystemList.setSelection(usedPosition)
             filesystemList = it
         }
     }
 
     internal sealed class FilesystemDropdownItem {
         data class NonFilesystemItem(val text: String) : FilesystemDropdownItem() {
-            override fun toString(): String {
-                return text
-            }
+            override fun toString(): String = text
         }
         data class FilesystemItem(val filesystem: Filesystem) : FilesystemDropdownItem() {
-            override fun toString(): String {
-                return "${filesystem.name}: ${filesystem.distributionType.capitalize()}"
-            }
+            override fun toString(): String = "${filesystem.name}: ${filesystem.distributionType.replaceFirstChar { it.uppercase() }}"
         }
     }
 
@@ -84,8 +76,9 @@ class SessionEditFragment : Fragment() {
         setHasOptionsMenu(true)
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.frag_session_edit, container, false)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        _binding = FragSessionEditBinding.inflate(inflater, container, false)
+        return binding.root
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -100,6 +93,7 @@ class SessionEditFragment : Fragment() {
         } else super.onOptionsItemSelected(item)
     }
 
+    @Suppress("DEPRECATION")
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
         activityContext = activity!!
@@ -109,96 +103,76 @@ class SessionEditFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        text_input_session_name.setText(session.name)
+        binding.textInputSessionName.setText(session.name)
         if (session.isAppsSession) {
-            text_input_session_name.isEnabled = false
+            binding.textInputSessionName.isEnabled = false
         }
-        text_input_session_name.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(p0: Editable?) {
-                session.name = p0.toString()
-            }
-
+        binding.textInputSessionName.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(p0: Editable?) { session.name = p0.toString() }
             override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
             override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
         })
 
-        spinner_filesystem_list.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+        binding.spinnerFilesystemList.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: AdapterView<*>?) {}
-
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 parent?.let {
-                    val item = parent.getItemAtPosition(position) as FilesystemDropdownItem
-                    when (item) {
+                    when (val item = parent.getItemAtPosition(position) as FilesystemDropdownItem) {
                         is FilesystemDropdownItem.NonFilesystemItem -> {
                             if (item.text == "Create new") {
                                 val bundle = bundleOf("filesystem" to Filesystem(0), "editExisting" to false)
-                                this@SessionEditFragment.findNavController()
-                                        .navigate(R.id.filesystem_edit_fragment, bundle)
-                            } else { }
+                                this@SessionEditFragment.findNavController().navigate(R.id.filesystem_edit_fragment, bundle)
+                            }
                         }
                         is FilesystemDropdownItem.FilesystemItem -> {
-                            val filesystem = item.filesystem
-                            updateFilesystemDetailsForSession(filesystem)
-                            text_input_username.setText(filesystem.defaultUsername)
+                            updateFilesystemDetailsForSession(item.filesystem)
+                            binding.textInputUsername.setText(item.filesystem.defaultUsername)
                         }
                     }
                 }
             }
         }
 
-        spinner_session_service_type.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-
+        binding.spinnerSessionServiceType.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: AdapterView<*>?) {}
-
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                val selectedServiceType = parent?.getItemAtPosition(position).toString().toServiceType()
-                session.serviceType = selectedServiceType
+                session.serviceType = parent?.getItemAtPosition(position).toString().toServiceType()
             }
         }
 
-        text_input_username.isEnabled = false
-        text_input_username.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(p0: Editable?) {
-                session.username = p0.toString()
-            }
-
+        binding.textInputUsername.isEnabled = false
+        binding.textInputUsername.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(p0: Editable?) { session.username = p0.toString() }
             override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
             override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
         })
     }
 
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+
     private fun insertSession() {
         val navController = NavHostFragment.findNavController(this)
-
-        if (session.name == "") {
-            text_input_session_name.error = getString(R.string.error_session_name)
-        }
+        if (session.name == "") binding.textInputSessionName.error = getString(R.string.error_session_name)
         if (session.filesystemName == "") {
-            val errorText = spinner_filesystem_list.selectedView as TextView
+            val errorText = binding.spinnerFilesystemList.selectedView as TextView
             errorText.error = ""
             errorText.setTextColor(Color.RED)
             errorText.text = getString(R.string.error_filesystem_name)
         }
-
         if (session.name == "" || session.username == "" || session.filesystemName == "") {
             Toast.makeText(activityContext, R.string.error_empty_field, Toast.LENGTH_LONG).show()
             return
         }
-
         if (editExisting) sessionEditViewModel.updateSession(session)
         else sessionEditViewModel.insertSession(session)
         navController.popBackStack()
     }
 
-    private fun getDefaultServicePort(selectedServiceType: ServiceType): Long {
-        return when (selectedServiceType) {
-            ServiceType.Vnc -> 51
-            else -> 2022
-        }
-    }
-
     private fun getListDifferenceAndSetNewFilesystem(prevFilesystems: List<Filesystem>, currentFilesystems: List<Filesystem>) {
-        val uniqueFilesystems = currentFilesystems.subtract(prevFilesystems)
+        val uniqueFilesystems = currentFilesystems.subtract(prevFilesystems.toSet())
         if (prevFilesystems.isNotEmpty() && uniqueFilesystems.isNotEmpty()) {
             updateFilesystemDetailsForSession(uniqueFilesystems.first())
         }

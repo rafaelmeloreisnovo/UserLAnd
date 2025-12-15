@@ -375,4 +375,25 @@ class BusyboxWrapper(private val ulaFiles: UlaFiles) {
             sdCardBindingDir.delete()
         }
     }
+
+    // Logging helper methods for ServerService compatibility
+    fun logDebug(message: String) {
+        Log.d(TAG, message)
+    }
+
+    fun logError(message: String) {
+        Log.e(TAG, message)
+    }
+
+    fun logCritical(message: String) {
+        Log.e(TAG, "[CRITICAL] $message")
+    }
+
+    fun enableDebug() {
+        prootDebugLogger.enable()
+    }
+
+    fun disableDebug() {
+        prootDebugLogger.disable()
+    }
 }
