@@ -1,5 +1,5 @@
 /*
- * RAFAELIA MÚSICA SDK (C11, low-level, sem dependências externas)
+ * RAFAELIA MÚSICA SDK (C11, low-level, sem dependencias externas)
  * ---------------------------------------------------------------
  * Pequeno motor determinístico ψχρΔΣΩ com excitação interna para evitar
  * o colapso no atrator trivial. Usa somente matrizes/arrays estáticos,
@@ -14,7 +14,7 @@
 
 #define VEC_DIM 6
 #define PHI 1.6180339887498948482
-#define RAFA_MAGIC 0x52414641u
+#define RAFA_MAGIC 0x52414641u /* "RAFA" */
 /* Laplaciano menos dissipativo para manter o motor “vivo” */
 static const double LAPLACE_ALPHA = 0.28;
 
@@ -49,6 +49,20 @@ static uint32_t crc_state(const RafaeliaState *R) {
     c = crc32_update(c, &R->angle, sizeof(R->angle));
     c = crc32_update(c, &R->step, sizeof(R->step));
     return c;
+}
+
+static int parse_pos_int(const char *s, int fallback) {
+    if (!s) return fallback;
+    char *end = NULL;
+    long v = strtol(s, &end, 10);
+    return (end == s || v <= 0) ? fallback : (int)v;
+}
+
+static uint32_t parse_seed(const char *s, uint32_t fallback) {
+    if (!s) return fallback;
+    char *end = NULL;
+    unsigned long v = strtoul(s, &end, 10);
+    return (end == s) ? fallback : (uint32_t)v;
 }
 
 static void apply_verbo(RafaeliaState *R, const double verbo[VEC_DIM]) {
@@ -138,14 +152,14 @@ static void step_cycle(RafaeliaState *R, const double verbo[VEC_DIM], int got) {
 }
 
 int main(int argc, char **argv) {
-    int steps = (argc > 1) ? atoi(argv[1]) : 120;
-    uint32_t seed = (argc > 2) ? (uint32_t)atoi(argv[2]) : 4242u;
+    int steps = (argc > 1) ? parse_pos_int(argv[1], 120) : 120;
+    uint32_t seed = (argc > 2) ? parse_seed(argv[2], 4242u) : 4242u;
 
     RafaeliaState R = {0};
+    uint32_t mixer = seed;
     for (int i = 0; i < VEC_DIM; i++) {
-        uint32_t tmp = seed;
-        seed = crc32_update(seed, &tmp, sizeof(tmp));
-        R.v[i] = (double)(seed % 1000) / 5000.0;
+        mixer = crc32_update(mixer, &seed, sizeof(seed));
+        R.v[i] = (double)(mixer % 1000) / 5000.0;
     }
     R.angle = 0.37;
     R.crc = RAFA_MAGIC; /* "RAFA" */
