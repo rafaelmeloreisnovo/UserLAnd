@@ -13,12 +13,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <errno.h>
 
 #define VEC_DIM 6
 #define PHI 1.6180339887498948482
 #define RAFA_MAGIC 0x52414641u /* "RAFA" */
 #define CRC32_POLY 0xEDB88320u  /* IEEE 802.3 (reversed) */
-/* Laplaciano menos dissipativo para manter o motor “vivo” */
+/* Less dissipative Laplacian keeps the engine “alive” */
 static const double LAPLACE_ALPHA = 0.28;
 static const double TORUS_R_MAJOR = 2.0;
 static const double TORUS_R_MINOR = 0.65;
@@ -31,6 +32,8 @@ static const double ANGLE_BASE_STEP = 0.015;
 static const double ANGLE_MOD_STEP = 0.002;
 static const double INIT_MODULUS = 1000.0;
 static const double INIT_DIVISOR = 5000.0;
+static const int RHO_IDX = 2;
+static const int DELTA_IDX = 3;
 
 typedef struct {
     double   v[VEC_DIM]; /* psi chi rho delta sigma omega */
@@ -68,15 +71,19 @@ static uint32_t crc_state(const RafaeliaState *R) {
 static int parse_pos_int(const char *s, int fallback) {
     if (!s) return fallback;
     char *end = NULL;
+    errno = 0;
     long v = strtol(s, &end, 10);
-    return (end == s || v <= 0 || v > (long)INT_MAX) ? fallback : (int)v;
+    if (errno == ERANGE || end == s || v <= 0 || v > (long)INT_MAX) return fallback;
+    return (int)v;
 }
 
 static uint32_t parse_seed(const char *s, uint32_t fallback) {
     if (!s) return fallback;
     char *end = NULL;
+    errno = 0;
     unsigned long v = strtoul(s, &end, 10);
-    return (end == s || v > (unsigned long)UINT32_MAX) ? fallback : (uint32_t)v;
+    if (errno == ERANGE || end == s || v > (unsigned long)UINT32_MAX) return fallback;
+    return (uint32_t)v;
 }
 
 static void apply_verbo(RafaeliaState *R, const double verbo[VEC_DIM]) {
@@ -147,15 +154,15 @@ static void step_cycle(RafaeliaState *R, const double verbo[VEC_DIM], bool has_v
 
     laplacian_step(R);
 
-    /* Toroidal memories prevent the system from freezing */
-    double s1 = R->v[0] + R->v[1] + R->v[2];
-    double s2 = R->v[3] + R->v[4] + R->v[5];
+    /* Toroidal accumulators keep torus_embed moving (avoids frozen attractor) */
+    double s1 = R->v[0] + R->v[1] + R->v[RHO_IDX];
+    double s2 = R->v[DELTA_IDX] + R->v[4] + R->v[5];
     R->mem_u += MEM_U_GAIN * tanh(s1);
     R->mem_w += MEM_W_GAIN * tanh(s2);
 
     /* Final saturation applied only to noise/transduction channels */
-    R->v[2] = tanh(R->v[2]);  /* ρ */
-    R->v[3] = tanh(R->v[3]);  /* Δ */
+    R->v[RHO_IDX] = tanh(R->v[RHO_IDX]);      /* rho  */
+    R->v[DELTA_IDX] = tanh(R->v[DELTA_IDX]);  /* delta */
 
     R->angle += ANGLE_BASE_STEP + ANGLE_MOD_STEP * sin(R->mem_u + R->mem_w);
     R->crc = crc_state(R);
@@ -176,7 +183,7 @@ int main(int argc, char **argv) {
     R.angle = MICRO_PHASE;
     R.crc = RAFA_MAGIC; /* "RAFA" */
 
-    double verbo[VEC_DIM] = {0}; /* Optional stdin injection; zeroed for demo */
+    double verbo[VEC_DIM] = {0}; /* Optional stdin injection; zeroed for deterministic demo */
     const bool has_verbo = false;
 
     printf("=== RAFAELIA MUSICA (SDK low-level) ===\n");
