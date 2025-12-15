@@ -1,5 +1,5 @@
 /*
- * RAFAELIA MÚSICA SDK (C11, low-level, sem dependencias externas)
+ * RAFAELIA MÚSICA SDK (C11, low-level, sem dependências externas)
  * ---------------------------------------------------------------
  * Pequeno motor determinístico ψχρΔΣΩ com excitação interna para evitar
  * o colapso no atrator trivial. Usa somente matrizes/arrays estáticos,
@@ -17,6 +17,15 @@
 #define RAFA_MAGIC 0x52414641u /* "RAFA" */
 /* Laplaciano menos dissipativo para manter o motor “vivo” */
 static const double LAPLACE_ALPHA = 0.28;
+static const double TORUS_R_MAJOR = 2.0;
+static const double TORUS_R_MINOR = 0.65;
+static const double MICRO_PSI_GAIN = 0.0020;
+static const double MICRO_DELTA_GAIN = 0.0012;
+static const double MICRO_PHASE = 0.37;
+static const double MEM_U_GAIN = 0.20;
+static const double MEM_W_GAIN = 0.17;
+static const double ANGLE_BASE_STEP = 0.015;
+static const double ANGLE_MOD_STEP = 0.002;
 
 typedef struct {
     double   v[VEC_DIM]; /* ψ χ ρ Δ Σ Ω */
@@ -33,7 +42,7 @@ static uint32_t crc32_update(uint32_t prev, const void *data, size_t len) {
     uint32_t c = ~prev;
     while (len--) {
         c ^= *p++;
-        /* Reflected bitwise CRC32 using polynomial 0xEDB88320 */
+        /* Reflected bitwise CRC32 using polynomial 0xEDB88320 (IEEE 802.3, reversed) */
         for (int k = 0; k < 8; k++) {
             c = (c >> 1) ^ (0xEDB88320u & (-(int32_t)(c & 1u)));
         }
@@ -118,35 +127,33 @@ static double coherence6(const double v[VEC_DIM]) {
 }
 
 static void torus_embed(const RafaeliaState *R, double *x, double *y, double *z) {
-    const double Rmaj = 2.0;
-    const double rmin = 0.65;
     double cu = cos(R->mem_u), su = sin(R->mem_u);
     double cw = cos(R->mem_w), sw = sin(R->mem_w);
-    *x = (Rmaj + rmin * cw) * cu;
-    *y = (Rmaj + rmin * cw) * su;
-    *z = rmin * sw;
+    *x = (TORUS_R_MAJOR + TORUS_R_MINOR * cw) * cu;
+    *y = (TORUS_R_MAJOR + TORUS_R_MINOR * cw) * su;
+    *z = TORUS_R_MINOR * sw;
 }
 
 static void step_cycle(RafaeliaState *R, const double verbo[VEC_DIM], int got) {
     if (got && verbo) apply_verbo(R, verbo);
 
     /* micro-verbo interno (mantém música viva) */
-    R->v[0] += 0.0020 * sin(R->angle + 0.37);
-    R->v[3] += 0.0012 * cos(R->angle * PHI);
+    R->v[0] += MICRO_PSI_GAIN * sin(R->angle + MICRO_PHASE);
+    R->v[3] += MICRO_DELTA_GAIN * cos(R->angle * PHI);
 
     laplacian_step(R);
 
     /* Memórias toroidais (evitam congelar) */
     double s1 = R->v[0] + R->v[1] + R->v[2];
     double s2 = R->v[3] + R->v[4] + R->v[5];
-    R->mem_u += 0.20 * tanh(s1);
-    R->mem_w += 0.17 * tanh(s2);
+    R->mem_u += MEM_U_GAIN * tanh(s1);
+    R->mem_w += MEM_W_GAIN * tanh(s2);
 
     /* 5) saturação final (apenas nos canais de ruído/transdução) */
     R->v[2] = tanh(R->v[2]);  /* ρ */
     R->v[3] = tanh(R->v[3]);  /* Δ */
 
-    R->angle += 0.015 + 0.002 * sin(R->mem_u + R->mem_w);
+    R->angle += ANGLE_BASE_STEP + ANGLE_MOD_STEP * sin(R->mem_u + R->mem_w);
     R->crc = crc_state(R);
     R->step++;
 }
