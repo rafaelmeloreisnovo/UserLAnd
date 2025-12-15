@@ -3,7 +3,7 @@ package tech.ula
 import android.app.AlertDialog
 import android.app.DownloadManager
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.ViewModelProvider
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -29,10 +29,10 @@ import androidx.navigation.findNavController
 import androidx.navigation.ui.NavigationUI
 import androidx.navigation.ui.NavigationUI.setupWithNavController
 import com.google.gson.Gson
-import kotlinx.android.synthetic.main.activity_main.* // ktlint-disable no-wildcard-imports
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import tech.ula.databinding.ActivityMainBinding
 import tech.ula.model.entities.App
 import tech.ula.model.entities.AppType
 import tech.ula.model.entities.Filesystem

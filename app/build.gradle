@@ -141,6 +141,7 @@ android {
 
     buildFeatures {
         buildConfig true
+        viewBinding true
     }
 }
 
@@ -191,8 +192,8 @@ task testAll(dependsOn: ['test', 'connectedAndroidTest']) {
 task jacocoCoverageReport(type: JacocoReport, dependsOn: ['testDebugUnitTest', 'createDebugCoverageReport']) {
 
     reports {
-        xml.enabled = true
-        html.enabled = true
+        xml.required = true
+        html.required = true
     }
 
     def fileFilter = [ '**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*', '**/*Test*.*', 'android/**/*.*' ]
@@ -212,8 +213,8 @@ task jacocoCoverageReport(type: JacocoReport, dependsOn: ['testDebugUnitTest', '
 task jacocoCoverageReportForCi(type: JacocoReport, dependsOn: ['testDebugUnitTest']) {
 
     reports {
-        xml.enabled = true
-        html.enabled = true
+        xml.required = true
+        html.required = true
     }
 
     def fileFilter = [ '**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*', '**/*Test*.*', 'android/**/*.*' ]
@@ -269,27 +270,7 @@ task checkIfAssetsMissing {
     }
 }
 
-task packageStaticBins(type: Exec) {
-    group = "build"
-    description = "Build static C helpers and copy them into the APK assets."
-    workingDir rootProject.rootDir
-    commandLine "bash", "termux-app/package_static_bins.sh"
-
-    inputs.files fileTree(dir: rootProject.rootDir, includes: [
-            "raf_cpu_core.c",
-            "raf_mem_core.c",
-            "raf_disk_core.c",
-            "scripts/build_static.sh",
-            "scripts/raf_cpu_core.sh",
-            "scripts/raf_mem_core.sh",
-            "scripts/raf_disk_core.sh",
-            "termux-app/package_static_bins.sh"
-    ])
-    outputs.dir "$rootProject.rootDir/termux-app/terminal-term/src/main/assets/bin"
-}
-
 preBuild.dependsOn checkIfAssetsMissing
-preBuild.dependsOn packageStaticBins
 
 dependencies {
     def moshi_version = '1.15.2'

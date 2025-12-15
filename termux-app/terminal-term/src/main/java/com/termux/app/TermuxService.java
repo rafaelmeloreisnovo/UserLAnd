@@ -19,7 +19,7 @@ import android.system.Os;
 import android.util.Log;
 import android.widget.ArrayAdapter;
 
-import com.termux.R;
+import com.termux.terminal.term.R;
 import com.termux.terminal.EmulatorDebug;
 import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSession.SessionChangedCallback;

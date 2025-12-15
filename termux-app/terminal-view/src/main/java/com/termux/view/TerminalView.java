@@ -30,6 +30,7 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.widget.Scroller;
 
+import com.termux.terminal.view.R;
 import com.termux.terminal.EmulatorDebug;
 import com.termux.terminal.KeyHandler;
 import com.termux.terminal.TerminalBuffer;

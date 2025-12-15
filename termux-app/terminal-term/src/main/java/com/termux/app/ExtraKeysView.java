@@ -21,7 +21,7 @@ import android.widget.GridLayout;
 import android.widget.PopupWindow;
 import android.widget.ToggleButton;
 
-import com.termux.R;
+import com.termux.terminal.term.R;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
 

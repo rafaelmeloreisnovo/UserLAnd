@@ -53,7 +53,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.termux.R;
+import com.termux.terminal.term.R;
 import com.termux.terminal.EmulatorDebug;
 import com.termux.terminal.TerminalColors;
 import com.termux.terminal.TerminalSession;
