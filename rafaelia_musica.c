@@ -69,14 +69,14 @@ static int parse_pos_int(const char *s, int fallback) {
     if (!s) return fallback;
     char *end = NULL;
     long v = strtol(s, &end, 10);
-    return (end == s || v <= 0 || v > INT_MAX) ? fallback : (int)v;
+    return (end == s || v <= 0 || v > (long)INT_MAX) ? fallback : (int)v;
 }
 
 static uint32_t parse_seed(const char *s, uint32_t fallback) {
     if (!s) return fallback;
     char *end = NULL;
     unsigned long v = strtoul(s, &end, 10);
-    return (end == s || v > UINT32_MAX) ? fallback : (uint32_t)v;
+    return (end == s || v > (unsigned long)UINT32_MAX) ? fallback : (uint32_t)v;
 }
 
 static void apply_verbo(RafaeliaState *R, const double verbo[VEC_DIM]) {
@@ -170,7 +170,8 @@ int main(int argc, char **argv) {
     RafaeliaState R = {0};
     uint32_t mixer = seed;
     for (int i = 0; i < VEC_DIM; i++) {
-        mixer = crc32_update(mixer, &seed, sizeof(seed));
+        uint32_t input = seed ^ (uint32_t)i;
+        mixer = crc32_update(mixer, &input, sizeof(input));
         R.v[i] = (double)(mixer % (uint32_t)INIT_MODULUS) / INIT_DIVISOR;
     }
     R.angle = MICRO_PHASE;
