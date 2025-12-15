@@ -14,6 +14,8 @@
 
 #define VEC_DIM 6
 #define PHI 1.6180339887498948482
+/* Laplaciano menos dissipativo para manter o motor “vivo” */
+static const double LAPLACE_ALPHA = 0.28;
 
 typedef struct {
     double   v[VEC_DIM]; /* ψ χ ρ Δ Σ Ω */
@@ -37,6 +39,16 @@ static uint32_t crc32_update(uint32_t prev, const void *data, size_t len) {
     return ~c;
 }
 
+static uint32_t crc_state(const RafaeliaState *R) {
+    uint32_t c = R->crc;
+    c = crc32_update(c, R->v, sizeof(R->v));
+    c = crc32_update(c, &R->mem_u, sizeof(R->mem_u));
+    c = crc32_update(c, &R->mem_w, sizeof(R->mem_w));
+    c = crc32_update(c, &R->angle, sizeof(R->angle));
+    c = crc32_update(c, &R->step, sizeof(R->step));
+    return c;
+}
+
 static void apply_verbo(RafaeliaState *R, const double verbo[VEC_DIM]) {
     for (int i = 0; i < VEC_DIM; i++) {
         R->v[i] += verbo[i];
@@ -53,7 +65,6 @@ static void laplacian_step(RafaeliaState *R) {
         {0, 0, 0, 0.5, 0, 0.5},
         {0.5, 0, 0, 0, 0.5, 0},
     };
-    const double alpha = 0.28;
     double next[VEC_DIM];
 
     for (int i = 0; i < VEC_DIM; i++) {
@@ -66,7 +77,7 @@ static void laplacian_step(RafaeliaState *R) {
                 diag += w;
             }
         }
-        next[i] = R->v[i] + alpha * (acc - diag * R->v[i]);
+        next[i] = R->v[i] + LAPLACE_ALPHA * (acc - diag * R->v[i]);
     }
     memcpy(R->v, next, sizeof(next));
 }
@@ -120,7 +131,7 @@ static void step_cycle(RafaeliaState *R, const double verbo[VEC_DIM], int got) {
     R->v[3] = tanh(R->v[3]);  /* Δ */
 
     R->angle += 0.015 + 0.002 * sin(R->mem_u + R->mem_w);
-    R->crc = crc32_update(R->crc, R, sizeof(*R) - sizeof(uint32_t));
+    R->crc = crc_state(R);
     R->step++;
 }
 
@@ -149,7 +160,7 @@ int main(int argc, char **argv) {
         double H = entropy6(R.v);
         double C = coherence6(R.v);
 
-        printf("t=%03d ψχρΔΣΩ=[%.5f %.5f %.5f %.5f %.5f %.5f] ", t,
+        printf("t=%03d psi/chi/rho/delta/sigma/omega=[%.5f %.5f %.5f %.5f %.5f %.5f] ", t,
                R.v[0], R.v[1], R.v[2], R.v[3], R.v[4], R.v[5]);
         printf("Toro=(%.3f, %.3f, %.3f) H=%.4f C=%.4f CRC=%08X\n",
                X, Y, Z, H, C, R.crc);
