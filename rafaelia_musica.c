@@ -3,7 +3,7 @@
  * ---------------------------------------------------------------
  * Pequeno motor determinístico ψχρΔΣΩ com excitação interna para evitar
  * o colapso no atrator trivial. Usa somente matrizes/arrays estáticos,
- * CRC32 in-line e mapeamento toroidal para observabilidade.
+ * CRC32 in-line e mapeamento toroidal para observability.
  */
 
 #include <math.h>
@@ -95,19 +95,18 @@ static void laplacian_step(RafaeliaState *R) {
         {0, 0, 0, 0.5, 0, 0.5},
         {0.5, 0, 0, 0, 0.5, 0},
     };
+    static const double D[VEC_DIM] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
     double next[VEC_DIM];
 
     for (int i = 0; i < VEC_DIM; i++) {
         double acc = 0.0;
-        double diag = 0.0;
         for (int j = 0; j < VEC_DIM; j++) {
             double w = W[i][j];
             if (w != 0.0) {
                 acc += w * R->v[j];
-                diag += w;
             }
         }
-        next[i] = R->v[i] + LAPLACE_ALPHA * (acc - diag * R->v[i]);
+        next[i] = R->v[i] + LAPLACE_ALPHA * (acc - D[i] * R->v[i]);
     }
     memcpy(R->v, next, sizeof(next));
 }
@@ -180,7 +179,7 @@ int main(int argc, char **argv) {
     double verbo[VEC_DIM] = {0}; /* Optional stdin injection; zeroed for demo */
     const bool has_verbo = false;
 
-    printf("=== RAFAELIA MÚSICA (SDK low-level) ===\n");
+    printf("=== RAFAELIA MUSICA (SDK low-level) ===\n");
     printf("Passos: %d | Semente: %u\n\n", steps, seed);
 
     for (int t = 0; t < steps; t++) {
