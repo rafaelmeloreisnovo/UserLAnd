@@ -15,6 +15,7 @@
 #define VEC_DIM 6
 #define PHI 1.6180339887498948482
 #define RAFA_MAGIC 0x52414641u /* "RAFA" */
+#define CRC32_POLY 0xEDB88320u  /* IEEE 802.3 (reversed) */
 /* Laplaciano menos dissipativo para manter o motor “vivo” */
 static const double LAPLACE_ALPHA = 0.28;
 static const double TORUS_R_MAJOR = 2.0;
@@ -26,6 +27,8 @@ static const double MEM_U_GAIN = 0.20;
 static const double MEM_W_GAIN = 0.17;
 static const double ANGLE_BASE_STEP = 0.015;
 static const double ANGLE_MOD_STEP = 0.002;
+static const double INIT_MODULUS = 1000.0;
+static const double INIT_DIVISOR = 5000.0;
 
 typedef struct {
     double   v[VEC_DIM]; /* ψ χ ρ Δ Σ Ω */
@@ -44,7 +47,7 @@ static uint32_t crc32_update(uint32_t prev, const void *data, size_t len) {
         c ^= *p++;
         /* Reflected bitwise CRC32 using polynomial 0xEDB88320 (IEEE 802.3, reversed) */
         for (int k = 0; k < 8; k++) {
-            c = (c >> 1) ^ (0xEDB88320u & (-(int32_t)(c & 1u)));
+            c = (c >> 1) ^ (CRC32_POLY & (-(int32_t)(c & 1u)));
         }
     }
     return ~c;
@@ -149,7 +152,7 @@ static void step_cycle(RafaeliaState *R, const double verbo[VEC_DIM], int got) {
     R->mem_u += MEM_U_GAIN * tanh(s1);
     R->mem_w += MEM_W_GAIN * tanh(s2);
 
-    /* 5) saturação final (apenas nos canais de ruído/transdução) */
+    /* Saturação final (apenas nos canais de ruído/transdução) */
     R->v[2] = tanh(R->v[2]);  /* ρ */
     R->v[3] = tanh(R->v[3]);  /* Δ */
 
@@ -166,9 +169,9 @@ int main(int argc, char **argv) {
     uint32_t mixer = seed;
     for (int i = 0; i < VEC_DIM; i++) {
         mixer = crc32_update(mixer, &seed, sizeof(seed));
-        R.v[i] = (double)(mixer % 1000) / 5000.0;
+        R.v[i] = (double)(mixer % (uint32_t)INIT_MODULUS) / INIT_DIVISOR;
     }
-    R.angle = 0.37;
+    R.angle = MICRO_PHASE;
     R.crc = RAFA_MAGIC; /* "RAFA" */
 
     double verbo[VEC_DIM] = {0}; /* stdin opcional; fica zerado para demo */
