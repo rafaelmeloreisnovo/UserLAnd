@@ -7,10 +7,12 @@
  */
 
 #include <math.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 #define VEC_DIM 6
 #define PHI 1.6180339887498948482
@@ -47,7 +49,7 @@ static uint32_t crc32_update(uint32_t prev, const void *data, size_t len) {
         c ^= *p++;
         /* Reflected bitwise CRC32 (IEEE 802.3, reversed polynomial 0xEDB88320) */
         for (int k = 0; k < 8; k++) {
-            c = (c >> 1) ^ (CRC32_POLY & (-(int32_t)(c & 1u)));
+            c = (c >> 1) ^ ((c & 1u) ? CRC32_POLY : 0u);
         }
     }
     return ~c;
@@ -67,14 +69,14 @@ static int parse_pos_int(const char *s, int fallback) {
     if (!s) return fallback;
     char *end = NULL;
     long v = strtol(s, &end, 10);
-    return (end == s || v <= 0) ? fallback : (int)v;
+    return (end == s || v <= 0 || v > INT_MAX) ? fallback : (int)v;
 }
 
 static uint32_t parse_seed(const char *s, uint32_t fallback) {
     if (!s) return fallback;
     char *end = NULL;
     unsigned long v = strtoul(s, &end, 10);
-    return (end == s) ? fallback : (uint32_t)v;
+    return (end == s || v > UINT32_MAX) ? fallback : (uint32_t)v;
 }
 
 static void apply_verbo(RafaeliaState *R, const double verbo[VEC_DIM]) {
@@ -137,8 +139,8 @@ static void torus_embed(const RafaeliaState *R, double *x, double *y, double *z)
     *z = TORUS_R_MINOR * sw;
 }
 
-static void step_cycle(RafaeliaState *R, const double verbo[VEC_DIM], int got) {
-    if (got && verbo) apply_verbo(R, verbo);
+static void step_cycle(RafaeliaState *R, const double verbo[VEC_DIM], bool has_verbo) {
+    if (has_verbo && verbo) apply_verbo(R, verbo);
 
     /* Internal micro-verbo that keeps the oscillator energized */
     R->v[0] += MICRO_PSI_GAIN * sin(R->angle + MICRO_PHASE);
@@ -175,12 +177,13 @@ int main(int argc, char **argv) {
     R.crc = RAFA_MAGIC; /* "RAFA" */
 
     double verbo[VEC_DIM] = {0}; /* Optional stdin injection; zeroed for demo */
+    const bool has_verbo = false;
 
     printf("=== RAFAELIA MÚSICA (SDK low-level) ===\n");
     printf("Passos: %d | Semente: %u\n\n", steps, seed);
 
     for (int t = 0; t < steps; t++) {
-        step_cycle(&R, verbo, 0);
+        step_cycle(&R, verbo, has_verbo);
 
         double X, Y, Z;
         torus_embed(&R, &X, &Y, &Z);
