@@ -1,9 +1,9 @@
 /*
- * RAFAELIA MÚSICA SDK (C11, low-level, sem dependências externas)
+ * RAFAELIA MUSICA SDK (C11, low-level, no external dependencies)
  * ---------------------------------------------------------------
- * Pequeno motor determinístico ψχρΔΣΩ com excitação interna para evitar
- * o colapso no atrator trivial. Usa somente matrizes/arrays estáticos,
- * CRC32 in-line e mapeamento toroidal para observability.
+ * Small deterministic engine (psi/chi/rho/delta/sigma/omega) with internal
+ * excitation to avoid collapsing into a trivial attractor. Uses only static
+ * matrices/arrays, inline CRC32, and torus mapping for observability.
  */
 
 #include <math.h>
@@ -33,7 +33,7 @@ static const double INIT_MODULUS = 1000.0;
 static const double INIT_DIVISOR = 5000.0;
 
 typedef struct {
-    double   v[VEC_DIM]; /* ψ χ ρ Δ Σ Ω */
+    double   v[VEC_DIM]; /* psi chi rho delta sigma omega */
     double   mem_u;
     double   mem_w;
     double   angle;
@@ -180,7 +180,7 @@ int main(int argc, char **argv) {
     const bool has_verbo = false;
 
     printf("=== RAFAELIA MUSICA (SDK low-level) ===\n");
-    printf("Passos: %d | Semente: %u\n\n", steps, seed);
+    printf("Steps: %d | Seed: %u\n\n", steps, seed);
 
     for (int t = 0; t < steps; t++) {
         step_cycle(&R, verbo, has_verbo);
@@ -190,8 +190,11 @@ int main(int argc, char **argv) {
         double H = entropy6(R.v);
         double C = coherence6(R.v);
 
-        printf("t=%03d psi/chi/rho/delta/sigma/omega=[%.5f %.5f %.5f %.5f %.5f %.5f] ", t,
-               R.v[0], R.v[1], R.v[2], R.v[3], R.v[4], R.v[5]);
+        printf("t=%03d psi/chi/rho/delta/sigma/omega=[", t);
+        for (int i = 0; i < VEC_DIM; i++) {
+            printf("%.5f%s", R.v[i], (i + 1 == VEC_DIM) ? "" : " ");
+        }
+        printf("] ");
         printf("Toro=(%.3f, %.3f, %.3f) H=%.4f C=%.4f CRC=%08X\n",
                X, Y, Z, H, C, R.crc);
     }
