@@ -45,7 +45,7 @@ static uint32_t crc32_update(uint32_t prev, const void *data, size_t len) {
     uint32_t c = ~prev;
     while (len--) {
         c ^= *p++;
-        /* Reflected bitwise CRC32 using polynomial 0xEDB88320 (IEEE 802.3, reversed) */
+        /* Reflected bitwise CRC32 (IEEE 802.3, reversed polynomial 0xEDB88320) */
         for (int k = 0; k < 8; k++) {
             c = (c >> 1) ^ (CRC32_POLY & (-(int32_t)(c & 1u)));
         }
@@ -110,7 +110,7 @@ static void laplacian_step(RafaeliaState *R) {
     memcpy(R->v, next, sizeof(next));
 }
 
-/* Entropia Shannon em 6 dimensões (usa |v| como probabilidade) */
+/* Shannon entropy in 6 dimensions (uses |v| as probability mass) */
 static double entropy6(const double v[VEC_DIM]) {
     double total = 0.0;
     for (int i = 0; i < VEC_DIM; i++) total += fabs(v[i]);
@@ -140,19 +140,19 @@ static void torus_embed(const RafaeliaState *R, double *x, double *y, double *z)
 static void step_cycle(RafaeliaState *R, const double verbo[VEC_DIM], int got) {
     if (got && verbo) apply_verbo(R, verbo);
 
-    /* micro-verbo interno (mantém música viva) */
+    /* Internal micro-verbo that keeps the oscillator energized */
     R->v[0] += MICRO_PSI_GAIN * sin(R->angle + MICRO_PHASE);
     R->v[3] += MICRO_DELTA_GAIN * cos(R->angle * PHI);
 
     laplacian_step(R);
 
-    /* Memórias toroidais (evitam congelar) */
+    /* Toroidal memories prevent the system from freezing */
     double s1 = R->v[0] + R->v[1] + R->v[2];
     double s2 = R->v[3] + R->v[4] + R->v[5];
     R->mem_u += MEM_U_GAIN * tanh(s1);
     R->mem_w += MEM_W_GAIN * tanh(s2);
 
-    /* Saturação final (apenas nos canais de ruído/transdução) */
+    /* Final saturation applied only to noise/transduction channels */
     R->v[2] = tanh(R->v[2]);  /* ρ */
     R->v[3] = tanh(R->v[3]);  /* Δ */
 
@@ -174,7 +174,7 @@ int main(int argc, char **argv) {
     R.angle = MICRO_PHASE;
     R.crc = RAFA_MAGIC; /* "RAFA" */
 
-    double verbo[VEC_DIM] = {0}; /* stdin opcional; fica zerado para demo */
+    double verbo[VEC_DIM] = {0}; /* Optional stdin injection; zeroed for demo */
 
     printf("=== RAFAELIA MÚSICA (SDK low-level) ===\n");
     printf("Passos: %d | Semente: %u\n\n", steps, seed);
