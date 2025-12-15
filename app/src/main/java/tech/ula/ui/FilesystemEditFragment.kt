@@ -1,72 +1,58 @@
 package tech.ula.ui
 
-import android.app.AlertDialog
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProvider
-import android.content.ActivityNotFoundException
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.text.Editable
 import android.text.TextWatcher
-import android.view.Menu
-import android.view.MenuItem
-import android.view.MenuInflater
-import android.view.View
-import android.view.ViewGroup
-import android.view.LayoutInflater
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
-import android.widget.Toast
+import android.view.*
+import android.widget.*
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.fragment.navArgs
-import tech.ula.databinding.FragFilesystemEditBinding
-import tech.ula.MainActivity
 import tech.ula.R
+import tech.ula.databinding.FragFilesystemEditBinding
+import tech.ula.model.entities.Filesystem
 import tech.ula.model.repositories.UlaDatabase
-import tech.ula.utils.PermissionHandler
-import tech.ula.utils.CredentialValidator
-import tech.ula.utils.UlaFiles
-import tech.ula.utils.preferences.AppsPreferences
-import tech.ula.viewmodel.FilesystemImportStatus
-import tech.ula.viewmodel.ImportSuccess
-import tech.ula.viewmodel.ImportFailure
-import tech.ula.viewmodel.FilesystemEditViewModel
-import tech.ula.viewmodel.FilesystemEditViewmodelFactory
-import java.util.Locale
+import tech.ula.utils.*
+import tech.ula.viewmodel.*
+
+private const val FILESYSTEM_IMPORT_REQUEST_CODE = 6
 
 class FilesystemEditFragment : Fragment() {
 
-    private lateinit var activityContext: MainActivity
+    private var _binding: FragFilesystemEditBinding? = null
+    private val binding get() = _binding!!
 
-    private val IMPORT_FILESYSTEM_REQUEST_CODE = 5
-
+    private lateinit var activityContext: Activity
     private val args: FilesystemEditFragmentArgs by navArgs()
-    private val filesystem by lazy { args.filesystem!! }
+    private val filesystem: Filesystem by lazy { args.filesystem!! }
     private val editExisting by lazy { args.editExisting }
-
-    private val filesystemImportStatusObserver = Observer<FilesystemImportStatus> {
-        it?.let { importStatus ->
-            val dialogBuilder = AlertDialog.Builder(activityContext)
-            when (importStatus) {
-                is ImportSuccess -> dialogBuilder.setMessage(R.string.import_success).create().show()
-                is ImportFailure -> dialogBuilder.setMessage(R.string.import_failure).create().show()
-            }
-        }
-    }
 
     private val filesystemEditViewModel: FilesystemEditViewModel by lazy {
         val ulaDatabase = UlaDatabase.getInstance(activityContext)
-        ViewModelProvider(this, FilesystemEditViewmodelFactory(ulaDatabase)).get(FilesystemEditViewModel::class.java)
+        val ulaFiles = UlaFiles(activityContext, activityContext.applicationInfo.nativeLibraryDir)
+        val prootDebugLogger = ProotDebugLogger(activityContext.defaultSharedPreferences, ulaFiles)
+        val busyboxExecutor = BusyboxExecutor(ulaFiles, prootDebugLogger)
+        val filesystemManager = FilesystemManager(ulaFiles, busyboxExecutor)
+        ViewModelProvider(this, FilesystemEditViewmodelFactory(ulaDatabase.filesystemDao(), filesystemManager))
+            .get(FilesystemEditViewModel::class.java)
     }
 
-    private val distributionList by lazy {
-        AppsPreferences(activityContext).getDistributionsList()
+    private val viewStateObserver = Observer<FilesystemEditViewState> { viewState ->
+        viewState?.let { handleViewStateChange(it) }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setHasOptionsMenu(true)
+    }
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        _binding = FragFilesystemEditBinding.inflate(inflater, container, false)
+        return binding.root
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -75,202 +61,103 @@ class FilesystemEditFragment : Fragment() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return if (item.itemId == R.id.menu_item_add) insertFilesystem()
-        else super.onOptionsItemSelected(item)
+        return if (item.itemId == R.id.menu_item_add) {
+            insertFilesystem()
+            true
+        } else super.onOptionsItemSelected(item)
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.frag_filesystem_edit, container, false)
-    }
-
+    @Suppress("DEPRECATION")
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-        activityContext = activity!! as MainActivity
-        filesystemEditViewModel.getImportStatusLiveData().observe(viewLifecycleOwner, filesystemImportStatusObserver)
-
-        if (distributionList.isNotEmpty()) {
-            spinner_filesystem_type.adapter = ArrayAdapter(activityContext,
-                    android.R.layout.simple_spinner_dropdown_item,
-                    distributionList.map { it.capitalize() })
-        }
-        if (editExisting) {
-            for (i in 0 until spinner_filesystem_type.adapter.count) {
-                val item = spinner_filesystem_type.adapter.getItem(i).toString().toLowerCase(Locale.ENGLISH)
-                if (item == filesystem.distributionType) spinner_filesystem_type.setSelection(i)
-            }
-        }
+        activityContext = activity!!
+        filesystemEditViewModel.getViewState().observe(viewLifecycleOwner, viewStateObserver)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setupFilesystemNameInput()
+        setupFilesystemTypeSpinner()
+        setupCredentialInputs()
+    }
 
-        setupTextInputs()
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
 
-        if (editExisting) {
-            btn_show_advanced_options.visibility = View.GONE
-            spinner_filesystem_type.isEnabled = false
-        } else {
-            setupImportButton()
-            setupAdvancedOptionButton()
-        }
-        spinner_filesystem_type.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+    private fun setupFilesystemNameInput() {
+        binding.textInputFilesystemName.setText(filesystem.name)
+        binding.textInputFilesystemName.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(p0: Editable?) { filesystem.name = p0.toString() }
+            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
+            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
+        })
+    }
 
+    private fun setupFilesystemTypeSpinner() {
+        binding.spinnerFilesystemType.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: AdapterView<*>?) {}
-
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                filesystem.distributionType = parent?.getItemAtPosition(position).toString().toLowerCase(Locale.ENGLISH)
+                filesystem.distributionType = parent?.getItemAtPosition(position).toString()
             }
         }
     }
 
-    private fun setupTextInputs() {
-        input_filesystem_name.setText(filesystem.name)
-        input_filesystem_username.setText(filesystem.defaultUsername)
-        input_filesystem_password.setText(filesystem.defaultPassword)
-        input_filesystem_vncpassword.setText(filesystem.defaultVncPassword)
-
-        if (editExisting) {
-            input_filesystem_username.isEnabled = false
-            input_filesystem_password.isEnabled = false
-            input_filesystem_vncpassword.isEnabled = false
-        }
-
-        if (filesystem.isAppsFilesystem) {
-            input_filesystem_name.isEnabled = false
-        }
-
-        input_filesystem_name.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(p0: Editable?) {
-                filesystem.name = p0.toString()
-            }
-
+    private fun setupCredentialInputs() {
+        binding.textInputUsername.setText(filesystem.defaultUsername)
+        binding.textInputUsername.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(p0: Editable?) { filesystem.defaultUsername = p0.toString() }
             override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
             override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
         })
 
-        input_filesystem_username.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(p0: Editable?) {
-
-                filesystem.defaultUsername = p0.toString()
-            }
-
+        binding.textInputPassword.setText(filesystem.defaultPassword)
+        binding.textInputPassword.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(p0: Editable?) { filesystem.defaultPassword = p0.toString() }
             override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
             override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
         })
 
-        input_filesystem_password.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(p0: Editable?) {
-                filesystem.defaultPassword = p0.toString()
-            }
-
-            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
-            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
-        })
-
-        input_filesystem_vncpassword.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(p0: Editable?) {
-                filesystem.defaultVncPassword = p0.toString()
-            }
-
+        binding.textInputVncPassword.setText(filesystem.defaultVncPassword)
+        binding.textInputVncPassword.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(p0: Editable?) { filesystem.defaultVncPassword = p0.toString() }
             override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
             override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
         })
     }
 
-    private fun setupImportButton() {
-        import_button.setOnClickListener {
-            val filePickerIntent = Intent(Intent.ACTION_OPEN_DOCUMENT)
-            filePickerIntent.addCategory(Intent.CATEGORY_OPENABLE)
-            filePickerIntent.type = "application/*"
-            if (!PermissionHandler.permissionsAreGranted(activityContext)) {
-                PermissionHandler.showPermissionsNecessaryDialog(activityContext)
-                return@setOnClickListener
+    private fun handleViewStateChange(viewState: FilesystemEditViewState) {
+        when (viewState) {
+            is FilesystemEditViewState.Success -> {
+                NavHostFragment.findNavController(this).popBackStack()
             }
-
-            try {
-                filesystem.isCreatedFromBackup = true
-                startActivityForResult(filePickerIntent, IMPORT_FILESYSTEM_REQUEST_CODE)
-            } catch (activityNotFoundErr: ActivityNotFoundException) {
-                Toast.makeText(activityContext, R.string.prompt_install_file_manager, Toast.LENGTH_LONG).show()
+            is FilesystemEditViewState.ImportSuccess -> {
+                NavHostFragment.findNavController(this).popBackStack()
             }
+            else -> {}
         }
     }
 
-    private fun setupAdvancedOptionButton() {
-        val btn = btn_show_advanced_options
-
-        btn.setOnClickListener {
-            when (btn.isChecked) {
-                true -> {
-                    btn.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, R.drawable.ic_keyboard_arrow_down_white_24dp, 0)
-                    advanced_options.visibility = View.VISIBLE
-                }
-                false -> {
-                    btn.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, R.drawable.ic_keyboard_arrow_right_white_24dp, 0)
-                    advanced_options.visibility = View.INVISIBLE
-                }
-            }
+    private fun insertFilesystem() {
+        if (filesystem.name.isEmpty()) {
+            binding.textInputFilesystemName.error = getString(R.string.error_filesystem_name)
+            return
         }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, returnIntent: Intent?) {
-        super.onActivityResult(requestCode, resultCode, returnIntent)
-        if (requestCode == IMPORT_FILESYSTEM_REQUEST_CODE) {
-            returnIntent?.data?.let { uri ->
-                filesystemEditViewModel.backupUri = uri
-                text_backup_filename.text = uri.lastPathSegment
-            }
+        if (filesystem.defaultUsername.isEmpty()) {
+            binding.textInputUsername.error = getString(R.string.error_empty_field)
+            return
         }
-    }
-
-    private fun insertFilesystem(): Boolean {
-        val navController = NavHostFragment.findNavController(this)
-        if (!filesystemParametersAreCorrect()) {
-            return false
+        if (filesystem.defaultPassword.isEmpty()) {
+            binding.textInputPassword.error = getString(R.string.error_empty_field)
+            return
+        }
+        if (filesystem.defaultVncPassword.isEmpty()) {
+            binding.textInputVncPassword.error = getString(R.string.error_empty_field)
+            return
         }
 
-        if (editExisting) {
-            filesystemEditViewModel.updateFilesystem(filesystem)
-            navController.popBackStack()
-        } else {
-            val ulaFiles = UlaFiles(activityContext, activityContext.applicationInfo.nativeLibraryDir)
-            filesystem.archType = ulaFiles.getArchType()
-            if (filesystem.isCreatedFromBackup) {
-                filesystemEditViewModel.insertFilesystemFromBackup(activityContext.contentResolver, filesystem, activityContext.filesDir)
-            } else {
-                filesystemEditViewModel.insertFilesystem(filesystem)
-            }
-            navController.popBackStack()
-        }
-
-        return true
-    }
-
-    private fun filesystemParametersAreCorrect(): Boolean {
-        val blacklistedUsernames = activityContext.resources.getStringArray(R.array.blacklisted_usernames)
-        val validator = CredentialValidator()
-        val filesystemName = filesystem.name
-        val username = filesystem.defaultUsername
-        val password = filesystem.defaultPassword
-        val vncPassword = filesystem.defaultVncPassword
-
-        val filesystemNameCredentials = validator.validateFilesystemName(filesystemName)
-        val usernameCredentials = validator.validateUsername(username, blacklistedUsernames)
-        val passwordCredentials = validator.validatePassword(password)
-        val vncPasswordCredentials = validator.validateVncPassword(vncPassword)
-
-        when {
-            !filesystemNameCredentials.credentialIsValid ->
-                Toast.makeText(activityContext, filesystemNameCredentials.errorMessageId, Toast.LENGTH_LONG).show()
-            !usernameCredentials.credentialIsValid ->
-                Toast.makeText(activityContext, usernameCredentials.errorMessageId, Toast.LENGTH_LONG).show()
-            !passwordCredentials.credentialIsValid ->
-                Toast.makeText(activityContext, passwordCredentials.errorMessageId, Toast.LENGTH_LONG).show()
-            !vncPasswordCredentials.credentialIsValid ->
-                Toast.makeText(activityContext, vncPasswordCredentials.errorMessageId, Toast.LENGTH_LONG).show()
-            else ->
-                return true
-        }
-        return false
+        if (editExisting) filesystemEditViewModel.updateFilesystem(filesystem)
+        else filesystemEditViewModel.insertFilesystem(filesystem)
     }
 }
