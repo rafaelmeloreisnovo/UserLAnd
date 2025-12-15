@@ -10,9 +10,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.navArgs
-import kotlinx.android.synthetic.main.frag_app_details.* // ktlint-disable no-wildcard-imports
+import tech.ula.databinding.FragAppDetailsBinding // ktlint-disable no-wildcard-imports
 import tech.ula.R
 import tech.ula.model.repositories.UlaDatabase
 import tech.ula.utils.* // ktlint-disable no-wildcard-imports
@@ -33,7 +33,7 @@ class AppDetailsFragment : Fragment() {
         val appDetails = AppDetails(activityContext.filesDir.path, activityContext.resources)
         val buildVersion = Build.VERSION.SDK_INT
         val factory = AppDetailsViewmodelFactory(sessionDao, appDetails, buildVersion, activityContext.getSharedPreferences("apps", Context.MODE_PRIVATE))
-        ViewModelProviders.of(this, factory)
+        ViewModelProvider.of(this, factory)
                 .get(AppDetailsViewModel::class.java)
     }
 

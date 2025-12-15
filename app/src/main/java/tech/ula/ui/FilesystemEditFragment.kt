@@ -2,7 +2,7 @@ package tech.ula.ui
 
 import android.app.AlertDialog
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.ViewModelProvider
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Bundle
@@ -20,7 +20,7 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.fragment.navArgs
-import kotlinx.android.synthetic.main.frag_filesystem_edit.*
+import tech.ula.databinding.FragFilesystemEditBinding
 import tech.ula.MainActivity
 import tech.ula.R
 import tech.ula.model.repositories.UlaDatabase
@@ -57,7 +57,7 @@ class FilesystemEditFragment : Fragment() {
 
     private val filesystemEditViewModel: FilesystemEditViewModel by lazy {
         val ulaDatabase = UlaDatabase.getInstance(activityContext)
-        ViewModelProviders.of(this, FilesystemEditViewmodelFactory(ulaDatabase)).get(FilesystemEditViewModel::class.java)
+        ViewModelProvider.of(this, FilesystemEditViewmodelFactory(ulaDatabase)).get(FilesystemEditViewModel::class.java)
     }
 
     private val distributionList by lazy {

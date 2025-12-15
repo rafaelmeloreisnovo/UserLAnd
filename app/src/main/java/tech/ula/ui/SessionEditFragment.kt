@@ -2,7 +2,7 @@ package tech.ula.ui
 
 import android.app.Activity
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.ViewModelProvider
 import android.graphics.Color
 import android.os.Bundle
 import androidx.fragment.app.Fragment
@@ -14,7 +14,7 @@ import androidx.core.os.bundleOf
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import kotlinx.android.synthetic.main.frag_session_edit.* // ktlint-disable no-wildcard-imports
+import tech.ula.databinding.FragSessionEditBinding // ktlint-disable no-wildcard-imports
 import tech.ula.R
 import tech.ula.model.entities.Filesystem
 import tech.ula.model.entities.ServiceType
@@ -35,7 +35,7 @@ class SessionEditFragment : Fragment() {
 
     private val sessionEditViewModel: SessionEditViewModel by lazy {
         val ulaDatabase = UlaDatabase.getInstance(activityContext)
-        ViewModelProviders.of(this, SessionEditViewmodelFactory(ulaDatabase)).get(SessionEditViewModel::class.java)
+        ViewModelProvider.of(this, SessionEditViewmodelFactory(ulaDatabase)).get(SessionEditViewModel::class.java)
     }
 
     private val filesystemChangeObserver = Observer<List<Filesystem>> {
