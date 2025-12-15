@@ -57,7 +57,7 @@ class FilesystemEditFragment : Fragment() {
 
     private val filesystemEditViewModel: FilesystemEditViewModel by lazy {
         val ulaDatabase = UlaDatabase.getInstance(activityContext)
-        ViewModelProvider.of(this, FilesystemEditViewmodelFactory(ulaDatabase)).get(FilesystemEditViewModel::class.java)
+        ViewModelProvider(this, FilesystemEditViewmodelFactory(ulaDatabase)).get(FilesystemEditViewModel::class.java)
     }
 
     private val distributionList by lazy {

@@ -35,7 +35,7 @@ class SessionEditFragment : Fragment() {
 
     private val sessionEditViewModel: SessionEditViewModel by lazy {
         val ulaDatabase = UlaDatabase.getInstance(activityContext)
-        ViewModelProvider.of(this, SessionEditViewmodelFactory(ulaDatabase)).get(SessionEditViewModel::class.java)
+        ViewModelProvider(this, SessionEditViewmodelFactory(ulaDatabase)).get(SessionEditViewModel::class.java)
     }
 
     private val filesystemChangeObserver = Observer<List<Filesystem>> {
