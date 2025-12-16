@@ -1,0 +1,175 @@
+name: Download Bundle (One-Pass Manifest + Pack)
+
+on:
+  workflow_dispatch:
+    inputs:
+      chunk_size_mb:
+        description: "Chunk size (MB) for streaming pieces"
+        required: false
+        default: "50"
+      include_git_dir:
+        description: "Include .git in the package (true/false)"
+        required: false
+        default: "false"
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full pass)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zstd coreutils findutils jq python3
+          # crc32 via python (zlib) — no extra package needed
+
+      - name: Normalize workspace (optional drop .git)
+        run: |
+          if [ "${{ inputs.include_git_dir }}" != "true" ]; then
+            rm -rf .git
+          fi
+
+      - name: Generate ONE-PASS manifest (jsonl + json)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+
+          python3 - <<'PY'
+          import os, json, time, hashlib, zlib
+
+          root = "."
+          items = []
+          total_bytes = 0
+
+          # single pass walk
+          for dirpath, dirnames, filenames in os.walk(root):
+            # skip out directory
+            if dirpath.startswith("./out"):
+              continue
+            for fn in filenames:
+              p = os.path.join(dirpath, fn)
+              if p.startswith("./out"):
+                continue
+              try:
+                st = os.stat(p)
+              except FileNotFoundError:
+                continue
+              if not os.path.isfile(p):
+                continue
+
+              # hash in one pass read
+              h = hashlib.sha256()
+              crc = 0
+              size = 0
+              with open(p, "rb") as f:
+                while True:
+                  b = f.read(1024 * 1024)
+                  if not b:
+                    break
+                  size += len(b)
+                  h.update(b)
+                  crc = zlib.crc32(b, crc)
+
+              rec = {
+                "path": p[2:] if p.startswith("./") else p,
+                "bytes": size,
+                "mtime": int(st.st_mtime),
+                "sha256": h.hexdigest(),
+                "crc32": format(crc & 0xffffffff, "08x"),
+              }
+              items.append(rec)
+              total_bytes += size
+
+          manifest = {
+            "schema": "RAFAELIA_MANIFEST_v1",
+            "generated_unix": int(time.time()),
+            "file_count": len(items),
+            "total_bytes": total_bytes,
+            "files": items,
+          }
+
+          with open("out/manifest.json", "w", encoding="utf-8") as f:
+            json.dump(manifest, f, ensure_ascii=False, separators=(",", ":"))
+
+          # also output jsonl for streaming/grep
+          with open("out/manifest.jsonl", "w", encoding="utf-8") as f:
+            for rec in items:
+              f.write(json.dumps(rec, ensure_ascii=False, separators=(",", ":")) + "\n")
+
+          print("file_count:", len(items))
+          print("total_bytes:", total_bytes)
+          PY
+
+          ls -lh out/manifest.json out/manifest.jsonl || true
+          wc -c out/manifest.json out/manifest.jsonl || true
+
+      - name: Pack project (tar + zstd)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+
+          # deterministic-ish ordering
+          # (GNU tar on ubuntu supports --sort=name)
+          tar --sort=name --mtime='UTC 2020-01-01' --owner=0 --group=0 --numeric-owner \
+              -cf out/project.tar .
+
+          zstd -19 -T0 -f out/project.tar -o out/project.tar.zst
+          rm -f out/project.tar
+
+          ls -lh out/project.tar.zst
+
+      - name: Chunk for streaming (ZipRaf-like delivery)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out/chunks
+          SZ="${{ inputs.chunk_size_mb }}"
+          # split into N MB parts
+          split -b "${SZ}m" -d -a 4 out/project.tar.zst out/chunks/project.tar.zst.part.
+
+          # index chunks
+          python3 - <<'PY'
+          import os, json, hashlib
+          base = "out/chunks"
+          parts = sorted([p for p in os.listdir(base) if p.startswith("project.tar.zst.part.")])
+          idx = []
+          for i,p in enumerate(parts):
+            fp = os.path.join(base,p)
+            h = hashlib.sha256()
+            size = 0
+            with open(fp,"rb") as f:
+              while True:
+                b=f.read(1024*1024)
+                if not b: break
+                size += len(b)
+                h.update(b)
+            idx.append({"part": p, "bytes": size, "sha256": h.hexdigest()})
+          with open("out/chunks/index.json","w",encoding="utf-8") as f:
+            json.dump({"schema":"RAFAELIA_CHUNKS_v1","count":len(idx),"parts":idx}, f, ensure_ascii=False, separators=(",",":"))
+          print("chunks:", len(idx))
+          PY
+
+          ls -lh out/chunks | head -n 50 || true
+          wc -c out/chunks/index.json || true
+
+      - name: Upload artifacts (manifest + chunks)
+        uses: actions/upload-artifact@v4
+        with:
+          name: rafaelia-download-bundle
+          path: |
+            out/manifest.json
+            out/manifest.jsonl
+            out/project.tar.zst
+            out/chunks/index.json
+            out/chunks/project.tar.zst.part.*
+          if-no-files-found: error
+          retention-days: 7
