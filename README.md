@@ -170,6 +170,20 @@ All helpers emit stable JSON payloads so monitoring tools can parse the same sch
   }
   ```
 
+* `raf_arch_probe` emits a compact snapshot of the target toolchain architecture,
+  endianness, word size, and a monotonic cycle counter sourced from inline
+  assembly when available:
+
+  ```json
+  {
+    "arch": "aarch64",
+    "word_bits": 64,
+    "endianness": "little",
+    "cycle_counter": 123456789,
+    "used_inline_asm": true
+  }
+  ```
+
 * `raf_bitraf_store` absorbs a raw byte vector (or synthetic gradient), applies
   a programmable verb (`pass`, `shift`, `fractalize`, or `bitwise`), derives
   four fractal fingerprints plus two parity rails, and appends a compact
