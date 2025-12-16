@@ -1,56 +1,46 @@
-name: Android Debug APK
+name: Android Debug (manual)
 
 on:
-  push:
-    branches: [ "master" ]
-    paths:
-      - "app/**"
-      - ".github/workflows/android-debug.yml"
-  pull_request:
-    paths:
-      - "app/**"
-      - ".github/workflows/android-debug.yml"
+  workflow_dispatch:
 
-env:
-  JAVA_VERSION: "17"
-  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-  NDK_VERSION: 27.3.13750724
+permissions:
+  contents: read
+
+concurrency:
+  group: android-debug-manual-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build debug APK
+  debug:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Prepare Android SDK and NDK
-        uses: ./.github/actions/setup-android-env
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
-          java-version: ${{ env.JAVA_VERSION }}
-          build-tools-version: "34.0.0"
-          platform-version: "34"
-          ndk-version: ${{ env.NDK_VERSION }}
+          distribution: "temurin"
+          java-version: "17"
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x ./gradlew
+      - name: Gradle cache
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Build debug APK
+      - name: Assemble Debug + Tests (optional)
+        shell: bash
         run: |
-          echo "🔨 Building debug APK..."
-          ./gradlew clean assembleDebug --stacktrace --no-daemon
-          echo "✓ Debug APK built successfully"
+          set -euo pipefail
+          chmod +x ./gradlew
+          ./gradlew :app:assembleDebug --stacktrace
+          # se quiser rodar testes:
+          # ./gradlew test --stacktrace
 
-      - name: Verify APK exists
-        run: |
-          echo "🔍 Verifying APK artifacts..."
-          ls -lh app/build/outputs/apk/debug/*.apk
-          echo "✓ APK verification complete"
-
-      - name: Upload debug APK artifact
-        uses: actions/upload-artifact@v6
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-          name: userland-debug-apk
+          name: android-debug-manual-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 7
