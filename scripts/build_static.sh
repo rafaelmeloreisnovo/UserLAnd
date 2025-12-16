@@ -103,3 +103,4 @@ fi
 build raf_cpu_core.c raf_cpu_core
 build raf_mem_core.c raf_mem_core
 build raf_disk_core.c raf_disk_core
+build raf_arch_probe.c raf_arch_probe

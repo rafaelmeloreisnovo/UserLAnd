@@ -146,9 +146,9 @@ All helpers emit stable JSON payloads so monitoring tools can parse the same sch
 
 * `raf_disk_core` reads `/proc/diskstats` directly and prints:
 
-  ```json
-  {
-    "timestamp_ms": 1715890000000,
+```json
+{
+  "timestamp_ms": 1715890000000,
     "disks": [
       {
         "name": "sda",
@@ -167,6 +167,20 @@ All helpers emit stable JSON payloads so monitoring tools can parse the same sch
         "weighted_time_io_ms": 0
       }
     ]
+  }
+  ```
+
+* `raf_arch_probe` emits a compact snapshot of the target toolchain architecture,
+  endianness, word size, and a monotonic cycle counter sourced from inline
+  assembly when available:
+
+  ```json
+  {
+    "arch": "aarch64",
+    "word_bits": 64,
+    "endianness": "little",
+    "cycle_counter": 123456789,
+    "used_inline_asm": true
   }
   ```
 
