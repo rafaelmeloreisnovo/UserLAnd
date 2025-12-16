@@ -207,36 +207,70 @@ static int generate_json_output(char *buffer, size_t buffer_size) {
     const size_t word_bits = sizeof(void *) * BITS_PER_BYTE;
     bool has_crypto = has_crypto_extensions();
 
-    int written = snprintf(buffer, buffer_size,
-        "{"
-        "\"arch\":\"%s\","
-        "\"word_bits\":%zu,"
-        "\"endianness\":\"%s\","
-        "\"simd\":\"%s\","
-        "\"fpu\":\"%s\","
-        "\"crypto\":%s,"
-        "\"cycle_counter\":%" PRIu64 ","
-        "\"used_inline_asm\":%s,"
-        "\"timestamp_ns\":%" PRIu64 ""
-        "}\n",
-        arch,
-        word_bits,
-        endianness,
-        simd,
-        fpu,
-        has_crypto ? "true" : "false",
-        counter,
-        used_asm ? "true" : "false",
-        counter  /* If asm not used, this is already nanoseconds */
-    );
-
-    if (written < 0 || (size_t)written >= buffer_size) {
-        fprintf(stderr, "[ERROR] JSON buffer overflow (needed %d bytes, have %zu)\n", 
-                written, buffer_size);
-        return -1;
-    }
+    /* Build JSON incrementally for better maintainability and error handling */
+    int pos = 0;
+    int written;
+    
+    /* JSON opening brace */
+    written = snprintf(buffer + pos, buffer_size - pos, "{");
+    if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
+    pos += written;
+    
+    /* Architecture field */
+    written = snprintf(buffer + pos, buffer_size - pos, "\"arch\":\"%s\",", arch);
+    if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
+    pos += written;
+    
+    /* Word bits field */
+    written = snprintf(buffer + pos, buffer_size - pos, "\"word_bits\":%zu,", word_bits);
+    if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
+    pos += written;
+    
+    /* Endianness field */
+    written = snprintf(buffer + pos, buffer_size - pos, "\"endianness\":\"%s\",", endianness);
+    if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
+    pos += written;
+    
+    /* SIMD field */
+    written = snprintf(buffer + pos, buffer_size - pos, "\"simd\":\"%s\",", simd);
+    if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
+    pos += written;
+    
+    /* FPU field */
+    written = snprintf(buffer + pos, buffer_size - pos, "\"fpu\":\"%s\",", fpu);
+    if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
+    pos += written;
+    
+    /* Crypto field */
+    written = snprintf(buffer + pos, buffer_size - pos, "\"crypto\":%s,", has_crypto ? "true" : "false");
+    if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
+    pos += written;
+    
+    /* Cycle counter field */
+    written = snprintf(buffer + pos, buffer_size - pos, "\"cycle_counter\":%" PRIu64 ",", counter);
+    if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
+    pos += written;
+    
+    /* Inline ASM field */
+    written = snprintf(buffer + pos, buffer_size - pos, "\"used_inline_asm\":%s,", used_asm ? "true" : "false");
+    if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
+    pos += written;
+    
+    /* Timestamp field (last, no trailing comma) */
+    written = snprintf(buffer + pos, buffer_size - pos, "\"timestamp_ns\":%" PRIu64, counter);
+    if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
+    pos += written;
+    
+    /* JSON closing brace and newline */
+    written = snprintf(buffer + pos, buffer_size - pos, "}\n");
+    if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
+    pos += written;
 
     return 0;
+
+overflow:
+    fprintf(stderr, "[ERROR] JSON buffer overflow (needed more than %zu bytes)\n", buffer_size);
+    return -1;
 }
 
 /*

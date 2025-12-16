@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Rafaelia module is a revolutionary, disruptive low-level computing framework that integrates hardware-aware components with ethical principles and comprehensive standards compliance. This module represents a "Scientific-Spiritual" (CienTíEspiritual) approach to software engineering.
+The Rafaelia module is a low-level computing framework that provides hardware-aware components with comprehensive standards compliance. It integrates seamlessly with the UserLAnd project to enable advanced system-level functionality.
 
 ## Architecture
 

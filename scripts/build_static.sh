@@ -126,10 +126,5 @@ build raf_arch_probe.c raf_arch_probe
 
 # Build Rafaelia module components
 if [[ -f "$SRC_DIR/rafaelia/rafaelia_arch_probe.c" ]]; then
-  echo "[build] rafaelia/rafaelia_arch_probe.c -> $OUT_DIR/rafaelia_arch_probe_v2" >&2
-  if [[ -n "$TARGET" ]]; then
-    "$CC" $TARGET $CFLAGS "$SRC_DIR/rafaelia/rafaelia_arch_probe.c" -o "$OUT_DIR/rafaelia_arch_probe_v2" $LDFLAGS
-  else
-    "$CC" $CFLAGS "$SRC_DIR/rafaelia/rafaelia_arch_probe.c" -o "$OUT_DIR/rafaelia_arch_probe_v2" $LDFLAGS
-  fi
+  build rafaelia/rafaelia_arch_probe.c rafaelia_arch_probe_v2
 fi

@@ -49,6 +49,11 @@ normalize_path() {
 # Function to check if a path contains doubled segments
 # Returns 0 if doubled, 1 if not
 # Only considers it doubled if the same non-common segment appears consecutively
+#
+# Common directory names that might legitimately repeat at multiple levels:
+# - bin, lib, usr, opt, etc, var, tmp, home, root (system directories)
+# - src, build, test, tests, dist, out (build artifacts and source organization)
+# - node_modules, vendor (dependency directories that might nest)
 has_doubled_path() {
     local input_path="$1"
     
@@ -65,11 +70,11 @@ has_doubled_path() {
         fi
         
         # Only flag as doubled if it's an exact consecutive duplicate
-        # AND it's not a common name like "bin", "lib", "usr", "opt", etc.
+        # AND it's not a common name that might legitimately appear at multiple levels
         if [[ "$comp" == "$prev" ]]; then
             # List of common directory names that might legitimately repeat
             case "$comp" in
-                bin|lib|usr|opt|etc|var|tmp|home|root)
+                bin|lib|usr|opt|etc|var|tmp|home|root|src|build|test|tests|dist|out|node_modules|vendor)
                     # These are common and might appear at multiple levels
                     ;;
                 *)
