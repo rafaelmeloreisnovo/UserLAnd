@@ -5,22 +5,32 @@ on:
     branches: [ master, main ]
   pull_request:
     branches: [ master, main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Evita duplicação e “dobro” (cancela o anterior no mesmo ref)
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   JAVA_VERSION: "17"
-  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
   NDK_VERSION: "27.3.13750724"
 
 jobs:
   build-debug:
     name: Build Debug APK
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -30,43 +40,56 @@ jobs:
           cache: gradle
           cache-dependency-path: |
             app/build.gradle
+            app/build.gradle.kts
             build.gradle
+            settings.gradle
             gradle/wrapper/gradle-wrapper.properties
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Accept SDK licenses and install components
+      - name: Install SDK/NDK components
+        shell: bash
         run: |
           set -euo pipefail
           echo "📦 Installing Android SDK components..."
-          yes | sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --licenses || true
-          yes | sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --install \
+          sdkmanager --licenses || true
+          sdkmanager --install \
             "platform-tools" \
             "platforms;android-34" \
             "build-tools;34.0.0" \
             "ndk;${{ env.NDK_VERSION }}"
           echo "✓ SDK components installed"
 
-      - name: Configure NDK path
+      - name: Configure NDK path for Gradle
+        shell: bash
         run: |
-          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${{ env.NDK_VERSION }}" >> "$GITHUB_ENV"
-          printf "ndk.dir=%s/ndk/%s\n" "${ANDROID_SDK_ROOT}" "${{ env.NDK_VERSION }}" >> local.properties
+          set -euo pipefail
+          # Usa o SDK root real do runner (sem hardcode)
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          if [ -z "$SDK_ROOT" ]; then
+            echo "ERROR: ANDROID_SDK_ROOT/ANDROID_HOME not set"; exit 1
+          fi
+          echo "ANDROID_NDK_HOME=$SDK_ROOT/ndk/${{ env.NDK_VERSION }}" >> "$GITHUB_ENV"
+          printf "ndk.dir=%s/ndk/%s\n" "$SDK_ROOT" "${{ env.NDK_VERSION }}" >> local.properties
 
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
       - name: Build Debug APK
+        shell: bash
         run: |
+          set -euo pipefail
           echo "🔨 Building debug APK..."
-          ./gradlew clean assembleDebug --no-daemon --stacktrace
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace
           echo "✓ Debug APK built successfully"
 
       - name: Verify APK exists
+        shell: bash
         run: |
+          set -euo pipefail
           echo "🔍 Verifying APK artifacts..."
           ls -lh app/build/outputs/apk/debug/*.apk
-          echo "✓ APK verification complete"
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
@@ -74,17 +97,22 @@ jobs:
           name: userland-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 7
 
   build-release:
     name: Build Release APK
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 45
+
+    # Release só manual OU em tag v*
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -94,54 +122,66 @@ jobs:
           cache: gradle
           cache-dependency-path: |
             app/build.gradle
+            app/build.gradle.kts
             build.gradle
+            settings.gradle
             gradle/wrapper/gradle-wrapper.properties
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Accept SDK licenses and install components
+      - name: Install SDK/NDK components
+        shell: bash
         run: |
           set -euo pipefail
-          yes | sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --licenses || true
-          yes | sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --install \
+          sdkmanager --licenses || true
+          sdkmanager --install \
             "platform-tools" \
             "platforms;android-34" \
             "build-tools;34.0.0" \
             "ndk;${{ env.NDK_VERSION }}"
 
-      - name: Configure NDK path
+      - name: Configure NDK path for Gradle
+        shell: bash
         run: |
-          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${{ env.NDK_VERSION }}" >> "$GITHUB_ENV"
-          printf "ndk.dir=%s/ndk/%s\n" "${ANDROID_SDK_ROOT}" "${{ env.NDK_VERSION }}" >> local.properties
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          if [ -z "$SDK_ROOT" ]; then
+            echo "ERROR: ANDROID_SDK_ROOT/ANDROID_HOME not set"; exit 1
+          fi
+          echo "ANDROID_NDK_HOME=$SDK_ROOT/ndk/${{ env.NDK_VERSION }}" >> "$GITHUB_ENV"
+          printf "ndk.dir=%s/ndk/%s\n" "$SDK_ROOT" "${{ env.NDK_VERSION }}" >> local.properties
 
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      - name: Restore keystore (if secrets exist)
-        if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' }}
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      - name: Restore keystore (if secret exists)
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        shell: bash
         run: |
+          set -euo pipefail
           echo "🔐 Restoring keystore file..."
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > keystore.jks
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
           echo "✓ Keystore restored"
 
-      - name: Build Release APK
+      - name: Build Release APK (signed if secrets exist)
+        shell: bash
         env:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          USERLAND_UNSIGNED_APK: ${{ secrets.ANDROID_KEYSTORE_BASE64 == '' && '1' || '' }}
         run: |
+          set -euo pipefail
           echo "🔨 Building release APK..."
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace
           echo "✓ Release APK built"
 
       - name: Verify Release APK exists
+        shell: bash
         run: |
+          set -euo pipefail
           echo "🔍 Verifying release APK..."
-          find app/build/outputs/apk/release -name "*.apk" -ls || echo "No release APK found"
+          find app/build/outputs/apk/release -name "*.apk" -ls
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
@@ -149,3 +189,4 @@ jobs:
           name: userland-release-apk
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: warn
+          retention-days: 7
