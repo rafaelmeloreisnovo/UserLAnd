@@ -1,4 +1,4 @@
-#define _POSIX_C_SOURCE 200809L
+#define _POSIX_C_SOURCE 199309L
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -6,29 +6,34 @@
 #include <stdio.h>
 #include <time.h>
 
-static uint64_t read_cycle_counter(bool *used_asm) {
+#define BITS_PER_BYTE 8u
+#define ENDIANNESS_PROBE 0x0102u  // Distinct byte pattern for endian detection
+#define NANOSECONDS_PER_SECOND 1000000000ull
+
+static uint64_t read_timing_counter(bool *used_asm) {
+  bool asm_used = false;
+  uint64_t value = 0;
 #if defined(__aarch64__)
-  uint64_t vct;
-  __asm__ volatile("mrs %0, cntvct_el0" : "=r"(vct));
-  if (used_asm) {
-    *used_asm = true;
-  }
-  return vct;
+  __asm__ volatile("mrs %0, cntvct_el0" : "=r"(value));
+  asm_used = true;
 #elif defined(__x86_64__) || defined(__i386__)
   uint32_t lo, hi;
   __asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi));
-  if (used_asm) {
-    *used_asm = true;
-  }
-  return ((uint64_t)hi << 32) | lo;
+  asm_used = true;
+  value = ((uint64_t)hi << 32) | lo;
 #else
   struct timespec ts;
+  // Fallback: monotonic clock in nanoseconds (not a hardware cycle counter) when
+  // arch-specific timers are unavailable.
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  if (used_asm) {
-    *used_asm = false;
-  }
-  return (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
+  value = (uint64_t)ts.tv_sec * NANOSECONDS_PER_SECOND +
+          (uint64_t)ts.tv_nsec;
 #endif
+
+  if (used_asm) {
+    *used_asm = asm_used;
+  }
+  return value;
 }
 
 static const char *detect_arch(void) {
@@ -46,27 +51,24 @@ static const char *detect_arch(void) {
 }
 
 static const char *detect_endianness(void) {
-  const uint16_t probe = 0x0102;
+  const uint16_t probe = ENDIANNESS_PROBE;
   const unsigned char *b = (const unsigned char *)&probe;
   return b[0] == 0x01 ? "big" : "little";
 }
 
 int main(void) {
   bool used_asm = false;
-  uint64_t counter = read_cycle_counter(&used_asm);
+  uint64_t counter = read_timing_counter(&used_asm);
   const char *arch = detect_arch();
   const char *endianness = detect_endianness();
-  const size_t word_bits = sizeof(void *) * 8u;
+  const size_t word_bits = sizeof(void *) * BITS_PER_BYTE;
 
-  printf(
-      "{"
-      "\"arch\":\"%s\","
-      "\"word_bits\":%zu,"
-      "\"endianness\":\"%s\","
-      "\"cycle_counter\":%" PRIu64 ","
-      "\"used_inline_asm\":%s"
-      "}\n",
-      arch, word_bits, endianness, counter, used_asm ? "true" : "false");
+  printf("{\"arch\":\"%s\",", arch);
+  printf("\"word_bits\":%zu,", word_bits);
+  printf("\"endianness\":\"%s\",", endianness);
+  printf("\"cycle_counter\":%" PRIu64 ",", counter);
+  printf("\"used_inline_asm\":%s", used_asm ? "true" : "false");
+  printf("}\n");
 
   return 0;
 }
