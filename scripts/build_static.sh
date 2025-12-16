@@ -3,6 +3,16 @@ set -euo pipefail
 
 # Repository root (one level above scripts/)
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Source path validation helpers (for advanced path checking if needed)
+SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
+if [[ -f "$SCRIPT_DIR/path_validator.sh" ]]; then
+  source "$SCRIPT_DIR/path_validator.sh"
+fi
+
+# Set SRC_DIR with basic validation
+# Note: /home/runner/work/UserLAnd/UserLAnd is the CORRECT GitHub Actions path
+# (organization/repository structure), not a doubling error
 SRC_DIR="${SRC_DIR:-"$ROOT_DIR"}"
 
 # Output directory for compiled binaries
@@ -80,15 +90,24 @@ build() {
   local src="$1"
   local bin_name="$2"
   local out="$OUT_DIR/$bin_name"
+  
+  # Construct source path
+  local src_path="$SRC_DIR/$src"
+  
+  # Verify source file exists
+  if [[ ! -f "$src_path" ]]; then
+    echo "[ERROR] Source file not found: $src_path" >&2
+    return 1
+  fi
 
   echo "[build] $src -> $out" >&2
 
   if [[ -n "$TARGET" ]]; then
     # Cross or special target (e.g. MUSL)
-    "$CC" $TARGET $CFLAGS "$SRC_DIR/$src" -o "$out" $LDFLAGS
+    "$CC" $TARGET $CFLAGS "$src_path" -o "$out" $LDFLAGS
   else
     # Native build (glibc / default system toolchain)
-    "$CC" $CFLAGS "$SRC_DIR/$src" -o "$out" $LDFLAGS
+    "$CC" $CFLAGS "$src_path" -o "$out" $LDFLAGS
   fi
 }
 
@@ -104,3 +123,8 @@ build raf_cpu_core.c raf_cpu_core
 build raf_mem_core.c raf_mem_core
 build raf_disk_core.c raf_disk_core
 build raf_arch_probe.c raf_arch_probe
+
+# Build Rafaelia module components
+if [[ -f "$SRC_DIR/rafaelia/rafaelia_arch_probe.c" ]]; then
+  build rafaelia/rafaelia_arch_probe.c rafaelia_arch_probe_v2
+fi
