@@ -146,9 +146,9 @@ All helpers emit stable JSON payloads so monitoring tools can parse the same sch
 
 * `raf_disk_core` reads `/proc/diskstats` directly and prints:
 
-```json
-{
-  "timestamp_ms": 1715890000000,
+  ```json
+  {
+    "timestamp_ms": 1715890000000,
     "disks": [
       {
         "name": "sda",
