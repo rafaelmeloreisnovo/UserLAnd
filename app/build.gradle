@@ -245,18 +245,40 @@ task downloadAssets(type: Download) {
 task fetchAssets(dependsOn: downloadAssets) {
     doLast {
         for (arch in architectures) {
-            delete "$buildDir/$arch"
+            def extractDir = new File(buildDir, arch)
+            def targetDir = new File(libDir, arch)
+            
+            // Clean previous directories completely
+            extractDir.deleteDir()
+            targetDir.deleteDir()
+            targetDir.mkdirs()
+            
+            // Extract ZIP
             copy {
                 from zipTree("$buildDir/$arch-assets.zip")
-                into "$buildDir/$arch"
+                into extractDir
             }
+            
+            // FIX: Get all files recursively, flatten structure
+            def sourceFiles = fileTree(extractDir) {
+                include '**/*'
+                exclude '**/*.zip'
+            }
+            
+            // Copy to jniLibs with proper flattening
             copy {
-                from "$buildDir/$arch"
-                into "$libDir/$arch"
-                // Lib files must start with 'lib' and end with '.so.'
+                from sourceFiles
+                into targetDir
                 rename '(.*)', 'lib_$1.so'
+                // CRITICAL FIX: Flatten nested paths - keep only filename
+                eachFile { file ->
+                    file.path = file.name
+                }
+                includeEmptyDirs = false
             }
-            new File("$libDir/$arch","lib_arch.so").text = "$arch"
+            
+            // Mark architecture
+            new File(targetDir, "lib_arch.so").text = arch
         }
     }
 }
