@@ -175,12 +175,16 @@ class ServerService : Service() {
         serviceJob.cancel()
     }
 
-    private fun removeSession(session: Session) {
-        activeSessions.remove(session.pid)
+    private fun stopServiceIfIdle() {
         if (activeSessions.isEmpty()) {
             stopForeground(true)
             stopSelf()
         }
+    }
+
+    private fun removeSession(session: Session) {
+        activeSessions.remove(session.pid)
+        stopServiceIfIdle()
     }
 
     private fun updateSession(session: Session) = serviceScope.launch {
@@ -235,6 +239,16 @@ class ServerService : Service() {
             } catch (e: Exception) {
                 busyboxExecutor.logCritical("startServer failed for ${session.name}: ${e.message}")
                 sendDialogBroadcast("sessionStartFailed")
+                stopServiceIfIdle()
+                return
+            }
+
+            if (pid <= 0L) {
+                busyboxExecutor.logCritical(
+                    "startServer returned non-positive pid $pid for ${session.name}"
+                )
+                sendDialogBroadcast("sessionStartFailed")
+                stopServiceIfIdle()
                 return
             }
 
