@@ -9,6 +9,7 @@ BUILD_TASK="assembleDebug"
 SKIP_SDK=false
 SKIP_BUILD=false
 GRADLE_ARGS=()
+REQUIRED_JAVA_MAJOR="17"
 
 usage() {
   cat <<'USAGE'
@@ -25,10 +26,10 @@ Options:
   --skip-build           Skip invoking Gradle after ensuring dependencies.
   -h, --help             Show this help message and exit.
 
-The script expects Java 11. It will try to auto-detect a Java 11 home via
-$JAVA_HOME_11_X64, $JAVA_HOME, /usr/libexec/java_home (macOS), or
-/usr/lib/jvm/java-11-openjdk-amd64 (Debian/Ubuntu). Set JAVA_HOME manually if
-none of those are available.
+The script expects Java 17 or newer. It will try to auto-detect a compatible
+JAVA_HOME via $JAVA_HOME_11_X64, $JAVA_HOME, /usr/libexec/java_home (macOS), or
+common Debian/Ubuntu locations such as /usr/lib/jvm/java-17-openjdk-amd64. Set
+JAVA_HOME manually if none of those are available.
 USAGE
 }
 
@@ -70,11 +71,13 @@ TOOLS_DIR="$SDK_DIR/cmdline-tools/latest"
 
 find_java_home() {
   local candidate
-  for candidate in "${JAVA_HOME_11_X64:-}" "${JAVA_HOME:-}" "$(/usr/libexec/java_home -v 11 2>/dev/null || true)" \
-    "/usr/lib/jvm/java-11-openjdk-amd64"; do
+  for candidate in "${JAVA_HOME_11_X64:-}" "${JAVA_HOME:-}" "$(/usr/libexec/java_home -v ${REQUIRED_JAVA_MAJOR} 2>/dev/null || true)" \
+    "/usr/lib/jvm/java-${REQUIRED_JAVA_MAJOR}-openjdk-amd64" "/usr/lib/jvm/java-${REQUIRED_JAVA_MAJOR}-openjdk"; do
     if [[ -n "$candidate" && -x "$candidate/bin/java" ]]; then
       "$candidate/bin/java" -version >/tmp/java_version.log 2>&1 || true
-      if grep -q 'version "11' /tmp/java_version.log; then
+      java_version_output=$(cat /tmp/java_version.log)
+      java_major=$(echo "$java_version_output" | sed -n 's/.*version "\([0-9]\{2\}\|[0-9]\)\..*/\1/p' | head -n1)
+      if [[ -n "$java_major" && "$java_major" -ge "$REQUIRED_JAVA_MAJOR" ]]; then
         echo "$candidate"
         return 0
       fi
@@ -85,7 +88,7 @@ find_java_home() {
 
 JAVA_HOME_VALUE=$(find_java_home || true)
 if [[ -z "$JAVA_HOME_VALUE" ]]; then
-  echo "Java 11 was not found. Install it and set JAVA_HOME (or JAVA_HOME_11_X64)." >&2
+  echo "Java ${REQUIRED_JAVA_MAJOR}+ was not found. Install it and set JAVA_HOME (or JAVA_HOME_11_X64)." >&2
   exit 1
 fi
 export JAVA_HOME="$JAVA_HOME_VALUE"
@@ -107,7 +110,10 @@ if [[ "$SKIP_SDK" == false ]]; then
   fi
 
   export ANDROID_SDK_ROOT="$SDK_DIR"
-  yes | "$TOOLS_DIR/bin/sdkmanager" --licenses >/dev/null
+  # sdkmanager closes the input pipe after processing all licenses, which can
+  # deliver SIGPIPE to `yes` under `set -o pipefail`. Allow that benign exit
+  # while still accepting all licenses.
+  yes | "$TOOLS_DIR/bin/sdkmanager" --licenses >/dev/null || true
   "$TOOLS_DIR/bin/sdkmanager" --install "platform-tools" "platforms;android-30" "build-tools;30.0.3"
 else
   echo "Skipping SDK install/update as requested."

@@ -139,6 +139,13 @@ android {
         jvmTarget = "17"
     }
 
+    packagingOptions {
+        jniLibs {
+            // Skip stripping for helper scripts packaged as faux-".so" binaries
+            doNotStrip += ["**/lib_*.so"]
+        }
+    }
+
     buildFeatures {
         buildConfig true
         viewBinding true
