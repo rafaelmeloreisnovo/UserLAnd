@@ -31,7 +31,8 @@ jobs:
           for attempt in {1..3}; do
             if ./gradlew --no-daemon :app:fetchAssets -PuserlandUnsignedApk=true; then
               break
-            elif [ $attempt -lt 3 ]; then
+            fi
+            if [ $attempt -lt 3 ]; then
               echo "Attempt $attempt failed, retrying in 5s..."
               sleep 5
             else
@@ -48,6 +49,8 @@ jobs:
 
       - name: Show APK locations
         run: |
+          echo "APK files generated:"
+          find app/build/outputs/apk -name "*.apk" -print | sed 's/^/ - /'
           ls -lh app/build/outputs/apk/debug || true
           ls -lh app/build/outputs/apk/release || true
 
