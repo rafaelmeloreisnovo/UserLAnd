@@ -5,7 +5,9 @@ import android.os.Bundle
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import tech.ula.databinding.ActivityMainBinding
+import tech.ula.model.entities.App
 import tech.ula.model.entities.Session
+import tech.ula.ui.AppsListFragment
 import tech.ula.ui.SessionListFragment
 
 /**
@@ -13,7 +15,7 @@ import tech.ula.ui.SessionListFragment
  * TODO: Full ViewBinding migration required - the original code references
  * kotlin-android-extensions synthetics which are no longer supported in Kotlin 1.8+.
  */
-class MainActivity : AppCompatActivity(), SessionListFragment.SessionSelection {
+class MainActivity : AppCompatActivity(), SessionListFragment.SessionSelection, AppsListFragment.AppSelection {
 
     private lateinit var binding: ActivityMainBinding
     private var progressDialog: ProgressDialog? = null
@@ -67,5 +69,9 @@ class MainActivity : AppCompatActivity(), SessionListFragment.SessionSelection {
 
     override fun sessionHasBeenSelected(session: Session) {
         // TODO: Implement session selection handling
+    }
+
+    override fun appHasBeenSelected(app: App, autoStart: Boolean) {
+        // TODO: Implement app selection handling
     }
 }

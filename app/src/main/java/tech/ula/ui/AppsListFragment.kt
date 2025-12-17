@@ -38,9 +38,8 @@ class AppsListFragment : Fragment(), AppsListAdapter.AppsClickHandler {
     private var _binding: FragAppListBinding? = null
     private val binding get() = _binding!!
 
-    private val doOnAppSelection: AppSelection by lazy {
-        activityContext
-    }
+    private val doOnAppSelection: AppSelection
+        get() = activityContext
 
     private lateinit var activityContext: MainActivity
 

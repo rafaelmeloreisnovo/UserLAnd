@@ -226,7 +226,7 @@ class ServerService : Service() {
     private suspend fun startSession(session: Session, isDevDebugEnabled: Boolean) {
         try {
             if (isDevDebugEnabled) {
-                busyboxExecutor.enableDebug(session.name)
+                busyboxExecutor.enableDebug()
             }
 
             startForeground(
