@@ -131,6 +131,9 @@ class FilesystemEditFragment : Fragment() {
             is ImportSuccessState -> {
                 NavHostFragment.findNavController(this).popBackStack()
             }
+            else -> {
+                // No action needed for other states
+            }
         }
     }
 

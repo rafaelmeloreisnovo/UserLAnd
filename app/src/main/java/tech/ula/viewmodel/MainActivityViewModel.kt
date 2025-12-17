@@ -82,7 +82,10 @@ class MainActivityViewModel(
                     lastSelectedFilesystem = update.filesystem
                 }
                 else -> {
-                    // Handle other app startup states
+                    // Handle other app startup states like AppHasServiceTypeSet, AppRequiresServiceType,
+                    // AppScriptCopyFailed, AppScriptCopySucceeded, AppsFilesystemHasCredentials,
+                    // AppsFilesystemRequiresCredentials, CopyingAppScript, etc.
+                    // These are handled in handleAppsPreparationState() below
                 }
             }
             handleAppsPreparationState(update)
