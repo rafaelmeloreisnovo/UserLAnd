@@ -83,14 +83,14 @@ class LocalServerManager(
      * These variables can be used by scripts and init systems in the guest
      * to detect that they're running under UserLAnd.
      */
-    private fun buildBaseEnv(session: Session): MutableMap<String, String> {
-        val env = mutableMapOf<String, String>()
+    private fun buildBaseEnv(session: Session): HashMap<String, String> {
+        val env = hashMapOf<String, String>()
 
         // Generic UserLAnd context
         env["USERLAND_SESSION_NAME"] = session.name
         env["USERLAND_USERNAME"] = session.username
         env["USERLAND_FS_ID"] = session.filesystemId.toString()
-        env["USERLAND_SERVICE_TYPE"] = session.serviceType.name
+        env["USERLAND_SERVICE_TYPE"] = session.serviceType.toString()
         env["USERLAND_APP_FILES_DIR"] = applicationFilesDirPath
 
         // Room for future flags (debug levels, feature toggles, etc.)

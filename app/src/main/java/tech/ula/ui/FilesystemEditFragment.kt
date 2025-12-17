@@ -33,11 +33,7 @@ class FilesystemEditFragment : Fragment() {
 
     private val filesystemEditViewModel: FilesystemEditViewModel by lazy {
         val ulaDatabase = UlaDatabase.getInstance(activityContext)
-        val ulaFiles = UlaFiles(activityContext, activityContext.applicationInfo.nativeLibraryDir)
-        val prootDebugLogger = ProotDebugLogger(activityContext.defaultSharedPreferences, ulaFiles)
-        val busyboxExecutor = BusyboxExecutor(ulaFiles, prootDebugLogger)
-        val filesystemManager = FilesystemManager(ulaFiles, busyboxExecutor)
-        ViewModelProvider(this, FilesystemEditViewmodelFactory(ulaDatabase.filesystemDao(), filesystemManager))
+        ViewModelProvider(this, FilesystemEditViewmodelFactory(ulaDatabase))
             .get(FilesystemEditViewModel::class.java)
     }
 
@@ -87,8 +83,8 @@ class FilesystemEditFragment : Fragment() {
     }
 
     private fun setupFilesystemNameInput() {
-        binding.textInputFilesystemName.setText(filesystem.name)
-        binding.textInputFilesystemName.addTextChangedListener(object : TextWatcher {
+        binding.inputFilesystemName.setText(filesystem.name)
+        binding.inputFilesystemName.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(p0: Editable?) { filesystem.name = p0.toString() }
             override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
             override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
@@ -105,22 +101,22 @@ class FilesystemEditFragment : Fragment() {
     }
 
     private fun setupCredentialInputs() {
-        binding.textInputUsername.setText(filesystem.defaultUsername)
-        binding.textInputUsername.addTextChangedListener(object : TextWatcher {
+        binding.inputFilesystemUsername.setText(filesystem.defaultUsername)
+        binding.inputFilesystemUsername.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(p0: Editable?) { filesystem.defaultUsername = p0.toString() }
             override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
             override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
         })
 
-        binding.textInputPassword.setText(filesystem.defaultPassword)
-        binding.textInputPassword.addTextChangedListener(object : TextWatcher {
+        binding.inputFilesystemPassword.setText(filesystem.defaultPassword)
+        binding.inputFilesystemPassword.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(p0: Editable?) { filesystem.defaultPassword = p0.toString() }
             override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
             override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
         })
 
-        binding.textInputVncPassword.setText(filesystem.defaultVncPassword)
-        binding.textInputVncPassword.addTextChangedListener(object : TextWatcher {
+        binding.inputFilesystemVncpassword.setText(filesystem.defaultVncPassword)
+        binding.inputFilesystemVncpassword.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(p0: Editable?) { filesystem.defaultVncPassword = p0.toString() }
             override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
             override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
@@ -129,31 +125,30 @@ class FilesystemEditFragment : Fragment() {
 
     private fun handleViewStateChange(viewState: FilesystemEditViewState) {
         when (viewState) {
-            is FilesystemEditViewState.Success -> {
+            is Success -> {
                 NavHostFragment.findNavController(this).popBackStack()
             }
-            is FilesystemEditViewState.ImportSuccess -> {
+            is ImportSuccessState -> {
                 NavHostFragment.findNavController(this).popBackStack()
             }
-            else -> {}
         }
     }
 
     private fun insertFilesystem() {
         if (filesystem.name.isEmpty()) {
-            binding.textInputFilesystemName.error = getString(R.string.error_filesystem_name)
+            binding.inputFilesystemName.error = getString(R.string.error_filesystem_name)
             return
         }
         if (filesystem.defaultUsername.isEmpty()) {
-            binding.textInputUsername.error = getString(R.string.error_empty_field)
+            binding.inputFilesystemUsername.error = getString(R.string.error_empty_field)
             return
         }
         if (filesystem.defaultPassword.isEmpty()) {
-            binding.textInputPassword.error = getString(R.string.error_empty_field)
+            binding.inputFilesystemPassword.error = getString(R.string.error_empty_field)
             return
         }
         if (filesystem.defaultVncPassword.isEmpty()) {
-            binding.textInputVncPassword.error = getString(R.string.error_empty_field)
+            binding.inputFilesystemVncpassword.error = getString(R.string.error_empty_field)
             return
         }
 

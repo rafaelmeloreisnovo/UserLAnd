@@ -81,6 +81,9 @@ class MainActivityViewModel(
                     lastSelectedSession = update.session
                     lastSelectedFilesystem = update.filesystem
                 }
+                else -> {
+                    // Handle other app startup states
+                }
             }
             handleAppsPreparationState(update)
         } }
@@ -466,8 +469,8 @@ object ClearingSupportFiles : ProgressBarUpdateState()
 object ProgressBarOperationComplete : ProgressBarUpdateState()
 
 class MainActivityViewModelFactory(private val appsStartupFsm: AppsStartupFsm, private val sessionStartupFsm: SessionStartupFsm) : ViewModelProvider.NewInstanceFactory() {
-    override fun <T : ViewModel?> create(modelClass: Class<T>): T {
-        @Suppress("UNCHECKED_CAST")
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return MainActivityViewModel(appsStartupFsm, sessionStartupFsm) as T
     }
 }
