@@ -175,8 +175,8 @@ class AppDetailsViewModel(private val sessionDao: SessionDao, private val appDet
 }
 
 class AppDetailsViewmodelFactory(private val sessionDao: SessionDao, private val appDetails: AppDetails, private val buildVersion: Int, private val prefs: SharedPreferences) : ViewModelProvider.NewInstanceFactory() {
-    override fun <T : ViewModel?> create(modelClass: Class<T>): T {
-        @Suppress("UNCHECKED_CAST")
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return AppDetailsViewModel(sessionDao, appDetails, buildVersion, prefs) as T
     }
 }

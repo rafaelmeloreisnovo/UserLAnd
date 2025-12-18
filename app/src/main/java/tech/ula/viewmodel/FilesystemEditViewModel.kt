@@ -20,6 +20,10 @@ object ImportSuccess : FilesystemImportStatus()
 object UriUnselected : FilesystemImportStatus()
 data class ImportFailure(val reason: String) : FilesystemImportStatus()
 
+sealed class FilesystemEditViewState
+object Success : FilesystemEditViewState()
+object ImportSuccessState : FilesystemEditViewState()
+
 class FilesystemEditViewModel(private val ulaDatabase: UlaDatabase) : ViewModel(), CoroutineScope {
     private val job = Job()
     override val coroutineContext: CoroutineContext
@@ -31,6 +35,7 @@ class FilesystemEditViewModel(private val ulaDatabase: UlaDatabase) : ViewModel(
     }
 
     private val importStatusLiveData = MutableLiveData<FilesystemImportStatus>()
+    private val viewStateLiveData = MutableLiveData<FilesystemEditViewState>()
 
     var backupUri: Uri? = null
 
@@ -38,10 +43,15 @@ class FilesystemEditViewModel(private val ulaDatabase: UlaDatabase) : ViewModel(
         return importStatusLiveData
     }
 
+    fun getViewState(): LiveData<FilesystemEditViewState> {
+        return viewStateLiveData
+    }
+
     fun insertFilesystem(filesystem: Filesystem, coroutineScope: CoroutineScope = this) = coroutineScope.launch {
         withContext(Dispatchers.IO) {
             ulaDatabase.filesystemDao().insertFilesystem(filesystem)
         }
+        viewStateLiveData.postValue(Success)
     }
 
     fun insertFilesystemFromBackup(
@@ -85,6 +95,7 @@ class FilesystemEditViewModel(private val ulaDatabase: UlaDatabase) : ViewModel(
 
             backupUri = null
             importStatusLiveData.postValue(ImportSuccess)
+            viewStateLiveData.postValue(ImportSuccessState)
         }
     }
 
@@ -93,12 +104,13 @@ class FilesystemEditViewModel(private val ulaDatabase: UlaDatabase) : ViewModel(
             ulaDatabase.filesystemDao().updateFilesystem(filesystem)
             ulaDatabase.sessionDao().updateFilesystemNamesForAllSessions()
         }
+        viewStateLiveData.postValue(Success)
     }
 }
 
 class FilesystemEditViewmodelFactory(private val ulaDatabase: UlaDatabase) : ViewModelProvider.NewInstanceFactory() {
-    override fun <T : ViewModel?> create(modelClass: Class<T>): T {
-        @Suppress("UNCHECKED_CAST")
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return FilesystemEditViewModel(ulaDatabase) as T
     }
 }

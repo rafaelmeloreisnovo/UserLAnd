@@ -273,6 +273,27 @@ class BusyboxExecutor(
             FailedExecution("getProcessResult failed: ${e.message ?: e.toString()}")
         }
     }
+
+    // Logging helper methods for ServerService compatibility
+    fun logDebug(message: String) {
+        Log.d(TAG, message)
+    }
+
+    fun logError(message: String) {
+        Log.e(TAG, message)
+    }
+
+    fun logCritical(message: String) {
+        Log.e(TAG, "[CRITICAL] $message")
+    }
+
+    fun enableDebug() {
+        prootDebugLogger.enable()
+    }
+
+    fun disableDebug() {
+        prootDebugLogger.disable()
+    }
 }
 
 // This class is intended to allow stubbing of elements that are unavailable during unit tests.
@@ -374,26 +395,5 @@ class BusyboxWrapper(private val ulaFiles: UlaFiles) {
         if (sdCardBindingDir.exists() && sdCardBindingDir.isDirectory && sdCardBindingDirEmpty) {
             sdCardBindingDir.delete()
         }
-    }
-
-    // Logging helper methods for ServerService compatibility
-    fun logDebug(message: String) {
-        Log.d(TAG, message)
-    }
-
-    fun logError(message: String) {
-        Log.e(TAG, message)
-    }
-
-    fun logCritical(message: String) {
-        Log.e(TAG, "[CRITICAL] $message")
-    }
-
-    fun enableDebug() {
-        prootDebugLogger.enable()
-    }
-
-    fun disableDebug() {
-        prootDebugLogger.disable()
     }
 }

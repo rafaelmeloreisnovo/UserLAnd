@@ -28,9 +28,8 @@ class SessionListFragment : Fragment() {
     private var _binding: FragSessionListBinding? = null
     private val binding get() = _binding!!
 
-    private val doOnSessionSelection: SessionSelection by lazy {
-        activityContext
-    }
+    private val doOnSessionSelection: SessionSelection
+        get() = activityContext
 
     private lateinit var activityContext: MainActivity
 

@@ -170,8 +170,8 @@ class FilesystemListViewModel(
 }
 
 class FilesystemListViewmodelFactory(private val filesystemDao: FilesystemDao, private val sessionDao: SessionDao, private val filesystemManager: FilesystemManager) : ViewModelProvider.NewInstanceFactory() {
-    override fun <T : ViewModel?> create(modelClass: Class<T>): T {
-        @Suppress("UNCHECKED_CAST")
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return FilesystemListViewModel(filesystemDao, sessionDao, filesystemManager) as T
     }
 }

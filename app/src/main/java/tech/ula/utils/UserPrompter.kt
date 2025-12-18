@@ -337,7 +337,9 @@ class ContributionPrompter(private val activity: MainActivity, private val viewG
                     productId += "_monthly"
                 }
             }
-            savedActivity.billingManager.startPurchaseFlow(productId)
+            // TODO: MainActivity needs billingManager property
+            // savedActivity.billingManager.startPurchaseFlow(productId)
+            Toast.makeText(savedActivity, "Billing not yet implemented", Toast.LENGTH_SHORT).show()
             savedViewGroup.removeView(view)
         }
 
@@ -379,7 +381,10 @@ class ContributionPrompter(private val activity: MainActivity, private val viewG
     }
 
     private fun processPurchase(purchase: Purchase) {
-        if (purchase.sku.endsWith("onetime"))
+        // TODO: Migrate to new billing library API - Purchase.sku is deprecated
+        // Use purchase.products instead
+        val productId = purchase.products.firstOrNull() ?: ""
+        if (productId.endsWith("onetime"))
             setHasMadeInAppPurchase(true)
         else
             setHasMadeSubPurchase(true)
