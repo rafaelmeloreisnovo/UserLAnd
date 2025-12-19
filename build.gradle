@@ -10,7 +10,7 @@ buildscript {
         kotlin_version = '1.9.24'
         android_plugin = '8.5.2'
         jacoco_version = '0.8.11'
-        navigation_version = '2.7.7'
+        navigation_version = '2.9.6'
     }
 
     dependencies {
