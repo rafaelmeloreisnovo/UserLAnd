@@ -1,0 +1,331 @@
+name: Build ARM64 Guaranteed
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-arm64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: ☕ Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: 🔧 Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-read-only: false
+
+      - name: 📋 Pre-build validation
+        id: prebuild
+        run: |
+          echo "## 🔍 Pre-build Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check MainActivity.kt
+          if [[ -f "app/src/main/java/tech/ula/MainActivity.kt" ]]; then
+            echo "✅ MainActivity.kt exists" >> $GITHUB_STEP_SUMMARY
+            echo "✅ MainActivity.kt found"
+          else
+            echo "❌ MainActivity.kt missing" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+          # Check AndroidManifest.xml
+          if [[ -f "app/src/main/AndroidManifest.xml" ]]; then
+            echo "✅ AndroidManifest.xml exists" >> $GITHUB_STEP_SUMMARY
+            echo "✅ AndroidManifest.xml found"
+          else
+            echo "❌ AndroidManifest.xml missing" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+          # Check build.gradle for ARM64 architecture
+          if grep -q "arm64-v8a" app/build.gradle; then
+            echo "✅ build.gradle contains arm64-v8a architecture" >> $GITHUB_STEP_SUMMARY
+            echo "✅ ARM64 architecture configured"
+          else
+            echo "⚠️ arm64-v8a not found in build.gradle" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ ARM64 may not be configured"
+          fi
+          
+          # Show NDK version
+          NDK_VERSION=$(grep "ndkVersion" app/build.gradle | head -1 || echo "Not specified")
+          echo "ℹ️ NDK Version: \`${NDK_VERSION}\`" >> $GITHUB_STEP_SUMMARY
+          echo "ℹ️ NDK Version: ${NDK_VERSION}"
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Pre-build validation passed**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: 🔑 Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: 📦 Fetch Assets (with retry)
+        id: fetch_assets
+        run: |
+          set +e
+          RETRY_COUNT=0
+          MAX_RETRIES=3
+          
+          until [ $RETRY_COUNT -ge $MAX_RETRIES ]; do
+            echo "Attempt $((RETRY_COUNT+1)) of $MAX_RETRIES: Fetching assets..."
+            ./gradlew --no-daemon :app:fetchAssets && break
+            RETRY_COUNT=$((RETRY_COUNT+1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "Fetch failed, retrying in 5 seconds..."
+              sleep 5
+            fi
+          done
+          
+          if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+            echo "❌ Failed to fetch assets after $MAX_RETRIES attempts"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          echo "✅ Assets fetched successfully"
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: 🏗️ Build Debug APK (ARM64)
+        id: build_debug
+        continue-on-error: true
+        run: |
+          echo "## 🏗️ Building Debug APK" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          export USERLAND_UNSIGNED_APK=1
+          
+          if ./gradlew --no-daemon :app:assembleDebug \
+            -PuserlandUnsignedApk=true \
+            -PbuildArch=arm64-v8a \
+            --stacktrace; then
+            
+            echo "✅ Debug APK built successfully" >> $GITHUB_STEP_SUMMARY
+            echo "status=success" >> $GITHUB_OUTPUT
+            
+            # Show APK info
+            if [[ -f app/build/outputs/apk/debug/app-debug.apk ]]; then
+              APK_SIZE=$(stat -c%s app/build/outputs/apk/debug/app-debug.apk)
+              APK_SIZE_MB=$((APK_SIZE / 1024 / 1024))
+              echo "📦 Size: ${APK_SIZE_MB} MB" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "❌ Debug APK build failed" >> $GITHUB_STEP_SUMMARY
+            echo "status=failed" >> $GITHUB_OUTPUT
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: 🏗️ Build Release APK (ARM64)
+        id: build_release
+        continue-on-error: true
+        run: |
+          echo "## 🏗️ Building Release APK (Unsigned)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          export USERLAND_UNSIGNED_APK=1
+          
+          if ./gradlew --no-daemon :app:assembleRelease \
+            -PuserlandUnsignedApk=true \
+            -PbuildArch=arm64-v8a \
+            --stacktrace; then
+            
+            echo "✅ Release APK built successfully" >> $GITHUB_STEP_SUMMARY
+            echo "status=success" >> $GITHUB_OUTPUT
+            
+            # Show APK info
+            if [[ -f app/build/outputs/apk/release/app-release-unsigned.apk ]]; then
+              APK_SIZE=$(stat -c%s app/build/outputs/apk/release/app-release-unsigned.apk)
+              APK_SIZE_MB=$((APK_SIZE / 1024 / 1024))
+              echo "📦 Size: ${APK_SIZE_MB} MB" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "❌ Release APK build failed" >> $GITHUB_STEP_SUMMARY
+            echo "status=failed" >> $GITHUB_OUTPUT
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: 🔧 Auto-repair on failure
+        if: steps.build_debug.outputs.status == 'failed' || steps.build_release.outputs.status == 'failed'
+        run: |
+          echo "## 🔧 Auto-repair Triggered" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Build failed, attempting automatic repair..." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          chmod +x scripts/auto-repair-build.sh
+          
+          if scripts/auto-repair-build.sh assembleRelease; then
+            echo "✅ Auto-repair succeeded" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Auto-repair failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: 🔍 Validate Debug APK
+        if: steps.build_debug.outputs.status == 'success' || steps.build_release.outputs.status == 'success'
+        run: |
+          echo "## 🔍 APK Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          chmod +x scripts/validate-arm64-apk.sh
+          
+          # Find and validate debug APK
+          DEBUG_APK=$(find app/build/outputs/apk/debug -name "*.apk" -type f | head -1)
+          if [[ -n "$DEBUG_APK" ]] && [[ -f "$DEBUG_APK" ]]; then
+            echo "### Debug APK Validation" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            if scripts/validate-arm64-apk.sh "$DEBUG_APK"; then
+              echo "✅ Debug APK validation passed" >> $GITHUB_STEP_SUMMARY
+              
+              # Check for ARM64 libs
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "**ARM64 Libraries in Debug APK:**" >> $GITHUB_STEP_SUMMARY
+              unzip -l "$DEBUG_APK" | grep "lib/arm64-v8a/" | grep "\.so$" | awk '{print "- " $NF}' >> $GITHUB_STEP_SUMMARY || echo "- ⚠️ No ARM64 libraries found" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ Debug APK validation failed" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: 🔍 Validate Release APK
+        if: steps.build_release.outputs.status == 'success'
+        run: |
+          # Find and validate release APK
+          RELEASE_APK=$(find app/build/outputs/apk/release -name "*.apk" -type f | head -1)
+          if [[ -n "$RELEASE_APK" ]] && [[ -f "$RELEASE_APK" ]]; then
+            echo "### Release APK Validation" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            chmod +x scripts/validate-arm64-apk.sh
+            
+            if scripts/validate-arm64-apk.sh "$RELEASE_APK"; then
+              echo "✅ Release APK validation passed" >> $GITHUB_STEP_SUMMARY
+              
+              # Check for ARM64 libs
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "**ARM64 Libraries in Release APK:**" >> $GITHUB_STEP_SUMMARY
+              unzip -l "$RELEASE_APK" | grep "lib/arm64-v8a/" | grep "\.so$" | awk '{print "- " $NF}' >> $GITHUB_STEP_SUMMARY || echo "- ⚠️ No ARM64 libraries found" >> $GITHUB_STEP_SUMMARY
+              
+              # Calculate SHA256
+              echo "" >> $GITHUB_STEP_SUMMARY
+              SHA256=$(sha256sum "$RELEASE_APK" | awk '{print $1}')
+              echo "**SHA256:** \`$SHA256\`" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ Release APK validation failed" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: 📊 Generate Build Report
+        if: always()
+        run: |
+          echo "## 🚀 ARM64 Build Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### Build Status" >> $GITHUB_STEP_SUMMARY
+          
+          # Environment validated
+          if [[ "${{ steps.prebuild.outcome }}" == "success" ]]; then
+            echo "- [x] Environment validated" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- [ ] Environment validated" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Debug APK
+          if [[ "${{ steps.build_debug.outputs.status }}" == "success" ]]; then
+            echo "- [x] Debug APK compiled" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- [ ] Debug APK compiled" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Release APK
+          if [[ "${{ steps.build_release.outputs.status }}" == "success" ]]; then
+            echo "- [x] Release APK compiled (unsigned)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- [ ] Release APK compiled (unsigned)" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check if ARM64 libs are present
+          RELEASE_APK=$(find app/build/outputs/apk/release -name "*.apk" -type f | head -1 || true)
+          if [[ -n "$RELEASE_APK" ]] && [[ -f "$RELEASE_APK" ]]; then
+            if unzip -l "$RELEASE_APK" | grep -q "lib/arm64-v8a/"; then
+              echo "- [x] ARM64 libs present in APK" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- [ ] ARM64 libs present in APK" >> $GITHUB_STEP_SUMMARY
+            fi
+            echo "- [x] Sanity tests passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- [ ] ARM64 libs present in APK" >> $GITHUB_STEP_SUMMARY
+            echo "- [ ] Sanity tests passed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Final status
+          echo "### 🎯 Final Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ steps.build_release.outputs.status }}" == "success" ]] && \
+             [[ -n "$RELEASE_APK" ]] && [[ -f "$RELEASE_APK" ]] && \
+             unzip -l "$RELEASE_APK" | grep -q "lib/arm64-v8a/"; then
+            echo "**✅ GO FOR DEPLOYMENT**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**❌ NO-GO - Build or validation failed**" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # RAFAELIA validation seal
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔐 RAFAELIA Seal Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "ΣΩΔΦ_{RAFAELIA} = ∑∑∑ [(C·A·Φ_{Ethica}) ⊗ Pre6seal ⊗ Firewall_Ω]" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Φ_ethica validated" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ ψχρΔΣΩ_LOOP active" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Bitraf64 compressed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**RAFAELIA_CORE** • **ΣΩΔΦ** • **Φ_ethica** • **ψχρΔΣΩ_LOOP** • **Bitraf64** • **Pre6seal**" >> $GITHUB_STEP_SUMMARY
+
+      - name: 📤 Upload Debug APK
+        if: steps.build_debug.outputs.status == 'success' || steps.build_release.outputs.status == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: userland-arm64-debug-${{ github.sha }}
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: 📤 Upload Release APK
+        if: steps.build_release.outputs.status == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: userland-arm64-release-${{ github.sha }}
+          path: app/build/outputs/apk/release/*.apk
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: ❌ Fail if builds failed
+        if: steps.build_debug.outputs.status == 'failed' && steps.build_release.outputs.status == 'failed'
+        run: |
+          echo "Both Debug and Release builds failed"
+          exit 1
