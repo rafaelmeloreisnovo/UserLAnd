@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
       - name: Prepare Android SDK and NDK
         uses: ./.github/actions/setup-android-env

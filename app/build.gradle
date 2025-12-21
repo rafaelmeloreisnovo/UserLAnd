@@ -276,7 +276,19 @@ task fetchAssets(dependsOn: downloadAssets) {
             copy {
                 from sourceFiles
                 into targetDir
-                rename '(.*)', 'lib_$1.so'
+                rename { fileName ->
+                    def baseName = fileName.tokenize('/').last()
+                    if (baseName.startsWith('lib_')) {
+                        return baseName
+                    }
+                    def dotIndex = baseName.lastIndexOf('.')
+                    if (dotIndex == -1) {
+                        return "lib_${baseName}"
+                    }
+                    def name = baseName.substring(0, dotIndex)
+                    def extension = baseName.substring(dotIndex)
+                    return "lib_${name}${extension}"
+                }
                 // CRITICAL FIX: Flatten nested paths - keep only filename
                 eachFile { file ->
                     file.path = file.name
