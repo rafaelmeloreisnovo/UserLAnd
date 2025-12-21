@@ -82,6 +82,7 @@ The `scripts/build_static.sh` script implements several safeguards:
 1. **Explicit path construction**: Source paths are explicitly constructed as `$SRC_DIR/$src`
 2. **File existence validation**: Checks that source files exist before compilation
 3. **Clear error messages**: Provides helpful diagnostics when files are not found
+4. **Normalization with warnings**: `SRC_DIR` and `OUT_DIR` are normalized (when the helper is available) and emit warnings if a doubled segment is detected, without requiring the target directories to already exist.
 
 ```bash
 build() {
