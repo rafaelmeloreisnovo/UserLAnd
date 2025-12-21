@@ -151,13 +151,13 @@ jobs:
         run: |
           echo "## 🚀 Multi-Architecture Build Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "All architecture builds completed!" >> $GITHUB_STEP_SUMMARY
+          echo "Build job status: ${{ needs.build-multi-arch.result }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Built Architectures:" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ ARM64 (arm64-v8a)" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ ARMv7 (armeabi-v7a)" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ x86_64" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ x86" >> $GITHUB_STEP_SUMMARY
+          echo "- ${{ needs.build-multi-arch.result == 'success' && '✅' || '⚠️' }} ARM64 (arm64-v8a)" >> $GITHUB_STEP_SUMMARY
+          echo "- ${{ needs.build-multi-arch.result == 'success' && '✅' || '⚠️' }} ARMv7 (armeabi-v7a)" >> $GITHUB_STEP_SUMMARY
+          echo "- ${{ needs.build-multi-arch.result == 'success' && '✅' || '⚠️' }} x86_64" >> $GITHUB_STEP_SUMMARY
+          echo "- ${{ needs.build-multi-arch.result == 'success' && '✅' || '⚠️' }} x86" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
           echo "All APKs are available in the workflow artifacts with 90-day retention." >> $GITHUB_STEP_SUMMARY
