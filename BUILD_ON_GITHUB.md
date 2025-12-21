@@ -2,20 +2,51 @@
 
 This repository provides automated APK builds using GitHub Actions, eliminating the need for a local PC or signing keys for development builds.
 
-## 🚀 How to Use the Workflow
+## 🚀 Available Workflows
+
+### 1. Build APK (Standard)
+Basic workflow for building debug and release APKs with all architectures.
+
+### 2. Build ARM64 Guaranteed ⭐ NEW
+Advanced workflow specifically for ARM64 builds with comprehensive validation and auto-repair capabilities.
+
+**Features:**
+- ✅ Pre-build environment validation
+- ✅ ARM64-specific compilation (arm64-v8a)
+- ✅ Post-build APK validation
+- ✅ Automatic build repair on failure
+- ✅ Detailed GO/NO-GO status reports
+- ✅ 90-day artifact retention
+
+### 3. Build All Architectures ⭐ NEW
+Parallel builds for all supported architectures:
+- ARM64 (arm64-v8a)
+- ARMv7 (armeabi-v7a)
+- x86_64
+- x86
+
+**Benefits:**
+- Faster parallel execution
+- Individual artifacts per architecture
+- Comprehensive summary reports
+
+## 🚀 How to Use the Workflows
 
 ### Automatic Triggers
-The workflow runs automatically on:
+The workflows run automatically on:
 - Push to `main`, `master`, or `develop` branches
 - Pull requests targeting `main`, `master`, or `develop` branches
 
 ### Manual Trigger
 1. Navigate to the **Actions** tab in GitHub
-2. Select the **"Build APK"** workflow from the left sidebar
+2. Select your desired workflow from the left sidebar:
+   - **"Build APK"** - Standard build
+   - **"Build ARM64 Guaranteed"** - ARM64 with validation
+   - **"Build All Architectures"** - All architectures in parallel
 3. Click **"Run workflow"** button (top right)
 4. Select the branch you want to build from
 5. Click the green **"Run workflow"** button
-6. Wait 5-10 minutes for the build to complete
+6. Wait 10-15 minutes for the build to complete
 
 ## 📥 How to Download APKs
 
@@ -24,8 +55,25 @@ After a workflow run completes successfully:
 1. Open the completed workflow run from the **Actions** tab
 2. Scroll down to the **Artifacts** section at the bottom of the page
 3. Download the APK packages:
+   
+   **Standard Build Workflow:**
    - **UserLAnd-Debug-Unsigned** - Debug build (retained for 30 days)
    - **UserLAnd-Release-Unsigned** - Release build (retained for 90 days)
+   
+   **ARM64 Guaranteed Workflow:**
+   - **userland-arm64-debug-{sha}** - ARM64 Debug build (retained for 90 days)
+   - **userland-arm64-release-{sha}** - ARM64 Release build (retained for 90 days)
+   
+   **All Architectures Workflow:**
+   - **userland-arm64-debug-{sha}** - ARM64 Debug
+   - **userland-arm64-release-{sha}** - ARM64 Release
+   - **userland-armv7-debug-{sha}** - ARMv7 Debug
+   - **userland-armv7-release-{sha}** - ARMv7 Release
+   - **userland-x86_64-debug-{sha}** - x86_64 Debug
+   - **userland-x86_64-release-{sha}** - x86_64 Release
+   - **userland-x86-debug-{sha}** - x86 Debug
+   - **userland-x86-release-{sha}** - x86 Release
+
 4. Extract the downloaded ZIP file to get the APK
 5. Transfer the APK to your Android device
 
@@ -81,6 +129,21 @@ adb install app-release-unsigned.apk
   - Java version must be 17 (workflow uses Temurin distribution)
   - Gradle caching is enabled automatically
   - Review the workflow logs for specific error messages
+- **ARM64 Guaranteed**: Auto-repair will automatically attempt to fix the build by:
+  1. Stopping Gradle daemons
+  2. Clearing Gradle caches
+  3. Removing build directories
+  4. Resyncing dependencies
+  5. Retrying the build
+
+### APK Validation Fails (ARM64 Guaranteed Only)
+- **Issue**: APK validation step fails
+- **Checks performed**:
+  - ZIP structure integrity
+  - APK size > 10MB
+  - ARM64 libraries present (lib/arm64-v8a/)
+  - Unsigned status verification
+- **Solution**: Check the validation logs for specific failures
 
 ### APK Won't Install on Device
 - **Issue**: "App not installed" or similar error
@@ -155,23 +218,36 @@ You should see "Verification successful" in the output.
 
 ## 📊 Workflow Features
 
-### Network Resilience
-- Automatic retry logic for asset downloads (3 attempts with 5-second delays)
-- Handles transient network failures gracefully
-
-### Build Optimization
+### Standard Build Workflow
+- Network resilience with automatic retry logic (3 attempts)
 - Gradle dependency caching via `gradle/actions/setup-gradle@v3`
 - Faster subsequent builds (dependencies cached)
 - `--no-daemon` flag to reduce memory usage in CI
 
+### ARM64 Guaranteed Workflow ⭐
+- **Pre-build validation**: Checks MainActivity.kt, AndroidManifest.xml, build.gradle
+- **Post-build validation**: Comprehensive APK structure and content validation
+- **Auto-repair system**: Automatically fixes common build issues
+- **Detailed reporting**: GO/NO-GO status in GitHub Actions summary
+- **Extended retention**: 90-day artifact retention
+- **Validation script**: `scripts/validate-arm64-apk.sh` for manual testing
+- **Repair script**: `scripts/auto-repair-build.sh` for local debugging
+
+### All Architectures Workflow ⭐
+- **Parallel builds**: All architectures build simultaneously
+- **Matrix strategy**: Efficient use of CI resources
+- **Per-architecture artifacts**: Easy selection of specific builds
+- **Individual validation**: Each architecture validated separately
+
 ### Artifact Management
-- Debug APKs retained for 30 days
+- Debug APKs retained for 30-90 days (depending on workflow)
 - Release APKs retained for 90 days
 - Separate artifact uploads for easier identification
 - Detailed APK path logging for verification
 
 ### No Signing Required
 - Uses `-PuserlandUnsignedApk=true` flag (line 64 in `app/build.gradle` confirms support)
+- Environment variable `USERLAND_UNSIGNED_APK=1` for compatibility
 - No keystore files needed for CI builds
 - Suitable for development and testing workflows
 
@@ -182,6 +258,44 @@ To see detailed build information:
 2. Click on any step to expand its logs
 3. The **Display APK Paths** step shows generated APK locations and sizes
 4. Check the **Fetch Assets** step for download progress and retry attempts
+
+### ARM64 Guaranteed Workflow Summary
+The ARM64 workflow provides a comprehensive summary at the end of each run:
+- ✅ Pre-build validation status
+- ✅ Debug APK compilation status
+- ✅ Release APK compilation status
+- ✅ ARM64 libraries verification
+- ✅ Sanity tests results
+- 🎯 Final GO/NO-GO decision
+- 📊 APK sizes and checksums
+- 🔐 RAFAELIA project signature
+
+## 🧪 Local Testing Scripts
+
+The ARM64 workflow includes scripts you can use locally:
+
+### Validate ARM64 APK
+```bash
+./scripts/validate-arm64-apk.sh path/to/your-app.apk
+```
+This script validates:
+- ZIP structure integrity
+- APK size (must be > 10MB)
+- ARM64 native libraries presence
+- Unsigned status
+- SHA256 checksum
+
+### Auto-repair Build Issues
+```bash
+./scripts/auto-repair-build.sh [gradle-task]
+```
+Default task is `assembleRelease`. This script:
+1. Stops Gradle daemons
+2. Clears all caches
+3. Removes build directories
+4. Resyncs dependencies
+5. Fetches assets with retry
+6. Attempts rebuild
 
 ## 📚 Additional Resources
 
