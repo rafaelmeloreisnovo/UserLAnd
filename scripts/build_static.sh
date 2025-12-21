@@ -10,13 +10,43 @@ if [[ -f "$SCRIPT_DIR/path_validator.sh" ]]; then
   source "$SCRIPT_DIR/path_validator.sh"
 fi
 
+normalize_and_warn() {
+  local label="$1"
+  local value="$2"
+  local normalized="$value"
+  local have_normalize=0
+  local have_doubled=0
+
+  if declare -f normalize_path >/dev/null 2>&1; then
+    have_normalize=1
+  fi
+  if declare -f has_doubled_path >/dev/null 2>&1; then
+    have_doubled=1
+  fi
+
+  if (( have_normalize )); then
+    normalized="$(normalize_path "$value")"
+    if [[ "$normalized" != "$value" ]]; then
+      echo "[WARN] Normalized $label from '$value' to '$normalized'" >&2
+    fi
+  fi
+
+  if (( have_normalize && have_doubled )) && has_doubled_path "$normalized"; then
+    echo "[WARN] $label contains consecutive duplicate segments: $normalized" >&2
+  elif (( have_normalize && ! have_doubled )); then
+    echo "[WARN] Path normalization is enabled but doubled-path checking is unavailable; $label may contain undetected duplicate segments." >&2
+  fi
+
+  printf '%s\n' "$normalized"
+}
+
 # Set SRC_DIR with basic validation
 # Note: /home/runner/work/UserLAnd/UserLAnd is the CORRECT GitHub Actions path
 # (organization/repository structure), not a doubling error
-SRC_DIR="${SRC_DIR:-"$ROOT_DIR"}"
+SRC_DIR="$(normalize_and_warn "SRC_DIR" "${SRC_DIR:-"$ROOT_DIR"}")"
 
 # Output directory for compiled binaries
-OUT_DIR="${OUT_DIR:-"$ROOT_DIR/build/bin"}"
+OUT_DIR="$(normalize_and_warn "OUT_DIR" "${OUT_DIR:-"$ROOT_DIR/build/bin"}")"
 
 # Default C compiler (overridden when the NDK is present)
 CC="${CC:-cc}"

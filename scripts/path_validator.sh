@@ -8,10 +8,10 @@ set -euo pipefail
 # Output: "/path/to/UserLAnd/file"
 normalize_path() {
     local input_path="$1"
-    
-    # Convert to absolute path if relative
+
+    # Convert to absolute path if relative (without requiring the path to exist)
     if [[ ! "$input_path" = /* ]]; then
-        input_path="$(cd "$(dirname "$input_path")" && pwd)/$(basename "$input_path")"
+        input_path="$(pwd)/$input_path"
     fi
     
     # Split path into components
