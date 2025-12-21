@@ -285,9 +285,12 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           
           if [[ "${{ steps.build_release.outputs.status }}" == "success" ]] && \
-             [[ -n "$RELEASE_APK" ]] && [[ -f "$RELEASE_APK" ]] && \
-             unzip -l "$RELEASE_APK" | grep -q "lib/arm64-v8a/"; then
-            echo "**✅ GO FOR DEPLOYMENT**" >> $GITHUB_STEP_SUMMARY
+             [[ -n "$RELEASE_APK" ]] && [[ -f "$RELEASE_APK" ]]; then
+            if unzip -l "$RELEASE_APK" | grep -q "lib/arm64-v8a/"; then
+              echo "**✅ GO FOR DEPLOYMENT**" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "**❌ NO-GO - Build or validation failed**" >> $GITHUB_STEP_SUMMARY
+            fi
           else
             echo "**❌ NO-GO - Build or validation failed**" >> $GITHUB_STEP_SUMMARY
           fi
