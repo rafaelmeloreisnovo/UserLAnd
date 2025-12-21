@@ -91,11 +91,16 @@ fi
 log_success "ARM64 libraries found:"
 echo "$ARM64_LIBS" | while read -r line; do
   lib_name=$(echo "$line" | awk '{print $NF}')
-  lib_size=$(echo "$line" | awk '{print $1}')
+  # Compute the actual size in bytes for this library to ensure numfmt
+  # receives a clean numeric value, independent of unzip -l output format.
+  lib_size=$(unzip -p "$APK_PATH" "$lib_name" 2>/dev/null | wc -c | tr -d '[:space:]')
+  if [[ -z "$lib_size" ]]; then
+    lib_size="0"
+  fi
   if command -v numfmt > /dev/null 2>&1; then
-    formatted_size=$(numfmt --to=iec-i --suffix=B $lib_size 2>/dev/null || echo "$lib_size bytes")
+    formatted_size=$(numfmt --to=iec-i --suffix=B "$lib_size" 2>/dev/null || echo "${lib_size} bytes")
   else
-    formatted_size="$lib_size bytes"
+    formatted_size="${lib_size} bytes"
   fi
   echo "  📦 $lib_name ($formatted_size)"
 done
