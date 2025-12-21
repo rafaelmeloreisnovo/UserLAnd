@@ -83,7 +83,7 @@ extract_build_tools_version_from_app() {
   if [[ ! -f "$APP_BUILD_GRADLE" ]]; then
     return 1
   fi
-  sed -n 's/^[[:space:]]*buildToolsVersion[[:space:]]*["'\'']\([^"'\'']*\)["'\''].*/\1/p' "$APP_BUILD_GRADLE" | head -n1
+  sed -n 's/^[[:space:]]*buildToolsVersion[[:space:]]*=?[[:space:]]*["'\'']\([^"'\'']*\)["'\''].*/\1/p' "$APP_BUILD_GRADLE" | head -n1
 }
 
 find_java_home() {
