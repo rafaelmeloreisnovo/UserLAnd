@@ -76,7 +76,7 @@ extract_compile_sdk_from_app() {
   if [[ ! -f "$APP_BUILD_GRADLE" ]]; then
     return 1
   fi
-  sed -n 's/^[[:space:]]*compileSdk[[:space:]]\+//p' "$APP_BUILD_GRADLE" | head -n1
+  sed -n 's/^[[:space:]]*compileSdk[[:space:]]*=?[[:space:]]*//p' "$APP_BUILD_GRADLE" | head -n1
 }
 
 extract_build_tools_version_from_app() {
