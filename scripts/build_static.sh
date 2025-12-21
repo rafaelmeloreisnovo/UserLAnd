@@ -14,16 +14,27 @@ normalize_and_warn() {
   local label="$1"
   local value="$2"
   local normalized="$value"
+  local have_normalize=0
+  local have_doubled=0
 
   if declare -f normalize_path >/dev/null 2>&1; then
+    have_normalize=1
+  fi
+  if declare -f has_doubled_path >/dev/null 2>&1; then
+    have_doubled=1
+  fi
+
+  if (( have_normalize )); then
     normalized="$(normalize_path "$value")"
     if [[ "$normalized" != "$value" ]]; then
       echo "[WARN] Normalized $label from '$value' to '$normalized'" >&2
     fi
   fi
 
-  if declare -f has_doubled_path >/dev/null 2>&1 && has_doubled_path "$normalized"; then
+  if (( have_normalize && have_doubled )) && has_doubled_path "$normalized"; then
     echo "[WARN] $label contains consecutive duplicate segments: $normalized" >&2
+  elif (( have_normalize && ! have_doubled )); then
+    echo "[WARN] Path normalization is enabled but doubled-path checking is unavailable; $label may contain undetected duplicate segments." >&2
   fi
 
   printf '%s\n' "$normalized"
