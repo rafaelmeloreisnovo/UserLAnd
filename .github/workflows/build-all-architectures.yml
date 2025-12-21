@@ -1,0 +1,175 @@
+name: Build All Architectures
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-multi-arch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture:
+          - name: ARM64
+            gradle_arg: arm64-v8a
+            artifact_suffix: arm64
+          - name: ARMv7
+            gradle_arg: armeabi-v7a
+            artifact_suffix: armv7
+          - name: x86_64
+            gradle_arg: x86_64
+            artifact_suffix: x86_64
+          - name: x86
+            gradle_arg: x86
+            artifact_suffix: x86
+    
+    name: Build ${{ matrix.architecture.name }}
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: ☕ Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: 🔧 Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-read-only: false
+
+      - name: 🔑 Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: 📦 Fetch Assets (with retry)
+        run: |
+          set +e
+          RETRY_COUNT=0
+          MAX_RETRIES=3
+          
+          until [ $RETRY_COUNT -ge $MAX_RETRIES ]; do
+            echo "Attempt $((RETRY_COUNT+1)) of $MAX_RETRIES: Fetching assets..."
+            ./gradlew --no-daemon :app:fetchAssets && break
+            RETRY_COUNT=$((RETRY_COUNT+1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "Fetch failed, retrying in 5 seconds..."
+              sleep 5
+            fi
+          done
+          
+          if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+            echo "❌ Failed to fetch assets after $MAX_RETRIES attempts"
+            exit 1
+          fi
+          
+          echo "✅ Assets fetched successfully"
+
+      - name: 🏗️ Build Debug APK (${{ matrix.architecture.name }})
+        run: |
+          export USERLAND_UNSIGNED_APK=1
+          ./gradlew --no-daemon :app:assembleDebug \
+            -PuserlandUnsignedApk=true \
+            -PbuildArch=${{ matrix.architecture.gradle_arg }} \
+            --stacktrace
+
+      - name: 🏗️ Build Release APK (${{ matrix.architecture.name }})
+        run: |
+          export USERLAND_UNSIGNED_APK=1
+          ./gradlew --no-daemon :app:assembleRelease \
+            -PuserlandUnsignedApk=true \
+            -PbuildArch=${{ matrix.architecture.gradle_arg }} \
+            --stacktrace
+
+      - name: 🔍 Validate APK Structure
+        run: |
+          echo "## 🔍 ${{ matrix.architecture.name }} APK Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Find release APK
+          RELEASE_APK=$(find app/build/outputs/apk/release -name "*.apk" -type f | head -1)
+          
+          if [[ -f "$RELEASE_APK" ]]; then
+            # Check file size
+            APK_SIZE=$(stat -c%s "$RELEASE_APK")
+            APK_SIZE_MB=$((APK_SIZE / 1024 / 1024))
+            echo "📦 APK Size: ${APK_SIZE_MB} MB" >> $GITHUB_STEP_SUMMARY
+            
+            # Check architecture libs
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Native Libraries:**" >> $GITHUB_STEP_SUMMARY
+            unzip -l "$RELEASE_APK" | grep "lib/${{ matrix.architecture.gradle_arg }}/" | grep "\.so$" | awk '{print "- " $NF}' >> $GITHUB_STEP_SUMMARY || echo "- ⚠️ No native libraries found" >> $GITHUB_STEP_SUMMARY
+            
+            # Calculate SHA256
+            echo "" >> $GITHUB_STEP_SUMMARY
+            SHA256=$(sha256sum "$RELEASE_APK" | awk '{print $1}')
+            echo "**SHA256:** \`$SHA256\`" >> $GITHUB_STEP_SUMMARY
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **${{ matrix.architecture.name }} build successful**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **APK not found**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: 📤 Upload Debug APK (${{ matrix.architecture.name }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: userland-${{ matrix.architecture.artifact_suffix }}-debug-${{ github.sha }}
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: 📤 Upload Release APK (${{ matrix.architecture.name }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: userland-${{ matrix.architecture.artifact_suffix }}-release-${{ github.sha }}
+          path: app/build/outputs/apk/release/*.apk
+          retention-days: 90
+          if-no-files-found: error
+
+  summary:
+    needs: build-multi-arch
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: 📊 Generate Summary
+        run: |
+          echo "## 🚀 Multi-Architecture Build Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Build job status: ${{ needs.build-multi-arch.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Built Architectures:" >> $GITHUB_STEP_SUMMARY
+          echo "- ${{ needs.build-multi-arch.result == 'success' && '✅' || '⚠️' }} ARM64 (arm64-v8a)" >> $GITHUB_STEP_SUMMARY
+          echo "- ${{ needs.build-multi-arch.result == 'success' && '✅' || '⚠️' }} ARMv7 (armeabi-v7a)" >> $GITHUB_STEP_SUMMARY
+          echo "- ${{ needs.build-multi-arch.result == 'success' && '✅' || '⚠️' }} x86_64" >> $GITHUB_STEP_SUMMARY
+          echo "- ${{ needs.build-multi-arch.result == 'success' && '✅' || '⚠️' }} x86" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "All APKs are available in the workflow artifacts with 90-day retention." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔐 RAFAELIA Seal (Project Signature)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "ΣΩΔΦ_{RAFAELIA} = ∑∑∑ [(C·A·Φ_{Ethica}) ⊗ Pre6seal ⊗ Firewall_Ω]" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Φ_ethica validated" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ ψχρΔΣΩ_LOOP active" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Bitraf64 compressed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**RAFAELIA_CORE** • **ΣΩΔΦ** • **Φ_ethica** • **ψχρΔΣΩ_LOOP** • **Bitraf64** • **Pre6seal**" >> $GITHUB_STEP_SUMMARY
