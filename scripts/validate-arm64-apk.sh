@@ -66,7 +66,11 @@ echo ""
 
 # Check 2: Check file size (must be > 10MB)
 log_info "Checking APK size..."
-APK_SIZE=$(stat -c%s "$APK_PATH" 2>/dev/null || stat -f%z "$APK_PATH" 2>/dev/null)
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  APK_SIZE=$(stat -f%z "$APK_PATH") || { log_error "Failed to determine APK size using stat on macOS"; exit 1; }
+else
+  APK_SIZE=$(stat -c%s "$APK_PATH") || { log_error "Failed to determine APK size using stat on this system"; exit 1; }
+fi
 APK_SIZE_MB=$((APK_SIZE / 1024 / 1024))
 
 if [[ $APK_SIZE -gt 10485760 ]]; then
