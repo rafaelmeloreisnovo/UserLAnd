@@ -364,7 +364,7 @@ dependencies {
     androidTestImplementation "androidx.test:rules:$androidx_test_version"
     androidTestImplementation "androidx.test.ext:junit:$androidx_test_ext_version"
     // Barista packages espresso-core and espresso-contrib
-    androidTestImplementation 'androidx.test.espresso:espresso-intents:3.5.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-intents:3.7.0'
     androidTestImplementation('com.schibsted.spain:barista:4.3.0') {
         exclude group: 'com.android.support'
         exclude group: 'org.jetbrains.kotlin'
