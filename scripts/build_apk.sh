@@ -5,6 +5,9 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEFAULT_SDK_DIR="$ROOT_DIR/build/android-sdk"
 SDK_DIR="${SDK_DIR:-$DEFAULT_SDK_DIR}"
 TOOLS_DIR=""
+DEFAULT_COMPILE_SDK="34"
+DEFAULT_BUILD_TOOLS_VERSION="34.0.0"
+APP_BUILD_GRADLE="$ROOT_DIR/app/build.gradle"
 BUILD_TASK="assembleDebug"
 SKIP_SDK=false
 SKIP_BUILD=false
@@ -69,6 +72,20 @@ done
 
 TOOLS_DIR="$SDK_DIR/cmdline-tools/latest"
 
+extract_compile_sdk_from_app() {
+  if [[ ! -f "$APP_BUILD_GRADLE" ]]; then
+    return 1
+  fi
+  sed -n 's/^[[:space:]]*compileSdk[[:space:]]*=?[[:space:]]*//p' "$APP_BUILD_GRADLE" | head -n1
+}
+
+extract_build_tools_version_from_app() {
+  if [[ ! -f "$APP_BUILD_GRADLE" ]]; then
+    return 1
+  fi
+  sed -n 's/^[[:space:]]*buildToolsVersion[[:space:]]*=?[[:space:]]*["'\'']\([^"'\'']*\)["'\''].*/\1/p' "$APP_BUILD_GRADLE" | head -n1
+}
+
 find_java_home() {
   local candidate
   for candidate in "${JAVA_HOME_11_X64:-}" "${JAVA_HOME:-}" "$(/usr/libexec/java_home -v ${REQUIRED_JAVA_MAJOR} 2>/dev/null || true)" \
@@ -85,6 +102,19 @@ find_java_home() {
   done
   return 1
 }
+
+COMPILE_SDK_VERSION="$(extract_compile_sdk_from_app || true)"
+if [[ -z "$COMPILE_SDK_VERSION" ]]; then
+  COMPILE_SDK_VERSION="$DEFAULT_COMPILE_SDK"
+fi
+
+BUILD_TOOLS_VERSION="$(extract_build_tools_version_from_app || true)"
+if [[ -z "$BUILD_TOOLS_VERSION" ]]; then
+  BUILD_TOOLS_VERSION="$DEFAULT_BUILD_TOOLS_VERSION"
+fi
+
+PLATFORM_PACKAGE="platforms;android-${COMPILE_SDK_VERSION}"
+BUILD_TOOLS_PACKAGE="build-tools;${BUILD_TOOLS_VERSION}"
 
 JAVA_HOME_VALUE=$(find_java_home || true)
 if [[ -z "$JAVA_HOME_VALUE" ]]; then
@@ -114,7 +144,7 @@ if [[ "$SKIP_SDK" == false ]]; then
   # deliver SIGPIPE to `yes` under `set -o pipefail`. Allow that benign exit
   # while still accepting all licenses.
   yes | "$TOOLS_DIR/bin/sdkmanager" --licenses >/dev/null || true
-  "$TOOLS_DIR/bin/sdkmanager" --install "platform-tools" "platforms;android-30" "build-tools;30.0.3"
+  "$TOOLS_DIR/bin/sdkmanager" --install "platform-tools" "$PLATFORM_PACKAGE" "$BUILD_TOOLS_PACKAGE"
 else
   echo "Skipping SDK install/update as requested."
   if [[ ! -x "$TOOLS_DIR/bin/sdkmanager" ]]; then
