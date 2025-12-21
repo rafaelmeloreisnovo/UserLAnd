@@ -293,10 +293,10 @@ jobs:
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          # RAFAELIA validation seal
+          # RAFAELIA validation seal (decorative - for project branding)
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🔐 RAFAELIA Seal Validation" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔐 RAFAELIA Seal (Project Signature)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "ΣΩΔΦ_{RAFAELIA} = ∑∑∑ [(C·A·Φ_{Ethica}) ⊗ Pre6seal ⊗ Firewall_Ω]" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
