@@ -71,8 +71,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 TOOLS_DIR="$SDK_DIR/cmdline-tools/latest"
-COMPILE_SDK_VERSION=""
-BUILD_TOOLS_VERSION=""
 
 extract_compile_sdk_from_app() {
   if [[ ! -f "$APP_BUILD_GRADLE" ]]; then
