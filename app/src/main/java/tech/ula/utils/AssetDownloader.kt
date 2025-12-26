@@ -3,6 +3,7 @@ package tech.ula.utils
 import android.app.DownloadManager
 import android.database.Cursor
 import android.net.Uri
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.rauschig.jarchivelib.Archiver
@@ -25,6 +26,9 @@ class AssetDownloader(
     private val downloadManagerWrapper: DownloadManagerWrapper,
     private val ulaFiles: UlaFiles
 ) {
+    companion object {
+        private const val TAG = "AssetDownloader"
+    }
 
     private val downloadDirectory = File(ulaFiles.emulatedScopedDir, "downloads")
 
@@ -124,7 +128,8 @@ class AssetDownloader(
     }
 
     private suspend fun moveRootfsAssetInternal(rootFsFile: File) = withContext(Dispatchers.IO) {
-        val (repo, filename, version) = rootFsFile.name.split("-", limit = 4)
+        val parsedName = parseAssetName(rootFsFile.name) ?: return@withContext
+        val (repo, filename, version) = parsedName
         val destinationDirectory = File("${ulaFiles.filesDir.absolutePath}/$repo")
         val target = File("${destinationDirectory.absolutePath}/$filename")
 
@@ -144,7 +149,8 @@ class AssetDownloader(
     }
 
     private suspend fun extractAssets(tarFile: File, stagingDirectory: File, archiverFactory: ArchiveFactoryWrapper) = withContext(Dispatchers.IO) {
-        val (repo, filename, version) = tarFile.name.split("-", limit = 3)
+        val parsedName = parseAssetName(tarFile.name) ?: return@withContext
+        val (repo, filename, version) = parsedName
         val stagingTarget = File("${stagingDirectory.absolutePath}/$filename")
         val destination = File("${ulaFiles.filesDir.path}/$repo")
 
@@ -158,6 +164,30 @@ class AssetDownloader(
             ulaFiles.makePermissionsUsable(destination.absolutePath, file.name)
         }
         assetPreferences.setLatestDownloadVersion(repo, version)
+    }
+
+    private fun parseAssetName(assetName: String): Triple<String, String, String>? {
+        val nameWithoutVersion = assetName.substringBeforeLast("-")
+        if (nameWithoutVersion == assetName) {
+            Log.e(TAG, "Asset name missing '-' separator for version: $assetName")
+            return null
+        }
+        val version = assetName.substringAfterLast("-")
+        if (version.isBlank()) {
+            Log.e(TAG, "Asset name missing version after '-' separator: $assetName")
+            return null
+        }
+        val repo = nameWithoutVersion.substringBefore("-")
+        val filename = nameWithoutVersion.substringAfter("-")
+        if (repo == nameWithoutVersion || filename == nameWithoutVersion) {
+            Log.e(TAG, "Asset name missing repo/filename separator '-': $assetName")
+            return null
+        }
+        if (repo.isBlank() || filename.isBlank()) {
+            Log.e(TAG, "Asset name has blank repo or filename: $assetName")
+            return null
+        }
+        return Triple(repo, filename, version)
     }
 }
 
