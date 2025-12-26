@@ -1,6 +1,6 @@
 /*
- * Wrapper: o header oficial vive em core/include/aether_core.h.
- * Mantido para compatibilidade com includes antigos.
+ * Wrapper: the official header lives in core/include/aether_core.h.
+ * Kept for compatibility with legacy includes.
  */
 #pragma once
 
