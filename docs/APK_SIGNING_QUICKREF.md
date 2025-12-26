@@ -89,6 +89,9 @@ Para mais detalhes, consulte: [docs/APK_SIGNING.md](docs/APK_SIGNING.md)
 # 1. Build unsigned APK
 ./scripts/build_unsigned_apk.sh
 
+# (Opcional) Arm64-only para Android 15
+./scripts/build_unsigned_apk.sh --arch arm64-v8a
+
 # 2. Sign APK
 ./scripts/sign_apk.sh \
   app/build/outputs/apk/release/app-release-unsigned.apk \

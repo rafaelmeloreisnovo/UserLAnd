@@ -54,6 +54,26 @@ skips signing even if release keystore credentials are available. The
 `USERLAND_UNSIGNED_APK` variable (or `-PuserlandUnsignedApk`) is only consulted
 after that check, so if you have valid signing credentials but omit
 `-PunsignedApk=true`, the release build will still be signed.
+
+### Build a sideloadable APK for Android 15 (arm64)
+
+To build an arm64-only APK that can be installed on Android 15 without Play
+Store signing, use the debug build (signed with the default debug key) and limit
+the ABI list to arm64:
+
+```sh
+scripts/build_apk.sh --task assembleDebug --arch arm64-v8a
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+If you need a release APK that stays unsigned (for custom signing steps), use:
+
+```sh
+scripts/build_unsigned_apk.sh --arch arm64-v8a
+```
+
+Unsigned APKs cannot be installed directly on devices; sign them first or stick
+to the debug build for local sideloading.
 ### Build an unsigned release APK
 
 For offline or sideloaded experiments that must remain unsigned even when

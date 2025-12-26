@@ -15,6 +15,7 @@ compatibility).
 
 Options:
   --task <gradle_task>   Gradle task to run (default: assembleRelease).
+  --arch <abi-list>      Comma-separated ABI list to build (e.g. arm64-v8a).
   --sdk-dir <path>       Location to install or reuse the Android SDK.
   --skip-sdk             Do not download or update the Android SDK.
   --skip-build           Skip invoking Gradle after ensuring dependencies.
@@ -32,9 +33,9 @@ while [[ $# -gt 0 ]]; do
       BUILD_TASK="$2"
       shift 2
       ;;
-    --sdk-dir|--skip-sdk|--skip-build)
+    --arch|--sdk-dir|--skip-sdk|--skip-build)
       FORWARDED_ARGS+=("$1")
-      if [[ "$1" == "--sdk-dir" ]]; then
+      if [[ "$1" == "--sdk-dir" || "$1" == "--arch" ]]; then
         FORWARDED_ARGS+=("$2")
         shift 2
       else

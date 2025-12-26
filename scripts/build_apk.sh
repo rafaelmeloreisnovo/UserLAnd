@@ -13,6 +13,7 @@ SKIP_SDK=false
 SKIP_BUILD=false
 GRADLE_ARGS=()
 REQUIRED_JAVA_MAJOR="17"
+ARCHITECTURES=""
 
 usage() {
   cat <<'USAGE'
@@ -23,6 +24,7 @@ Prepares a local Android SDK and runs the Gradle task needed to build the APK.
 Options:
   --task <gradle_task>   Gradle task to run (default: assembleDebug).
   --gradle-arg <arg>     Additional argument to forward to Gradle (repeatable).
+  --arch <abi-list>      Comma-separated ABI list to build (e.g. arm64-v8a).
   --sdk-dir <path>       Location to install or reuse the Android SDK
                          (default: build/android-sdk).
   --skip-sdk             Do not download or update the Android SDK.
@@ -44,6 +46,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --gradle-arg)
       GRADLE_ARGS+=("$2")
+      shift 2
+      ;;
+    --arch)
+      ARCHITECTURES="$2"
       shift 2
       ;;
     --sdk-dir)
@@ -181,6 +187,10 @@ write_local_properties
 if [[ "$SKIP_BUILD" == true ]]; then
   echo "Skipping Gradle build (--skip-build)."
   exit 0
+fi
+
+if [[ -n "$ARCHITECTURES" ]]; then
+  GRADLE_ARGS+=("-Parchitectures=$ARCHITECTURES")
 fi
 
 "$ROOT_DIR/gradlew" "$BUILD_TASK" ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"}

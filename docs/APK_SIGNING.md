@@ -102,6 +102,9 @@ KEY_PASSWORD=pass2 \
 # 1. Construir APK não assinado
 ./scripts/build_unsigned_apk.sh
 
+# Opcional: limitar a arquitetura para arm64 (Android 15)
+./scripts/build_unsigned_apk.sh --arch arm64-v8a
+
 # 2. Assinar o APK
 ./scripts/sign_apk.sh app/build/outputs/apk/release/app-release-unsigned.apk
 ```
