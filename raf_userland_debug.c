@@ -264,6 +264,7 @@ static void s(RField *f) {
 // -------------------------------
 
 // Parse a single line "cpu,mem,io,threads" into one matrix row (normalized to 0-1 internally).
+// Format: 2-4 numeric fields (cpu, mem[, io[, threads]]). Extra numeric tokens are an error.
 static int v(const char *line, RField *f) {
     if (!line || !f) return -1;
     if (f->r_used == R_MAX_ROWS) return -2;
@@ -281,6 +282,17 @@ static int v(const char *line, RField *f) {
         }
         if (*p == '\0' || *p == '\n') {
             break;
+        }
+    }
+
+    if (count == (int)R_METRIC_COUNT) {
+        const char *extra = p;
+        while (*extra == ' ' || *extra == '\t' || *extra == ',') {
+            ++extra;
+        }
+        if (*extra == '+' || *extra == '-' || (*extra >= '0' && *extra <= '9')) {
+            // Columns exceeded (extra numeric tokens after max fields).
+            return -5;
         }
     }
 

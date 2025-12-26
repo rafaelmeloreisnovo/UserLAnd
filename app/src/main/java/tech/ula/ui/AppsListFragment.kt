@@ -5,6 +5,7 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import android.view.LayoutInflater
@@ -187,20 +188,31 @@ class AppsListFragment : Fragment(), AppsListAdapter.AppsClickHandler {
 
     private fun userlandIsNewVersion(): Boolean {
         val version = getUserlandVersion()
+        if (version.isNullOrBlank()) {
+            return false
+        }
         val lastUpdatedVersion = activityContext.defaultSharedPreferences.getString("lastAppsUpdate", "")
         return version != lastUpdatedVersion
     }
 
     private fun setLatestUpdateUserlandVersion() {
         val version = getUserlandVersion()
+        if (version.isNullOrBlank()) {
+            return
+        }
         with(activityContext.defaultSharedPreferences.edit()) {
             putString("lastAppsUpdate", version)
             apply()
         }
     }
 
-    private fun getUserlandVersion(): String {
-        val info = activityContext.packageManager.getPackageInfo(activityContext.packageName, 0)
-        return info.versionName
+    private fun getUserlandVersion(): String? {
+        return try {
+            val info = activityContext.packageManager.getPackageInfo(activityContext.packageName, 0)
+            info.versionName
+        } catch (error: Exception) {
+            Log.w("AppsListFragment", "Failed to read package version for refresh check", error)
+            null
+        }
     }
 }

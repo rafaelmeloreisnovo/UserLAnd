@@ -26,6 +26,30 @@ class AssetDownloader(
     private val downloadManagerWrapper: DownloadManagerWrapper,
     private val ulaFiles: UlaFiles
 ) {
+    private data class ParsedAssetName(val repo: String, val filename: String, val version: String)
+
+    private fun parseAssetFileName(fileName: String): ParsedAssetName {
+        val versionSeparatorIndex = fileName.lastIndexOf('-')
+        require(versionSeparatorIndex > 0 && versionSeparatorIndex < fileName.length - 1) {
+            "Invalid asset filename: missing version separator in $fileName"
+        }
+
+        val repoAndFilename = fileName.substring(0, versionSeparatorIndex)
+        val repoSeparatorIndex = repoAndFilename.indexOf('-')
+        require(repoSeparatorIndex > 0 && repoSeparatorIndex < repoAndFilename.length - 1) {
+            "Invalid asset filename: missing repo separator in $fileName"
+        }
+
+        val repo = repoAndFilename.substring(0, repoSeparatorIndex)
+        val filename = repoAndFilename.substring(repoSeparatorIndex + 1)
+        val version = fileName.substring(versionSeparatorIndex + 1)
+
+        require(repo.isNotBlank() && filename.isNotBlank() && version.isNotBlank()) {
+            "Invalid asset filename: empty sections in $fileName"
+        }
+
+        return ParsedAssetName(repo = repo, filename = filename, version = version)
+    }
 
     private val downloadDirectory = File(ulaFiles.emulatedScopedDir, "downloads")
 
@@ -129,14 +153,10 @@ class AssetDownloader(
     }
 
     private suspend fun moveRootfsAssetInternal(rootFsFile: File) = withContext(Dispatchers.IO) {
-        val rootfsParts = rootFsFile.name.split("-", limit = 4)
-        if (rootfsParts.size < 3) {
-            Log.e(TAG, "Unexpected rootfs filename format '${rootFsFile.name}', expected repo-filename-version-...")
-            throw IOException("Unexpected rootfs filename format: ${rootFsFile.name}")
-        }
-        val repo = rootfsParts[0]
-        val filename = rootfsParts[1]
-        val version = rootfsParts[2]
+        val parsedAssetName = parseAssetFileName(rootFsFile.name)
+        val repo = parsedAssetName.repo
+        val filename = parsedAssetName.filename
+        val version = parsedAssetName.version
         val destinationDirectory = File("${ulaFiles.filesDir.absolutePath}/$repo")
         val target = File("${destinationDirectory.absolutePath}/$filename")
 
@@ -156,14 +176,10 @@ class AssetDownloader(
     }
 
     private suspend fun extractAssets(tarFile: File, stagingDirectory: File, archiverFactory: ArchiveFactoryWrapper) = withContext(Dispatchers.IO) {
-        val assetParts = tarFile.name.split("-", limit = 3)
-        if (assetParts.size < 3) {
-            Log.e(TAG, "Unexpected asset filename format '${tarFile.name}', expected repo-filename-version-...")
-            throw IOException("Unexpected asset filename format: ${tarFile.name}")
-        }
-        val repo = assetParts[0]
-        val filename = assetParts[1]
-        val version = assetParts[2]
+        val parsedAssetName = parseAssetFileName(tarFile.name)
+        val repo = parsedAssetName.repo
+        val filename = parsedAssetName.filename
+        val version = parsedAssetName.version
         val stagingTarget = File("${stagingDirectory.absolutePath}/$filename")
         val destination = File("${ulaFiles.filesDir.path}/$repo")
 
@@ -209,44 +225,47 @@ class DownloadManagerWrapper(private val downloadManager: DownloadManager) {
 
     fun downloadHasSucceeded(id: Long): Boolean {
         val query = generateQuery(id)
-        val cursor = generateCursor(query)
-        if (cursor.moveToFirst()) {
-            val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))
-            return status == DownloadManager.STATUS_SUCCESSFUL
+        return generateCursor(query).use { cursor ->
+            if (cursor.moveToFirst()) {
+                val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))
+                return@use status == DownloadManager.STATUS_SUCCESSFUL
+            }
+            false
         }
-        return false
     }
 
     fun downloadHasFailed(id: Long): Boolean {
         val query = generateQuery(id)
-        val cursor = generateCursor(query)
-        if (cursor.moveToFirst()) {
-            val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))
-            return status == DownloadManager.STATUS_FAILED
+        return generateCursor(query).use { cursor ->
+            if (cursor.moveToFirst()) {
+                val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))
+                return@use status == DownloadManager.STATUS_FAILED
+            }
+            false
         }
-        return false
     }
 
     fun getDownloadFailureReason(id: Long): DownloadFailureLocalizationData {
         val query = generateQuery(id)
-        val cursor = generateCursor(query)
-        if (cursor.moveToFirst()) {
-            val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_REASON))
-            return DownloadFailureLocalizationData(resId = when (status) {
-                in 100..500 -> R.string.download_failure_http_error
-                1008 -> R.string.download_failure_cannot_resume
-                1007 -> R.string.download_failure_no_external_devices
-                1009 -> R.string.download_failure_destination_exists
-                1001 -> R.string.download_failure_unknown_file_error
-                1004 -> R.string.download_failure_http_processing
-                1006 -> R.string.download_failure_insufficient_external_storage
-                1005 -> R.string.download_failure_too_many_redirects
-                1002 -> R.string.download_failure_unhandled_http_response
-                1000 -> R.string.download_failure_unknown_error
-                else -> R.string.download_failure_missing_error
-            }, formatStrings = listOf("$status")) // Format strings only used for http_error
+        return generateCursor(query).use { cursor ->
+            if (cursor.moveToFirst()) {
+                val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_REASON))
+                return@use DownloadFailureLocalizationData(resId = when (status) {
+                    in 100..500 -> R.string.download_failure_http_error
+                    1008 -> R.string.download_failure_cannot_resume
+                    1007 -> R.string.download_failure_no_external_devices
+                    1009 -> R.string.download_failure_destination_exists
+                    1001 -> R.string.download_failure_unknown_file_error
+                    1004 -> R.string.download_failure_http_processing
+                    1006 -> R.string.download_failure_insufficient_external_storage
+                    1005 -> R.string.download_failure_too_many_redirects
+                    1002 -> R.string.download_failure_unhandled_http_response
+                    1000 -> R.string.download_failure_unknown_error
+                    else -> R.string.download_failure_missing_error
+                }, formatStrings = listOf("$status")) // Format strings only used for http_error
+            }
+            DownloadFailureLocalizationData(R.string.download_failure_reason_not_found)
         }
-        return DownloadFailureLocalizationData(R.string.download_failure_reason_not_found)
     }
 
     fun cancelAllDownloads(downloadIds: Set<Long>) {
