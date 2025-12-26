@@ -3,6 +3,7 @@ package tech.ula.utils
 import android.app.DownloadManager
 import android.database.Cursor
 import android.net.Uri
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.rauschig.jarchivelib.Archiver
@@ -30,6 +31,10 @@ class AssetDownloader(
 
     private val enqueuedDownloadIds = mutableSetOf<Long>()
     private val completedDownloadIds = mutableSetOf<Long>()
+
+    companion object {
+        private const val TAG = "AssetDownloader"
+    }
 
     init {
         if (!downloadDirectory.exists()) downloadDirectory.mkdirs()
@@ -124,7 +129,14 @@ class AssetDownloader(
     }
 
     private suspend fun moveRootfsAssetInternal(rootFsFile: File) = withContext(Dispatchers.IO) {
-        val (repo, filename, version) = rootFsFile.name.split("-", limit = 4)
+        val rootfsParts = rootFsFile.name.split("-", limit = 4)
+        if (rootfsParts.size < 3) {
+            Log.e(TAG, "Unexpected rootfs filename format '${rootFsFile.name}', expected repo-filename-version-...")
+            throw IOException("Unexpected rootfs filename format: ${rootFsFile.name}")
+        }
+        val repo = rootfsParts[0]
+        val filename = rootfsParts[1]
+        val version = rootfsParts[2]
         val destinationDirectory = File("${ulaFiles.filesDir.absolutePath}/$repo")
         val target = File("${destinationDirectory.absolutePath}/$filename")
 
@@ -144,7 +156,14 @@ class AssetDownloader(
     }
 
     private suspend fun extractAssets(tarFile: File, stagingDirectory: File, archiverFactory: ArchiveFactoryWrapper) = withContext(Dispatchers.IO) {
-        val (repo, filename, version) = tarFile.name.split("-", limit = 3)
+        val assetParts = tarFile.name.split("-", limit = 3)
+        if (assetParts.size < 3) {
+            Log.e(TAG, "Unexpected asset filename format '${tarFile.name}', expected repo-filename-version-...")
+            throw IOException("Unexpected asset filename format: ${tarFile.name}")
+        }
+        val repo = assetParts[0]
+        val filename = assetParts[1]
+        val version = assetParts[2]
         val stagingTarget = File("${stagingDirectory.absolutePath}/$filename")
         val destination = File("${ulaFiles.filesDir.path}/$repo")
 
