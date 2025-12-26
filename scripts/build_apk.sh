@@ -5,8 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEFAULT_SDK_DIR="$ROOT_DIR/build/android-sdk"
 SDK_DIR="${SDK_DIR:-$DEFAULT_SDK_DIR}"
 TOOLS_DIR=""
-DEFAULT_COMPILE_SDK="34"
-DEFAULT_BUILD_TOOLS_VERSION="34.0.0"
+DEFAULT_COMPILE_SDK="35"
+DEFAULT_BUILD_TOOLS_VERSION="35.0.0"
 APP_BUILD_GRADLE="$ROOT_DIR/app/build.gradle"
 BUILD_TASK="assembleDebug"
 SKIP_SDK=false
@@ -23,6 +23,7 @@ Prepares a local Android SDK and runs the Gradle task needed to build the APK.
 Options:
   --task <gradle_task>   Gradle task to run (default: assembleDebug).
   --gradle-arg <arg>     Additional argument to forward to Gradle (repeatable).
+  --abi <abi_list>       Comma-separated ABI list to keep (e.g. arm64-v8a).
   --sdk-dir <path>       Location to install or reuse the Android SDK
                          (default: build/android-sdk).
   --skip-sdk             Do not download or update the Android SDK.
@@ -44,6 +45,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --gradle-arg)
       GRADLE_ARGS+=("$2")
+      shift 2
+      ;;
+    --abi)
+      GRADLE_ARGS+=("-PabiFilters=$2")
       shift 2
       ;;
     --sdk-dir)
