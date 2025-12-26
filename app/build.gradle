@@ -359,7 +359,7 @@ dependencies {
     def moshi_version = '1.15.2'
     def okhttp_version = '3.14.9'
     def sentry_version = '7.2.0'
-    def slf4j_version = '2.0.9'
+    def slf4j_version = '2.0.17'
 
     def kotlinx_coroutines_version = '1.8.0'
 
