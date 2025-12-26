@@ -39,7 +39,7 @@ android {
                     .findAll { it }
             if (!abiFiltersList.isEmpty()) {
                 ndk {
-                    abiFilters abiFiltersList
+                    abiFilters(*abiFiltersList)
                 }
             }
         }
