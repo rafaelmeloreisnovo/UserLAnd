@@ -220,44 +220,47 @@ class DownloadManagerWrapper(private val downloadManager: DownloadManager) {
 
     fun downloadHasSucceeded(id: Long): Boolean {
         val query = generateQuery(id)
-        val cursor = generateCursor(query)
-        if (cursor.moveToFirst()) {
-            val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))
-            return status == DownloadManager.STATUS_SUCCESSFUL
+        return generateCursor(query).use { cursor ->
+            if (cursor.moveToFirst()) {
+                val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))
+                return@use status == DownloadManager.STATUS_SUCCESSFUL
+            }
+            false
         }
-        return false
     }
 
     fun downloadHasFailed(id: Long): Boolean {
         val query = generateQuery(id)
-        val cursor = generateCursor(query)
-        if (cursor.moveToFirst()) {
-            val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))
-            return status == DownloadManager.STATUS_FAILED
+        return generateCursor(query).use { cursor ->
+            if (cursor.moveToFirst()) {
+                val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))
+                return@use status == DownloadManager.STATUS_FAILED
+            }
+            false
         }
-        return false
     }
 
     fun getDownloadFailureReason(id: Long): DownloadFailureLocalizationData {
         val query = generateQuery(id)
-        val cursor = generateCursor(query)
-        if (cursor.moveToFirst()) {
-            val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_REASON))
-            return DownloadFailureLocalizationData(resId = when (status) {
-                in 100..500 -> R.string.download_failure_http_error
-                1008 -> R.string.download_failure_cannot_resume
-                1007 -> R.string.download_failure_no_external_devices
-                1009 -> R.string.download_failure_destination_exists
-                1001 -> R.string.download_failure_unknown_file_error
-                1004 -> R.string.download_failure_http_processing
-                1006 -> R.string.download_failure_insufficient_external_storage
-                1005 -> R.string.download_failure_too_many_redirects
-                1002 -> R.string.download_failure_unhandled_http_response
-                1000 -> R.string.download_failure_unknown_error
-                else -> R.string.download_failure_missing_error
-            }, formatStrings = listOf("$status")) // Format strings only used for http_error
+        return generateCursor(query).use { cursor ->
+            if (cursor.moveToFirst()) {
+                val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_REASON))
+                return@use DownloadFailureLocalizationData(resId = when (status) {
+                    in 100..500 -> R.string.download_failure_http_error
+                    1008 -> R.string.download_failure_cannot_resume
+                    1007 -> R.string.download_failure_no_external_devices
+                    1009 -> R.string.download_failure_destination_exists
+                    1001 -> R.string.download_failure_unknown_file_error
+                    1004 -> R.string.download_failure_http_processing
+                    1006 -> R.string.download_failure_insufficient_external_storage
+                    1005 -> R.string.download_failure_too_many_redirects
+                    1002 -> R.string.download_failure_unhandled_http_response
+                    1000 -> R.string.download_failure_unknown_error
+                    else -> R.string.download_failure_missing_error
+                }, formatStrings = listOf("$status")) // Format strings only used for http_error
+            }
+            DownloadFailureLocalizationData(R.string.download_failure_reason_not_found)
         }
-        return DownloadFailureLocalizationData(R.string.download_failure_reason_not_found)
     }
 
     fun cancelAllDownloads(downloadIds: Set<Long>) {
