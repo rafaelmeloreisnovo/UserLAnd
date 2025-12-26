@@ -25,6 +25,30 @@ class AssetDownloader(
     private val downloadManagerWrapper: DownloadManagerWrapper,
     private val ulaFiles: UlaFiles
 ) {
+    private data class ParsedAssetName(val repo: String, val filename: String, val version: String)
+
+    private fun parseAssetFileName(fileName: String): ParsedAssetName {
+        val versionSeparatorIndex = fileName.lastIndexOf('-')
+        require(versionSeparatorIndex > 0 && versionSeparatorIndex < fileName.length - 1) {
+            "Invalid asset filename: missing version separator in $fileName"
+        }
+
+        val repoAndFilename = fileName.substring(0, versionSeparatorIndex)
+        val repoSeparatorIndex = repoAndFilename.indexOf('-')
+        require(repoSeparatorIndex > 0 && repoSeparatorIndex < repoAndFilename.length - 1) {
+            "Invalid asset filename: missing repo separator in $fileName"
+        }
+
+        val repo = repoAndFilename.substring(0, repoSeparatorIndex)
+        val filename = repoAndFilename.substring(repoSeparatorIndex + 1)
+        val version = fileName.substring(versionSeparatorIndex + 1)
+
+        require(repo.isNotBlank() && filename.isNotBlank() && version.isNotBlank()) {
+            "Invalid asset filename: empty sections in $fileName"
+        }
+
+        return ParsedAssetName(repo = repo, filename = filename, version = version)
+    }
 
     private val downloadDirectory = File(ulaFiles.emulatedScopedDir, "downloads")
 
@@ -124,7 +148,10 @@ class AssetDownloader(
     }
 
     private suspend fun moveRootfsAssetInternal(rootFsFile: File) = withContext(Dispatchers.IO) {
-        val (repo, filename, version) = rootFsFile.name.split("-", limit = 4)
+        val parsedAssetName = parseAssetFileName(rootFsFile.name)
+        val repo = parsedAssetName.repo
+        val filename = parsedAssetName.filename
+        val version = parsedAssetName.version
         val destinationDirectory = File("${ulaFiles.filesDir.absolutePath}/$repo")
         val target = File("${destinationDirectory.absolutePath}/$filename")
 
@@ -144,7 +171,10 @@ class AssetDownloader(
     }
 
     private suspend fun extractAssets(tarFile: File, stagingDirectory: File, archiverFactory: ArchiveFactoryWrapper) = withContext(Dispatchers.IO) {
-        val (repo, filename, version) = tarFile.name.split("-", limit = 3)
+        val parsedAssetName = parseAssetFileName(tarFile.name)
+        val repo = parsedAssetName.repo
+        val filename = parsedAssetName.filename
+        val version = parsedAssetName.version
         val stagingTarget = File("${stagingDirectory.absolutePath}/$filename")
         val destination = File("${ulaFiles.filesDir.path}/$repo")
 
