@@ -15,6 +15,7 @@ compatibility).
 
 Options:
   --task <gradle_task>   Gradle task to run (default: assembleRelease).
+  --abi <abi_list>       Comma-separated ABI list to keep (e.g. arm64-v8a).
   --sdk-dir <path>       Location to install or reuse the Android SDK.
   --skip-sdk             Do not download or update the Android SDK.
   --skip-build           Skip invoking Gradle after ensuring dependencies.
@@ -23,6 +24,7 @@ Options:
 Examples:
   scripts/build_unsigned_apk.sh
   scripts/build_unsigned_apk.sh --sdk-dir /opt/android-sdk --task bundleRelease
+  scripts/build_unsigned_apk.sh --abi arm64-v8a
 USAGE
 }
 
@@ -30,6 +32,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --task)
       BUILD_TASK="$2"
+      shift 2
+      ;;
+    --abi)
+      FORWARDED_ARGS+=(--gradle-arg "-PabiFilters=$2")
       shift 2
       ;;
     --sdk-dir|--skip-sdk|--skip-build)
