@@ -12,6 +12,7 @@ BUILD_TASK="assembleDebug"
 SKIP_SDK=false
 SKIP_BUILD=false
 GRADLE_ARGS=()
+ABI_FILTERS=""
 REQUIRED_JAVA_MAJOR="17"
 
 usage() {
@@ -23,6 +24,8 @@ Prepares a local Android SDK and runs the Gradle task needed to build the APK.
 Options:
   --task <gradle_task>   Gradle task to run (default: assembleDebug).
   --gradle-arg <arg>     Additional argument to forward to Gradle (repeatable).
+  --abi <filters>        Comma-separated ABI filters to pass to Gradle as
+                         -PabiFilters (e.g. arm64-v8a or arm64-v8a,x86_64).
   --sdk-dir <path>       Location to install or reuse the Android SDK
                          (default: build/android-sdk).
   --skip-sdk             Do not download or update the Android SDK.
@@ -44,6 +47,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --gradle-arg)
       GRADLE_ARGS+=("$2")
+      shift 2
+      ;;
+    --abi)
+      ABI_FILTERS="$2"
       shift 2
       ;;
     --sdk-dir)
@@ -181,6 +188,10 @@ write_local_properties
 if [[ "$SKIP_BUILD" == true ]]; then
   echo "Skipping Gradle build (--skip-build)."
   exit 0
+fi
+
+if [[ -n "$ABI_FILTERS" ]]; then
+  GRADLE_ARGS+=("-PabiFilters=$ABI_FILTERS")
 fi
 
 "$ROOT_DIR/gradlew" "$BUILD_TASK" ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"}

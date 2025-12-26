@@ -13,6 +13,21 @@ apply plugin: 'jacoco'
 apply plugin: 'de.undercouch.download'
 
 def resolvedNdkVersion = project.findProperty('ndkVersion') ?: '27.3.13750724'
+def defaultArchitectures = ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"]
+def requestedAbis = null
+if (project.hasProperty('abiFilters')) {
+    requestedAbis = project.property('abiFilters')
+            .toString()
+            .split(',')
+            .collect { it.trim() }
+            .findAll { it }
+} else if (System.getenv('ANDROID_ABI_FILTERS')) {
+    requestedAbis = System.getenv('ANDROID_ABI_FILTERS')
+            .toString()
+            .split(',')
+            .collect { it.trim() }
+            .findAll { it }
+}
 
 android {
     namespace 'tech.ula'
@@ -40,6 +55,12 @@ android {
         buildConfigField 'boolean', 'FORCE_PORTRAIT_GEOMETRY', 'true'
         buildConfigField 'int', "MAX_DIMENSION", "1280"
         buildConfigField 'int', "MIN_DIMENSION", "360"
+
+        if (requestedAbis) {
+            ndk {
+                abiFilters requestedAbis
+            }
+        }
 
         lint {
             lintConfig file("$projectDir/src/main/resources/lint.xml")
@@ -236,7 +257,7 @@ task jacocoCoverageReportForCi(type: JacocoReport, dependsOn: ['testDebugUnitTes
     ])
 }
 
-ext.architectures = ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"]
+ext.architectures = requestedAbis ?: defaultArchitectures
 //ext.libDir = "$project.projectDir/src/main/resources/lib"
 ext.libDir = "$project.projectDir/src/main/jniLibs"
 

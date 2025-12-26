@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_TASK="assembleRelease"
 FORWARDED_ARGS=()
+ABI_FILTERS=""
 
 usage() {
   cat <<'USAGE'
@@ -15,6 +16,7 @@ compatibility).
 
 Options:
   --task <gradle_task>   Gradle task to run (default: assembleRelease).
+  --abi <filters>        Comma-separated ABI filters (e.g. arm64-v8a).
   --sdk-dir <path>       Location to install or reuse the Android SDK.
   --skip-sdk             Do not download or update the Android SDK.
   --skip-build           Skip invoking Gradle after ensuring dependencies.
@@ -30,6 +32,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --task)
       BUILD_TASK="$2"
+      shift 2
+      ;;
+    --abi)
+      ABI_FILTERS="$2"
       shift 2
       ;;
     --sdk-dir|--skip-sdk|--skip-build)
@@ -52,6 +58,10 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ -n "$ABI_FILTERS" ]]; then
+  FORWARDED_ARGS+=(--abi "$ABI_FILTERS")
+fi
 
 USERLAND_UNSIGNED_APK=1 "${ROOT_DIR}/scripts/build_apk.sh" \
   --gradle-arg "-PunsignedApk=true" \
