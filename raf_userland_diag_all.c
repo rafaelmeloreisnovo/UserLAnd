@@ -106,6 +106,9 @@ static int u(QTrace *q, const char *line) {
     }
 
     if (count == 0u) return -2;
+    if (count > 4u) {
+        count = 4u;
+    }
 
     float cpu = vals[0];
     float mem = (count > 1u) ? vals[1] : 0.0f;
