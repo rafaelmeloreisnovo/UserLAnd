@@ -14,6 +14,7 @@ SKIP_BUILD=false
 GRADLE_ARGS=()
 ABI_FILTERS=""
 REQUIRED_JAVA_MAJOR="17"
+ARCHITECTURES=""
 
 usage() {
   cat <<'USAGE'
@@ -24,6 +25,7 @@ Prepares a local Android SDK and runs the Gradle task needed to build the APK.
 Options:
   --task <gradle_task>   Gradle task to run (default: assembleDebug).
   --gradle-arg <arg>     Additional argument to forward to Gradle (repeatable).
+  --arch <abi-list>      Comma-separated ABI list to build (e.g. arm64-v8a).
   --abi <abi_list>       Comma-separated ABI list to keep (e.g. arm64-v8a).
   --sdk-dir <path>       Location to install or reuse the Android SDK
                          (default: build/android-sdk).
@@ -48,6 +50,8 @@ while [[ $# -gt 0 ]]; do
       GRADLE_ARGS+=("$2")
       shift 2
       ;;
+    --arch)
+      ARCHITECTURES="$2"
     --abi)
       if [[ $# -lt 2 || -z "${2:-}" || "$2" == -* ]]; then
         echo "Error: --abi requires a non-empty value." >&2
@@ -195,6 +199,8 @@ if [[ "$SKIP_BUILD" == true ]]; then
   exit 0
 fi
 
+if [[ -n "$ARCHITECTURES" ]]; then
+  GRADLE_ARGS+=("-Parchitectures=$ARCHITECTURES")
 if [[ -n "$ABI_FILTERS" ]]; then
   GRADLE_ARGS+=("-PabiFilters=$ABI_FILTERS")
 fi

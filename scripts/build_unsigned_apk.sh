@@ -16,6 +16,7 @@ compatibility).
 
 Options:
   --task <gradle_task>   Gradle task to run (default: assembleRelease).
+  --arch <abi-list>      Comma-separated ABI list to build (e.g. arm64-v8a).
   --abi <filters>        Comma-separated ABI filters (e.g. arm64-v8a).
   --abi <abi_list>       Comma-separated ABI list to keep (e.g. arm64-v8a).
   --sdk-dir <path>       Location to install or reuse the Android SDK.
@@ -36,6 +37,7 @@ while [[ $# -gt 0 ]]; do
       BUILD_TASK="$2"
       shift 2
       ;;
+    --arch|--sdk-dir|--skip-sdk|--skip-build)
     --abi)
       abi_value="${2-}"
       if [[ $# -lt 2 || -z "$abi_value" || "$abi_value" == -* ]]; then
@@ -49,7 +51,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --sdk-dir|--skip-sdk|--skip-build)
       FORWARDED_ARGS+=("$1")
-      if [[ "$1" == "--sdk-dir" ]]; then
+      if [[ "$1" == "--sdk-dir" || "$1" == "--arch" ]]; then
         FORWARDED_ARGS+=("$2")
         shift 2
       else
