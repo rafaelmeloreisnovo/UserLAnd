@@ -3,6 +3,7 @@ package tech.ula.utils
 import android.app.DownloadManager
 import android.database.Cursor
 import android.net.Uri
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.rauschig.jarchivelib.Archiver
@@ -54,6 +55,10 @@ class AssetDownloader(
 
     private val enqueuedDownloadIds = mutableSetOf<Long>()
     private val completedDownloadIds = mutableSetOf<Long>()
+
+    companion object {
+        private const val TAG = "AssetDownloader"
+    }
 
     init {
         if (!downloadDirectory.exists()) downloadDirectory.mkdirs()
