@@ -35,7 +35,13 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --abi)
-      ABI_FILTERS="$2"
+      abi_value="${2-}"
+      if [[ $# -lt 2 || -z "$abi_value" || "$abi_value" == -* ]]; then
+        echo "Error: --abi requires a non-empty value that does not start with '-'" >&2
+        usage
+        exit 1
+      fi
+      ABI_FILTERS="$abi_value"
       shift 2
       ;;
     --sdk-dir|--skip-sdk|--skip-build)
