@@ -20,13 +20,15 @@ See our [CONTRIBUTING](https://github.com/CypherpunkArmory/UserLAnd/blob/master/
 
 ## Build the APK locally
 UserLAnd depends on modern Android Gradle Plugin tooling that expects Java 17 or
-newer alongside Android SDK platform 30. To build from a clean machine:
+newer alongside Android SDK platform 35 (Android 15). To build from a clean
+machine:
 
 1. Install a Java 17+ JDK and ensure `JAVA_HOME` points to it (or export
   `JAVA_HOME_11_X64` on Windows).
 2. Run `scripts/build_apk.sh` to download the Android command-line tools into
   `build/android-sdk`, accept licenses, generate `local.properties`, and invoke
-  `assembleDebug`.
+  `assembleDebug`. To limit builds to a specific ABI (for example, arm64-only
+  artifacts for Android 15 devices), pass `--abi arm64-v8a`.
 3. Pass `--skip-sdk` if you already have an SDK available, or `--skip-build` if
   you only want to bootstrap the SDK without running Gradle.
 
@@ -45,6 +47,7 @@ step), use the helper wrapper:
 ```sh
 scripts/build_unsigned_apk.sh             # assembleRelease without signing
 scripts/build_unsigned_apk.sh --task :app:bundleRelease --skip-sdk
+scripts/build_unsigned_apk.sh --abi arm64-v8a
 ```
 
 The wrapper forwards `-PunsignedApk=true` to Gradle and also exports
@@ -74,6 +77,18 @@ scripts/build_unsigned_apk.sh --arch arm64-v8a
 
 Unsigned APKs cannot be installed directly on devices; sign them first or stick
 to the debug build for local sideloading.
+To generate an arm64-only artifact suitable for Android 15 devices, pass an ABI
+filter and then sign locally (not Play Store signing) before installation:
+
+```sh
+scripts/build_unsigned_apk.sh --abi arm64-v8a
+scripts/sign_apk.sh app/build/outputs/apk/release/app-release-unsigned.apk \
+  userland-arm64-signed.apk
+adb install userland-arm64-signed.apk
+```
+
+The `--abi` flag forwards `-PabiFilters=arm64-v8a` to Gradle, which also limits
+the downloaded assets to ARM64.
 ### Build an unsigned release APK
 
 For offline or sideloaded experiments that must remain unsigned even when

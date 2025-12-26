@@ -30,10 +30,11 @@ if (!requestedArchitectures.isEmpty()) {
 def architectures = requestedArchitectures.isEmpty() ? defaultArchitectures : requestedArchitectures
 
 def resolvedNdkVersion = project.findProperty('ndkVersion') ?: '27.3.13750724'
+def abiFiltersProperty = project.findProperty('abiFilters') ?: project.findProperty('userlandAbiFilters')
 
 android {
     namespace 'tech.ula'
-    compileSdk 34
+    compileSdk 35
     ndkVersion resolvedNdkVersion
 
     defaultConfig {
@@ -43,9 +44,22 @@ android {
 
         applicationId "tech.ula"
         minSdk 21
-        targetSdk 34
+        targetSdk 35
         versionCode vcode
         versionName "2.8.3"
+
+        if (abiFiltersProperty) {
+            def abiFiltersList = abiFiltersProperty
+                    .toString()
+                    .split(',')
+                    .collect { it.trim() }
+                    .findAll { it }
+            if (!abiFiltersList.isEmpty()) {
+                ndk {
+                    abiFilters(*abiFiltersList)
+                }
+            }
+        }
         
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments clearPackageData: 'true'
@@ -61,6 +75,12 @@ android {
         buildConfigField 'boolean', 'FORCE_PORTRAIT_GEOMETRY', 'true'
         buildConfigField 'int', "MAX_DIMENSION", "1280"
         buildConfigField 'int', "MIN_DIMENSION", "360"
+
+        if (requestedAbis) {
+            ndk {
+                abiFilters *requestedAbis
+            }
+        }
 
         lint {
             lintConfig file("$projectDir/src/main/resources/lint.xml")
@@ -258,6 +278,7 @@ task jacocoCoverageReportForCi(type: JacocoReport, dependsOn: ['testDebugUnitTes
 }
 
 ext.architectures = architectures
+ext.architectures = requestedAbis ?: defaultArchitectures
 //ext.libDir = "$project.projectDir/src/main/resources/lib"
 ext.libDir = "$project.projectDir/src/main/jniLibs"
 

@@ -5,13 +5,14 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEFAULT_SDK_DIR="$ROOT_DIR/build/android-sdk"
 SDK_DIR="${SDK_DIR:-$DEFAULT_SDK_DIR}"
 TOOLS_DIR=""
-DEFAULT_COMPILE_SDK="34"
-DEFAULT_BUILD_TOOLS_VERSION="34.0.0"
+DEFAULT_COMPILE_SDK="35"
+DEFAULT_BUILD_TOOLS_VERSION="35.0.0"
 APP_BUILD_GRADLE="$ROOT_DIR/app/build.gradle"
 BUILD_TASK="assembleDebug"
 SKIP_SDK=false
 SKIP_BUILD=false
 GRADLE_ARGS=()
+ABI_FILTERS=""
 REQUIRED_JAVA_MAJOR="17"
 ARCHITECTURES=""
 
@@ -25,6 +26,7 @@ Options:
   --task <gradle_task>   Gradle task to run (default: assembleDebug).
   --gradle-arg <arg>     Additional argument to forward to Gradle (repeatable).
   --arch <abi-list>      Comma-separated ABI list to build (e.g. arm64-v8a).
+  --abi <abi_list>       Comma-separated ABI list to keep (e.g. arm64-v8a).
   --sdk-dir <path>       Location to install or reuse the Android SDK
                          (default: build/android-sdk).
   --skip-sdk             Do not download or update the Android SDK.
@@ -50,6 +52,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --arch)
       ARCHITECTURES="$2"
+    --abi)
+      if [[ $# -lt 2 || -z "${2:-}" || "$2" == -* ]]; then
+        echo "Error: --abi requires a non-empty value." >&2
+        usage
+        exit 1
+      fi
+      ABI_FILTERS="$2"
+      GRADLE_ARGS+=("-PabiFilters=$2")
       shift 2
       ;;
     --sdk-dir)
@@ -191,6 +201,8 @@ fi
 
 if [[ -n "$ARCHITECTURES" ]]; then
   GRADLE_ARGS+=("-Parchitectures=$ARCHITECTURES")
+if [[ -n "$ABI_FILTERS" ]]; then
+  GRADLE_ARGS+=("-PabiFilters=$ABI_FILTERS")
 fi
 
 "$ROOT_DIR/gradlew" "$BUILD_TASK" ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"}

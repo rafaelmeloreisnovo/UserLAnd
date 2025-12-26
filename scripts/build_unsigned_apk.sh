@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_TASK="assembleRelease"
 FORWARDED_ARGS=()
+ABI_FILTERS=""
 
 usage() {
   cat <<'USAGE'
@@ -16,6 +17,8 @@ compatibility).
 Options:
   --task <gradle_task>   Gradle task to run (default: assembleRelease).
   --arch <abi-list>      Comma-separated ABI list to build (e.g. arm64-v8a).
+  --abi <filters>        Comma-separated ABI filters (e.g. arm64-v8a).
+  --abi <abi_list>       Comma-separated ABI list to keep (e.g. arm64-v8a).
   --sdk-dir <path>       Location to install or reuse the Android SDK.
   --skip-sdk             Do not download or update the Android SDK.
   --skip-build           Skip invoking Gradle after ensuring dependencies.
@@ -24,6 +27,7 @@ Options:
 Examples:
   scripts/build_unsigned_apk.sh
   scripts/build_unsigned_apk.sh --sdk-dir /opt/android-sdk --task bundleRelease
+  scripts/build_unsigned_apk.sh --abi arm64-v8a
 USAGE
 }
 
@@ -34,6 +38,18 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --arch|--sdk-dir|--skip-sdk|--skip-build)
+    --abi)
+      abi_value="${2-}"
+      if [[ $# -lt 2 || -z "$abi_value" || "$abi_value" == -* ]]; then
+        echo "Error: --abi requires a non-empty value that does not start with '-'" >&2
+        usage
+        exit 1
+      fi
+      ABI_FILTERS="$abi_value"
+      FORWARDED_ARGS+=(--gradle-arg "-PabiFilters=$2")
+      shift 2
+      ;;
+    --sdk-dir|--skip-sdk|--skip-build)
       FORWARDED_ARGS+=("$1")
       if [[ "$1" == "--sdk-dir" || "$1" == "--arch" ]]; then
         FORWARDED_ARGS+=("$2")
@@ -53,6 +69,10 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ -n "$ABI_FILTERS" ]]; then
+  FORWARDED_ARGS+=(--abi "$ABI_FILTERS")
+fi
 
 USERLAND_UNSIGNED_APK=1 "${ROOT_DIR}/scripts/build_apk.sh" \
   --gradle-arg "-PunsignedApk=true" \
