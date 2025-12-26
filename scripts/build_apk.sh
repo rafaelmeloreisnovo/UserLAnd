@@ -49,6 +49,11 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --abi)
+      if [[ $# -lt 2 || -z "${2:-}" || "$2" == -* ]]; then
+        echo "Error: --abi requires a non-empty value." >&2
+        usage
+        exit 1
+      fi
       ABI_FILTERS="$2"
       GRADLE_ARGS+=("-PabiFilters=$2")
       shift 2
