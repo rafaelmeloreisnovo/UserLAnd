@@ -95,6 +95,9 @@ static int u(QTrace *q, const char *line) {
     }
 
     if (count == 0u) return -2;
+    if (count > 4u) {
+        count = 4u;
+    }
 
     // Normalize and store; caps guard against overrun and mismatched column sets.
     float cpu = vals[0];
