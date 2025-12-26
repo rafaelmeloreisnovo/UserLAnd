@@ -57,6 +57,19 @@ skips signing even if release keystore credentials are available. The
 `USERLAND_UNSIGNED_APK` variable (or `-PuserlandUnsignedApk`) is only consulted
 after that check, so if you have valid signing credentials but omit
 `-PunsignedApk=true`, the release build will still be signed.
+
+To generate an arm64-only artifact suitable for Android 15 devices, pass an ABI
+filter and then sign locally (not Play Store signing) before installation:
+
+```sh
+scripts/build_unsigned_apk.sh --abi arm64-v8a
+scripts/sign_apk.sh app/build/outputs/apk/release/app-release-unsigned.apk \
+  userland-arm64-signed.apk
+adb install userland-arm64-signed.apk
+```
+
+The `--abi` flag forwards `-PabiFilters=arm64-v8a` to Gradle, which also limits
+the downloaded assets to ARM64.
 ### Build an unsigned release APK
 
 For offline or sideloaded experiments that must remain unsigned even when

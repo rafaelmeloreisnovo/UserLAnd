@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_TASK="assembleRelease"
 FORWARDED_ARGS=()
+ABI_FILTERS=""
 
 usage() {
   cat <<'USAGE'
@@ -15,6 +16,7 @@ compatibility).
 
 Options:
   --task <gradle_task>   Gradle task to run (default: assembleRelease).
+  --abi <filters>        Comma-separated ABI filters (e.g. arm64-v8a).
   --abi <abi_list>       Comma-separated ABI list to keep (e.g. arm64-v8a).
   --sdk-dir <path>       Location to install or reuse the Android SDK.
   --skip-sdk             Do not download or update the Android SDK.
@@ -35,6 +37,13 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --abi)
+      abi_value="${2-}"
+      if [[ $# -lt 2 || -z "$abi_value" || "$abi_value" == -* ]]; then
+        echo "Error: --abi requires a non-empty value that does not start with '-'" >&2
+        usage
+        exit 1
+      fi
+      ABI_FILTERS="$abi_value"
       FORWARDED_ARGS+=(--gradle-arg "-PabiFilters=$2")
       shift 2
       ;;
@@ -58,6 +67,10 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ -n "$ABI_FILTERS" ]]; then
+  FORWARDED_ARGS+=(--abi "$ABI_FILTERS")
+fi
 
 USERLAND_UNSIGNED_APK=1 "${ROOT_DIR}/scripts/build_apk.sh" \
   --gradle-arg "-PunsignedApk=true" \

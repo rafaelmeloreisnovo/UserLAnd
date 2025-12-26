@@ -55,6 +55,12 @@ android {
         buildConfigField 'int', "MAX_DIMENSION", "1280"
         buildConfigField 'int', "MIN_DIMENSION", "360"
 
+        if (requestedAbis) {
+            ndk {
+                abiFilters *requestedAbis
+            }
+        }
+
         lint {
             lintConfig file("$projectDir/src/main/resources/lint.xml")
         }
@@ -250,7 +256,7 @@ task jacocoCoverageReportForCi(type: JacocoReport, dependsOn: ['testDebugUnitTes
     ])
 }
 
-ext.architectures = ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"]
+ext.architectures = requestedAbis ?: defaultArchitectures
 //ext.libDir = "$project.projectDir/src/main/resources/lib"
 ext.libDir = "$project.projectDir/src/main/jniLibs"
 

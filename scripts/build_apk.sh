@@ -12,6 +12,7 @@ BUILD_TASK="assembleDebug"
 SKIP_SDK=false
 SKIP_BUILD=false
 GRADLE_ARGS=()
+ABI_FILTERS=""
 REQUIRED_JAVA_MAJOR="17"
 
 usage() {
@@ -48,6 +49,12 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --abi)
+      if [[ $# -lt 2 || -z "${2:-}" || "$2" == -* ]]; then
+        echo "Error: --abi requires a non-empty value." >&2
+        usage
+        exit 1
+      fi
+      ABI_FILTERS="$2"
       GRADLE_ARGS+=("-PabiFilters=$2")
       shift 2
       ;;
@@ -186,6 +193,10 @@ write_local_properties
 if [[ "$SKIP_BUILD" == true ]]; then
   echo "Skipping Gradle build (--skip-build)."
   exit 0
+fi
+
+if [[ -n "$ABI_FILTERS" ]]; then
+  GRADLE_ARGS+=("-PabiFilters=$ABI_FILTERS")
 fi
 
 "$ROOT_DIR/gradlew" "$BUILD_TASK" ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"}
