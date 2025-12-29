@@ -165,7 +165,7 @@ compute status, and update decay rates.
 ### 4.3 RAFAELIA C modules
 
 The repository contains a large set of experimental C modules at the root
-(예: `rafaelia_kernel_v22.c`, `rafaelia_compact_core.c`,
+(e.g. `rafaelia_kernel_v22.c`, `rafaelia_compact_core.c`,
 `rafaelia_trinity_ultimate.c`) alongside a dedicated `rafaelia/` directory.
 These are used for benchmarks or algorithmic experiments and are driven by
 scripts like `RAFAELIA_BENCH_ALL.sh`.
