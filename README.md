@@ -107,6 +107,10 @@ keeps signing disabled.
 ## Start using UserLAnd
 See our [Getting Started](https://github.com/CypherpunkArmory/UserLAnd/wiki/Getting-Started-in-UserLAnd) page.
 
+## Technical documentation
+See [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) for a
+repository-level architecture overview and component map.
+
 ## UserLAnd assets
 The assets that UserLAnd depends on and the scripts that build them are contained in other repositories.  
 
