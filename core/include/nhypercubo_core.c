@@ -106,8 +106,11 @@ void registrar_universo(uint64_t id, const char* msg) {
     
     registro.id = id;
     strncpy(registro.origem, "Hypercubo_C", 31);
+    registro.origem[31] = '\0';
     strncpy(registro.dimensao, "Cubo4", 15);
+    registro.dimensao[15] = '\0';
     strncpy(registro.contexto, msg, 63);
+    registro.contexto[63] = '\0';
     
     // Gravação direta em binário (Append mode)
     db_binario = fopen("universo_rafaelia.bin", "ab");

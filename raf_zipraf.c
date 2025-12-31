@@ -3,7 +3,9 @@
 #include <stdint.h>
 #include <time.h>
 #include <string.h>
+#if defined(__ARM_FEATURE_CRC32)
 #include <arm_acle.h> /* Acesso direto ao Hardware de CRC do ARM */
+#endif
 
 /* * ESTRUTURA DO ZIPRAF (O Protocolo)
  * ---------------------------------
@@ -27,14 +29,30 @@ typedef struct {
 
 // --- FUNÇÃO CRC32 VIA HARDWARE (ARMv8) ---
 // Isso roda em 0 ciclos de CPU (usa unidade dedicada)
-uint32_t calc_crc32(const void *data, size_t len, uint32_t seed) {
+static uint32_t crc32_software(const void *data, size_t len, uint32_t seed) {
     const uint8_t *p = (const uint8_t *)data;
     uint32_t crc = ~seed;
-    
+    while (len--) {
+        crc ^= *p++;
+        for (int i = 0; i < 8; i++) {
+            crc = (crc >> 1) ^ (0xEDB88320u & (-(int)(crc & 1)));
+        }
+    }
+    return ~crc;
+}
+
+uint32_t calc_crc32(const void *data, size_t len, uint32_t seed) {
+#if defined(__ARM_FEATURE_CRC32)
+    const uint8_t *p = (const uint8_t *)data;
+    uint32_t crc = ~seed;
+
     while (len--) {
         crc = __crc32b(crc, *p++);
     }
     return ~crc;
+#else
+    return crc32_software(data, len, seed);
+#endif
 }
 
 // Simula a criação de um bloco de cálculo PETA

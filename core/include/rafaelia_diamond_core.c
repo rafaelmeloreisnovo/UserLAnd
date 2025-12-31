@@ -52,6 +52,7 @@ typedef struct {
 void _genesis(GlobalState *S) {
     memset(S, 0, sizeof(GlobalState));
     strncpy(S->header, INTENCAO, 63);
+    S->header[63] = '\0';
     S->alpha = 1.0;
     S->omega = OMEGA_SEED;
 }
@@ -116,8 +117,8 @@ void _render_svg(GlobalState *S) {
     printf("<svg width='1000' height='1000' xmlns='http://www.w3.org/2000/svg' style='background:#111'>\n");
     
     // FIX: Adicionado %s e %.2f para consumir os argumentos
-    printf("\n", S->header);
-    printf("\n", S->fib_seq[FIB_STEPS-1].value);
+    printf("<!-- %s -->\n", S->header);
+    printf("<!-- omega=%.6f -->\n", S->fib_seq[FIB_STEPS-1].value);
 
     // Conexões
     printf("<g stroke='#555' stroke-width='1' opacity='0.3'>\n");
