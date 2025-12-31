@@ -3,10 +3,31 @@
 // Focus: matrix diffing for debugging signals; no dynamic allocation.
 // Function blocks include defensive notes to surface mitigations for common bugs.
 
-#include "core/include/raf_core.h"
-#include <stdint.h>
-#include <time.h>
-#include <unistd.h>
+#include "core/include/raf_userland_base.h"
+
+#define RAF_STDIN_FD  0
+#define RAF_STDOUT_FD 1
+#define RAF_STDERR_FD 2
+
+typedef long raf_ssize_t;
+
+__attribute__((weak)) raf_ssize_t raf_read(int fd, void *buf, unsigned long count) {
+    (void)fd;
+    (void)buf;
+    (void)count;
+    return -1;
+}
+
+__attribute__((weak)) raf_ssize_t raf_write(int fd, const void *buf, unsigned long count) {
+    (void)fd;
+    (void)buf;
+    (void)count;
+    return -1;
+}
+
+__attribute__((weak)) uint64_t raf_epoch_seconds(void) {
+    return 0u;
+}
 
 #define Q_ROWS 48u
 #define Q_COLS 8u
@@ -49,10 +70,7 @@ static void t(QTrace *q) {
         ptr[i] = 0u;
     }
     q->c = 4u;            // default four metrics
-    struct timespec ts;
-    if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
-        q->epoch = (uint64_t)ts.tv_sec;
-    }
+    q->epoch = raf_epoch_seconds();
 }
 
 // Lightweight finite check to avoid pulling math headers; favors low-level guards.
@@ -230,7 +248,7 @@ static void log_parse_error(int code) {
     pos = append_u32(buf, pos, sizeof(buf), (uint32_t)code);
     pos = append_char(buf, pos, sizeof(buf), '\n');
     if (pos < sizeof(buf)) {
-        write(STDERR_FILENO, buf, pos);
+        raf_write(RAF_STDERR_FD, buf, (unsigned long)pos);
     }
 }
 
@@ -397,8 +415,8 @@ int main(void) {
     int line_overflow = 0;
     char in_buf[512];
     ssize_t got = 0;
-    while ((got = read(STDIN_FILENO, in_buf, sizeof(in_buf))) > 0) {
-        for (ssize_t i = 0; i < got; ++i) {
+    while ((got = raf_read(RAF_STDIN_FD, in_buf, sizeof(in_buf))) > 0) {
+        for (raf_ssize_t i = 0; i < got; ++i) {
             char c = in_buf[i];
             if (c == '\r') {
                 continue;
@@ -448,9 +466,9 @@ int main(void) {
         ++out_len;
     }
     if (out_len > 0u) {
-        write(STDOUT_FILENO, json, out_len);
+        raf_write(RAF_STDOUT_FD, json, (unsigned long)out_len);
     }
-    write(STDOUT_FILENO, "\n", 1u);
+    raf_write(RAF_STDOUT_FD, "\n", 1u);
 
     return 0;
 }

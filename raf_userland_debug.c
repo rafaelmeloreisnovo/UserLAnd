@@ -2,12 +2,31 @@
 // Draft – UserLAnd Debug Matrix Core
 // C11, no GC, low-level only.
 
-#define _POSIX_C_SOURCE 200809L
+#include "core/include/raf_userland_base.h"
 
-#include "core/include/raf_core.h"   // Reuse AbsoluteMatrix, RNG, CRC helpers where possible.
-#include <stdint.h>
-#include <time.h>
-#include <unistd.h>
+#define RAF_STDIN_FD  0
+#define RAF_STDOUT_FD 1
+#define RAF_STDERR_FD 2
+
+typedef long raf_ssize_t;
+
+__attribute__((weak)) raf_ssize_t raf_read(int fd, void *buf, unsigned long count) {
+    (void)fd;
+    (void)buf;
+    (void)count;
+    return -1;
+}
+
+__attribute__((weak)) raf_ssize_t raf_write(int fd, const void *buf, unsigned long count) {
+    (void)fd;
+    (void)buf;
+    (void)count;
+    return -1;
+}
+
+__attribute__((weak)) uint64_t raf_epoch_seconds(void) {
+    return 0u;
+}
 
 // -------------------------------
 // Local constants and types
@@ -230,7 +249,7 @@ static void log_parse_error(int code) {
     pos = append_u32(buf, pos, sizeof(buf), (uint32_t)code);
     pos = append_char(buf, pos, sizeof(buf), '\n');
     if (pos < sizeof(buf)) {
-        write(STDERR_FILENO, buf, pos);
+        raf_write(RAF_STDERR_FD, buf, (unsigned long)pos);
     }
 }
 
@@ -420,10 +439,7 @@ int main(int argc, char **argv) {
     raf_memzero(&f, sizeof(f));
 
     // Time snapshot for traceability (ISO 27001 logging).
-    struct timespec ts;
-    if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
-        f.t_epoch = (uint64_t)ts.tv_sec;
-    }
+    f.t_epoch = raf_epoch_seconds();
 
     // Strict stdin processing: CSV lines from shell or another tool.
     char line[256];
@@ -432,11 +448,11 @@ int main(int argc, char **argv) {
     char in_buf[512];
 
     while (f.r_used < R_MAX_ROWS) {
-        ssize_t got = read(STDIN_FILENO, in_buf, sizeof(in_buf));
+        raf_ssize_t got = raf_read(RAF_STDIN_FD, in_buf, sizeof(in_buf));
         if (got <= 0) {
             break;
         }
-        for (ssize_t i = 0; i < got && f.r_used < R_MAX_ROWS; ++i) {
+        for (raf_ssize_t i = 0; i < got && f.r_used < R_MAX_ROWS; ++i) {
             char c = in_buf[i];
             if (c == '\r') {
                 continue;
@@ -483,9 +499,9 @@ int main(int argc, char **argv) {
     // Always one single JSON object to stdout: safe for pipes.
     size_t out_len = raf_strlen(json);
     if (out_len > 0u) {
-        write(STDOUT_FILENO, json, out_len);
+        raf_write(RAF_STDOUT_FD, json, (unsigned long)out_len);
     }
-    write(STDOUT_FILENO, "\n", 1u);
+    raf_write(RAF_STDOUT_FD, "\n", 1u);
 
     return 0;
 }
