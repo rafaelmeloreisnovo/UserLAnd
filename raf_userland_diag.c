@@ -3,12 +3,31 @@
 // Focus: matrix diffing for debugging signals; no dynamic allocation.
 // Function blocks include defensive notes to surface mitigations for common bugs.
 
-#include "core/include/raf_core.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <time.h>
+#include "core/include/raf_userland_base.h"
+
+#define RAF_STDIN_FD  0
+#define RAF_STDOUT_FD 1
+#define RAF_STDERR_FD 2
+
+typedef long raf_ssize_t;
+
+__attribute__((weak)) raf_ssize_t raf_read(int fd, void *buf, unsigned long count) {
+    (void)fd;
+    (void)buf;
+    (void)count;
+    return -1;
+}
+
+__attribute__((weak)) raf_ssize_t raf_write(int fd, const void *buf, unsigned long count) {
+    (void)fd;
+    (void)buf;
+    (void)count;
+    return -1;
+}
+
+__attribute__((weak)) uint64_t raf_epoch_seconds(void) {
+    return 0u;
+}
 
 #define Q_ROWS 48u
 #define Q_COLS 8u
@@ -46,9 +65,12 @@ static float n01(float v, float min, float max) {
 // Initialize structure with secure defaults.
 // Sets deterministic baseline to avoid uninitialized data across phases.
 static void t(QTrace *q) {
-    memset(q, 0, sizeof(*q));
+    uint8_t *ptr = (uint8_t *)q;
+    for (size_t i = 0u; i < sizeof(*q); ++i) {
+        ptr[i] = 0u;
+    }
     q->c = 4u;            // default four metrics
-    q->epoch = (uint64_t)time(NULL); // deterministic log time
+    q->epoch = raf_epoch_seconds();
 }
 
 // Lightweight finite check to avoid pulling math headers; favors low-level guards.
@@ -119,18 +141,115 @@ static int parse_float(const char **cursor, float *out) {
     return 1;
 }
 
-static int drain_long_line(char *line) {
-    size_t len = strlen(line);
-    if (len > 0u && line[len - 1u] == '\n') {
-        return 0;
+// Minimal integer to string (base 10). Returns length written (without null).
+static size_t u32_to_str(uint32_t v, char *out, size_t cap) {
+    if (cap == 0u) {
+        return 0u;
     }
-    int ch = 0;
-    while ((ch = fgetc(stdin)) != EOF) {
-        if (ch == '\n') {
-            break;
+    char tmp[16];
+    size_t idx = 0u;
+    do {
+        tmp[idx++] = (char)('0' + (v % 10u));
+        v /= 10u;
+    } while (v != 0u && idx < sizeof(tmp));
+
+    size_t pos = 0u;
+    while (idx > 0u && pos + 1u < cap) {
+        out[pos++] = tmp[--idx];
+    }
+    out[pos] = '\0';
+    return pos;
+}
+
+static size_t u64_to_str(uint64_t v, char *out, size_t cap) {
+    if (cap == 0u) {
+        return 0u;
+    }
+    char tmp[32];
+    size_t idx = 0u;
+    do {
+        tmp[idx++] = (char)('0' + (v % 10u));
+        v /= 10u;
+    } while (v != 0u && idx < sizeof(tmp));
+
+    size_t pos = 0u;
+    while (idx > 0u && pos + 1u < cap) {
+        out[pos++] = tmp[--idx];
+    }
+    out[pos] = '\0';
+    return pos;
+}
+
+static size_t f_to_str6(float v, char *out, size_t cap) {
+    if (cap < 3u) {
+        return 0u;
+    }
+
+    size_t pos = 0u;
+    if (v < 0.0f) {
+        out[pos++] = '-';
+        v = -v;
+        if (pos >= cap) {
+            return pos - 1u;
         }
     }
-    return 1;
+
+    uint32_t scaled = (uint32_t)(v * 1000000.0f + 0.5f);
+    uint32_t whole = scaled / 1000000u;
+    uint32_t frac = scaled % 1000000u;
+
+    pos += u32_to_str(whole, out + pos, cap - pos);
+    if (pos + 7u >= cap) {
+        return pos;
+    }
+    out[pos++] = '.';
+    uint32_t div = 100000u;
+    for (int i = 0; i < 6 && pos < cap; ++i) {
+        out[pos++] = (char)('0' + (frac / div));
+        frac %= div;
+        div /= 10u;
+    }
+    if (pos < cap) {
+        out[pos] = '\0';
+    }
+    return pos;
+}
+
+static size_t append_str(char *out, size_t pos, size_t cap, const char *src) {
+    while (src && *src && pos + 1u < cap) {
+        out[pos++] = *src++;
+    }
+    return pos;
+}
+
+static size_t append_char(char *out, size_t pos, size_t cap, char c) {
+    if (pos + 1u < cap) {
+        out[pos++] = c;
+    }
+    return pos;
+}
+
+static size_t append_u32(char *out, size_t pos, size_t cap, uint32_t v) {
+    return pos + u32_to_str(v, out + pos, cap - pos);
+}
+
+static size_t append_u64(char *out, size_t pos, size_t cap, uint64_t v) {
+    return pos + u64_to_str(v, out + pos, cap - pos);
+}
+
+static size_t append_f6(char *out, size_t pos, size_t cap, float v) {
+    return pos + f_to_str6(v, out + pos, cap - pos);
+}
+
+static void log_parse_error(int code) {
+    char buf[64];
+    size_t pos = 0u;
+    pos = append_str(buf, pos, sizeof(buf), "[RTRACE] parse_error code=");
+    pos = append_u32(buf, pos, sizeof(buf), (uint32_t)code);
+    pos = append_char(buf, pos, sizeof(buf), '\n');
+    if (pos < sizeof(buf)) {
+        raf_write(RAF_STDERR_FD, buf, (unsigned long)pos);
+    }
 }
 
 // Parse a CSV line into either baseline or live matrix.
@@ -240,39 +359,50 @@ static void y(QTrace *q) {
 static void o(const QTrace *q, char *out, size_t out_len) {
     if (!out || out_len == 0u) return;
     uint32_t mask_gap = q->seen_a ^ q->seen_b;
-    int w = snprintf(out, out_len,
-        "{\"tag\":\"userland_trace\","\
-        "\"severity\":%u,"\
-        "\"rows_a\":%u,"\
-        "\"rows_b\":%u,"\
-        "\"cols\":%u,"\
-        "\"crc_a\":%u,"\
-        "\"crc_b\":%u,"\
-        "\"bad\":%u,"\
-        "\"col_gap\":%u,"\
-        "\"drift\":%.6f,"\
-        "\"peak\":%.6f,"\
-        "\"spread\":%.6f,"\
-        "\"epoch\":%llu,"\
-        "\"note\":\"baseline_then_live_with_blank_line\"}" ,
-        q->sev,
-        q->ra,
-        q->rb,
-        q->c,
-        q->crc_a,
-        q->crc_b,
-        q->bad,
-        mask_gap,
-        (double)q->drift,
-        (double)q->peak,
-        (double)q->spread,
-        (unsigned long long)q->epoch
-    );
+    size_t pos = 0u;
+    pos = append_char(out, pos, out_len, '{');
+    pos = append_str(out, pos, out_len, "\"tag\":\"userland_trace\",");
+    pos = append_str(out, pos, out_len, "\"severity\":");
+    pos = append_u32(out, pos, out_len, q->sev);
+    pos = append_char(out, pos, out_len, ',');
+    pos = append_str(out, pos, out_len, "\"rows_a\":");
+    pos = append_u32(out, pos, out_len, q->ra);
+    pos = append_char(out, pos, out_len, ',');
+    pos = append_str(out, pos, out_len, "\"rows_b\":");
+    pos = append_u32(out, pos, out_len, q->rb);
+    pos = append_char(out, pos, out_len, ',');
+    pos = append_str(out, pos, out_len, "\"cols\":");
+    pos = append_u32(out, pos, out_len, q->c);
+    pos = append_char(out, pos, out_len, ',');
+    pos = append_str(out, pos, out_len, "\"crc_a\":");
+    pos = append_u32(out, pos, out_len, q->crc_a);
+    pos = append_char(out, pos, out_len, ',');
+    pos = append_str(out, pos, out_len, "\"crc_b\":");
+    pos = append_u32(out, pos, out_len, q->crc_b);
+    pos = append_char(out, pos, out_len, ',');
+    pos = append_str(out, pos, out_len, "\"bad\":");
+    pos = append_u32(out, pos, out_len, q->bad);
+    pos = append_char(out, pos, out_len, ',');
+    pos = append_str(out, pos, out_len, "\"col_gap\":");
+    pos = append_u32(out, pos, out_len, mask_gap);
+    pos = append_char(out, pos, out_len, ',');
+    pos = append_str(out, pos, out_len, "\"drift\":");
+    pos = append_f6(out, pos, out_len, q->drift);
+    pos = append_char(out, pos, out_len, ',');
+    pos = append_str(out, pos, out_len, "\"peak\":");
+    pos = append_f6(out, pos, out_len, q->peak);
+    pos = append_char(out, pos, out_len, ',');
+    pos = append_str(out, pos, out_len, "\"spread\":");
+    pos = append_f6(out, pos, out_len, q->spread);
+    pos = append_char(out, pos, out_len, ',');
+    pos = append_str(out, pos, out_len, "\"epoch\":");
+    pos = append_u64(out, pos, out_len, q->epoch);
+    pos = append_str(out, pos, out_len, ",\"note\":\"baseline_then_live_with_blank_line\"}");
 
-    if (w < 0 || (size_t)w >= out_len) {
-        if (out_len > 2u) {
-            out[0] = '{'; out[1] = '}'; out[2] = '\0';
-        }
+    if (pos < out_len) {
+        out[pos] = '\0';
+    } else if (out_len > 0u) {
+        out[out_len - 1u] = '\0';
     }
 }
 
@@ -281,17 +411,49 @@ int main(void) {
     t(&q);
 
     char line[256];
-    while (fgets(line, sizeof(line), stdin)) {
-        if (drain_long_line(line)) {
-            fprintf(stderr, "[RTRACE] parse_error code=%d\n", -6);
-            continue;
+    size_t line_len = 0u;
+    int line_overflow = 0;
+    char in_buf[512];
+    ssize_t got = 0;
+    while ((got = raf_read(RAF_STDIN_FD, in_buf, sizeof(in_buf))) > 0) {
+        for (raf_ssize_t i = 0; i < got; ++i) {
+            char c = in_buf[i];
+            if (c == '\r') {
+                continue;
+            }
+            if (c == '\n') {
+                line[line_len] = '\0';
+                if (line_overflow) {
+                    log_parse_error(-6);
+                } else if (line_len == 0u) {
+                    q.phase = 1u;
+                } else if (line[0] != '#') {
+                    int r = u(&q, line);
+                    if (r != 0) {
+                        log_parse_error(r);
+                    }
+                }
+                line_len = 0u;
+                line_overflow = 0;
+                continue;
+            }
+            if (!line_overflow && line_len + 1u < sizeof(line)) {
+                line[line_len++] = c;
+            } else {
+                line_overflow = 1;
+            }
         }
-        if (line[0] == '#' ) continue;           // comment
-        if (line[0] == '\n') { q.phase = 1u; continue; } // switch phase
+    }
 
-        int r = u(&q, line);
-        if (r != 0) {
-            fprintf(stderr, "[RTRACE] parse_error code=%d\n", r);
+    if (line_len > 0u) {
+        line[line_len] = '\0';
+        if (line_overflow) {
+            log_parse_error(-6);
+        } else if (line[0] != '#') {
+            int r = u(&q, line);
+            if (r != 0) {
+                log_parse_error(r);
+            }
         }
     }
 
@@ -299,8 +461,14 @@ int main(void) {
 
     char json[Q_JSON];
     o(&q, json, sizeof(json));
-    fputs(json, stdout);
-    fputc('\n', stdout);
+    size_t out_len = 0u;
+    while (json[out_len] != '\0' && out_len < sizeof(json)) {
+        ++out_len;
+    }
+    if (out_len > 0u) {
+        raf_write(RAF_STDOUT_FD, json, (unsigned long)out_len);
+    }
+    raf_write(RAF_STDOUT_FD, "\n", 1u);
 
     return 0;
 }
