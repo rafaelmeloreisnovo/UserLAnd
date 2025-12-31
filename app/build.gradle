@@ -372,7 +372,7 @@ dependencies {
     // Androidx versions
     def room_version = '2.6.1'
     def lifecycle_version = '2.10.0'
-    def support_library_version = '1.12.0'
+    def support_library_version = '1.13.0'
     def preference_version = '1.2.1'
     def ktx_version = '1.12.0'
     def billing_version = '6.2.0'
