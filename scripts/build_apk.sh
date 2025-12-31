@@ -8,6 +8,7 @@ TOOLS_DIR=""
 DEFAULT_COMPILE_SDK="35"
 DEFAULT_BUILD_TOOLS_VERSION="35.0.0"
 APP_BUILD_GRADLE="$ROOT_DIR/app/build.gradle"
+GRADLE_PROPERTIES="$ROOT_DIR/gradle.properties"
 BUILD_TASK="assembleDebug"
 SKIP_SDK=false
 SKIP_BUILD=false
@@ -109,6 +110,13 @@ extract_build_tools_version_from_app() {
   sed -n 's/^[[:space:]]*buildToolsVersion[[:space:]]*=?[[:space:]]*["'\'']\([^"'\'']*\)["'\''].*/\1/p' "$APP_BUILD_GRADLE" | head -n1
 }
 
+extract_ndk_version_from_properties() {
+  if [[ ! -f "$GRADLE_PROPERTIES" ]]; then
+    return 1
+  fi
+  sed -n 's/^[[:space:]]*ndkVersion[[:space:]]*=[[:space:]]*//p' "$GRADLE_PROPERTIES" | head -n1
+}
+
 find_java_home() {
   local candidate
   for candidate in "${JAVA_HOME_11_X64:-}" "${JAVA_HOME:-}" "$(/usr/libexec/java_home -v ${REQUIRED_JAVA_MAJOR} 2>/dev/null || true)" \
@@ -135,6 +143,8 @@ BUILD_TOOLS_VERSION="$(extract_build_tools_version_from_app || true)"
 if [[ -z "$BUILD_TOOLS_VERSION" ]]; then
   BUILD_TOOLS_VERSION="$DEFAULT_BUILD_TOOLS_VERSION"
 fi
+
+NDK_VERSION="$(extract_ndk_version_from_properties || true)"
 
 PLATFORM_PACKAGE="platforms;android-${COMPILE_SDK_VERSION}"
 BUILD_TOOLS_PACKAGE="build-tools;${BUILD_TOOLS_VERSION}"
@@ -167,7 +177,11 @@ if [[ "$SKIP_SDK" == false ]]; then
   # deliver SIGPIPE to `yes` under `set -o pipefail`. Allow that benign exit
   # while still accepting all licenses.
   yes | "$TOOLS_DIR/bin/sdkmanager" --licenses >/dev/null || true
-  "$TOOLS_DIR/bin/sdkmanager" --install "platform-tools" "$PLATFORM_PACKAGE" "$BUILD_TOOLS_PACKAGE"
+  SDK_PACKAGES=("platform-tools" "$PLATFORM_PACKAGE" "$BUILD_TOOLS_PACKAGE")
+  if [[ -n "$NDK_VERSION" ]]; then
+    SDK_PACKAGES+=("ndk;${NDK_VERSION}")
+  fi
+  "$TOOLS_DIR/bin/sdkmanager" --install "${SDK_PACKAGES[@]}"
 else
   echo "Skipping SDK install/update as requested."
   if [[ ! -x "$TOOLS_DIR/bin/sdkmanager" ]]; then
