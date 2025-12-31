@@ -37,8 +37,7 @@ if (localPropertiesFile.exists()) {
 def localNdkDir = localProperties.getProperty('ndk.dir')
         ?: System.getenv('ANDROID_NDK_HOME')
         ?: System.getenv('NDK_HOME')
-def defaultNdkVersion = '27.3.13750724'
-def resolvedNdkVersion = project.findProperty('ndkVersion') ?: defaultNdkVersion
+def resolvedNdkVersion = project.findProperty('ndkVersion')
 def abiFiltersProperty = project.findProperty('abiFilters') ?: project.findProperty('userlandAbiFilters')
 
 android {
