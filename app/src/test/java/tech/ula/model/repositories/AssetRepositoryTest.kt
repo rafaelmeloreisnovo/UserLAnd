@@ -436,8 +436,10 @@ class AssetRepositoryTest {
 
         val distInputStream = remoteDistAssetFile.inputStream()
 
-        whenever(mockHttpStream.fromUrl(distUrl))
-                .thenReturn(distInputStream)
+        runBlocking {
+            whenever(mockHttpStream.toInputStream(distUrl))
+                    .thenReturn(distInputStream)
+        }
 
         val result = runBlocking {
             assetRepository.getAssetList(distRepo)
@@ -447,7 +449,7 @@ class AssetRepositoryTest {
         assertEquals(expectedDistList, result)
 
         verifyBlocking(mockGithubApiClient) { getAssetsListDownloadUrl(distRepo) }
-        verify(mockHttpStream).fromUrl(distUrl)
+        verifyBlocking(mockHttpStream) { toInputStream(distUrl) }
         verify(mockAssetPreferences).setAssetList(distRepo, expectedDistList)
     }
 

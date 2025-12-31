@@ -88,7 +88,7 @@ class GithubApiClientTest {
 
     private fun stubBaseUrl() {
         val url = server.url("/")
-        whenever(mockUrlProvider.getBaseUrl()).thenReturn("${url.url()}")
+        whenever(mockUrlProvider.getBaseUrl()).thenReturn(url.toString())
     }
 
     @Test
