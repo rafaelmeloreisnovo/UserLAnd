@@ -41,7 +41,16 @@ uint32_t calc_crc32(const void *data, size_t len, uint32_t seed) {
 void create_and_seal_block(int id) {
     // 1. Criar Dados (Simulando resultado do cálculo)
     char payload[1024];
-    sprintf(payload, "RESULTADO_DO_BLOCO_%d_RAFAELIA_PETA_STACK_XYZ", id);
+    int payload_written = snprintf(
+        payload,
+        sizeof(payload),
+        "RESULTADO_DO_BLOCO_%d_RAFAELIA_PETA_STACK_XYZ",
+        id
+    );
+    if (payload_written < 0 || payload_written >= (int)sizeof(payload)) {
+        fprintf(stderr, "Erro: payload excedeu o buffer para o bloco %d.\n", id);
+        return;
+    }
     uint32_t p_len = strlen(payload);
 
     // 2. Calcular CRC Interno (Selo do Dado)
@@ -63,8 +72,16 @@ void create_and_seal_block(int id) {
 
     // 5. Salvar no Disco (O Arquivo Zipado)
     char filename[32];
-    sprintf(filename, "block_%d.zipraf", id);
+    int filename_written = snprintf(filename, sizeof(filename), "block_%d.zipraf", id);
+    if (filename_written < 0 || filename_written >= (int)sizeof(filename)) {
+        fprintf(stderr, "Erro: nome de arquivo excedeu o buffer para o bloco %d.\n", id);
+        return;
+    }
     FILE *f = fopen(filename, "wb");
+    if (!f) {
+        fprintf(stderr, "Erro: falha ao abrir arquivo %s para escrita.\n", filename);
+        return;
+    }
     fwrite(&header, sizeof(ZipRafHeader), 1, f);
     fwrite(payload, 1, p_len, f);
     fclose(f);
@@ -77,7 +94,11 @@ void create_and_seal_block(int id) {
 // Verifica se o Zíper está fechado ou estourado
 void verify_block(int id) {
     char filename[32];
-    sprintf(filename, "block_%d.zipraf", id);
+    int filename_written = snprintf(filename, sizeof(filename), "block_%d.zipraf", id);
+    if (filename_written < 0 || filename_written >= (int)sizeof(filename)) {
+        fprintf(stderr, "Erro: nome de arquivo excedeu o buffer para o bloco %d.\n", id);
+        return;
+    }
     FILE *f = fopen(filename, "rb");
     if (!f) return;
 
@@ -126,9 +147,13 @@ int main() {
     // SIMULAR UM ATAQUE HACKER NO BLOCO 2
     printf("\n⚠️  \x1b[33mSIMULANDO ATAQUE DE CORRUPÇÃO NO BLOCO 2...\x1b[0m\n");
     FILE *f = fopen("block_2.zipraf", "r+b");
-    fseek(f, 20, SEEK_SET); // Vai no meio do cabeçalho
-    fputc(0xFF, f); // Injeta lixo
-    fclose(f);
+    if (f) {
+        fseek(f, 20, SEEK_SET); // Vai no meio do cabeçalho
+        fputc(0xFF, f); // Injeta lixo
+        fclose(f);
+    } else {
+        fprintf(stderr, "Erro: falha ao abrir block_2.zipraf para corrupção simulada.\n");
+    }
 
     // Tentar verificar o bloco hackeado
     verify_block(2);
