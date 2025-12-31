@@ -23,7 +23,10 @@ import java.util.List;
 public final class BackgroundJob {
 
     private static final String LOG_TAG = "termux-task";
-    private static final int LOGCAT_MAX_LENGTH = 4000;
+    // Logcat truncates lines at approximately 4000 bytes, not characters.
+    // With UTF-8 characters taking up to 4 bytes, use 1000 characters to
+    // ensure we never exceed the byte limit even in the worst case.
+    private static final int LOGCAT_MAX_LENGTH = 1000;
 
     final Process mProcess;
 
