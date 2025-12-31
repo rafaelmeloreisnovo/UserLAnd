@@ -68,19 +68,13 @@ android {
         buildConfigField 'boolean', 'ENABLE_PLAY_SERVICES', 'true'
 
         ndk {
-            abiFilters architectures
+            abiFilters(*architectures)
         }
 
         //these are used to help determine the resolution
         buildConfigField 'boolean', 'FORCE_PORTRAIT_GEOMETRY', 'true'
         buildConfigField 'int', "MAX_DIMENSION", "1280"
         buildConfigField 'int', "MIN_DIMENSION", "360"
-
-        if (requestedAbis) {
-            ndk {
-                abiFilters *requestedAbis
-            }
-        }
 
         lint {
             lintConfig file("$projectDir/src/main/resources/lint.xml")
@@ -278,7 +272,6 @@ task jacocoCoverageReportForCi(type: JacocoReport, dependsOn: ['testDebugUnitTes
 }
 
 ext.architectures = architectures
-ext.architectures = requestedAbis ?: defaultArchitectures
 //ext.libDir = "$project.projectDir/src/main/resources/lib"
 ext.libDir = "$project.projectDir/src/main/jniLibs"
 
