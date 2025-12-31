@@ -114,7 +114,7 @@ extract_ndk_version_from_properties() {
   if [[ ! -f "$GRADLE_PROPERTIES" ]]; then
     return 1
   fi
-  sed -n 's/^[[:space:]]*ndkVersion[[:space:]]*=[[:space:]]*//p' "$GRADLE_PROPERTIES" | head -n1
+  sed -n 's/^[[:space:]]*ndkVersion[[:space:]]*=[[:space:]]*["'\'']\([^"'\'']*\)["'\''][[:space:]]*$/\1/p; s/^[[:space:]]*ndkVersion[[:space:]]*=[[:space:]]*\([^[:space:]]*\).*/\1/p' "$GRADLE_PROPERTIES" | head -n1
 }
 
 find_java_home() {
