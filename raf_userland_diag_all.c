@@ -183,10 +183,59 @@ static void y(QTrace *q) {
     q->crc_b = raf_fast_crc32(0u, q->b, sizeof(float) * q->rb * q->c);
 }
 
+// JSON string escape helper; writes escaped content with NUL termination.
+static size_t json_escape(char *dst, size_t cap, const char *src) {
+    if (!dst || cap == 0u) return 0u;
+    size_t pos = 0u;
+    dst[0] = '\0';
+    if (!src) return 0u;
+
+    while (*src != '\0' && pos + 1u < cap) {
+        unsigned char c = (unsigned char)*src++;
+        const char *esc = NULL;
+
+        switch (c) {
+            case '\"': esc = "\\\""; break;
+            case '\\': esc = "\\\\"; break;
+            case '\n': esc = "\\n"; break;
+            case '\r': esc = "\\r"; break;
+            case '\t': esc = "\\t"; break;
+            default:
+                if (c < 0x20u) {
+                    if (pos + 7u > cap) {
+                        break;
+                    }
+                    int w = snprintf(dst + pos, cap - pos, "\\u%04x", c);
+                    if (w > 0) {
+                        pos += (size_t)w;
+                    }
+                    continue;
+                }
+                dst[pos++] = (char)c;
+                continue;
+        }
+
+        if (!esc) {
+            break;
+        }
+        size_t esc_len = 2u;  // All escape sequences above are exactly two characters long.
+        if (pos + esc_len + 1u > cap) {
+            break;
+        }
+        memcpy(dst + pos, esc, esc_len);
+        pos += esc_len;
+    }
+
+    dst[pos] = '\0';
+    return pos;
+}
+
 // Append JSON snippet into buffer; keeps bounded writes to avoid overflow.
 static size_t o(char *dst, size_t cap, const QTrace *q) {
     if (!dst || cap == 0u || !q) return 0u;
     uint32_t mask_gap = q->seen_a ^ q->seen_b;
+    char tag_esc[192];
+    json_escape(tag_esc, sizeof(tag_esc), q->tag);
     int w = snprintf(dst, cap,
         "{\"tag\":\"%s\","\
         "\"severity\":%u,"\
@@ -201,7 +250,7 @@ static size_t o(char *dst, size_t cap, const QTrace *q) {
         "\"peak\":%.6f,"\
         "\"spread\":%.6f,"\
         "\"epoch\":%llu}" ,
-        q->tag,
+        tag_esc,
         q->sev,
         q->ra,
         q->rb,
