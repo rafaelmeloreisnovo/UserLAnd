@@ -6,8 +6,6 @@
 
 #include "core/include/raf_core.h"   // Reuse AbsoluteMatrix, RNG, CRC helpers where possible.
 #include <stdint.h>
-#include <stdio.h>
-#include <string.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -156,6 +154,24 @@ static size_t append_u64(char *out, size_t pos, size_t cap, uint64_t v) {
 
 static size_t append_f6(char *out, size_t pos, size_t cap, float v) {
     return pos + f_to_str6(v, out + pos, cap - pos);
+}
+
+static void raf_memzero(void *ptr, size_t len) {
+    uint8_t *p = (uint8_t *)ptr;
+    for (size_t i = 0u; i < len; ++i) {
+        p[i] = 0u;
+    }
+}
+
+static size_t raf_strlen(const char *s) {
+    size_t len = 0u;
+    if (!s) {
+        return 0u;
+    }
+    while (s[len] != '\0') {
+        ++len;
+    }
+    return len;
 }
 
 // Lightweight float parser for positive/negative decimals.
@@ -401,7 +417,7 @@ int main(int argc, char **argv) {
     (void)argv;
 
     RField f;
-    memset(&f, 0, sizeof(f));
+    raf_memzero(&f, sizeof(f));
 
     // Time snapshot for traceability (ISO 27001 logging).
     struct timespec ts;
@@ -465,7 +481,7 @@ int main(int argc, char **argv) {
     j(&f, json, sizeof(json), "raf_userland_matrix");
 
     // Always one single JSON object to stdout: safe for pipes.
-    size_t out_len = strlen(json);
+    size_t out_len = raf_strlen(json);
     if (out_len > 0u) {
         write(STDOUT_FILENO, json, out_len);
     }
