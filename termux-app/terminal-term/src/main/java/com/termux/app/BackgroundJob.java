@@ -2,6 +2,8 @@ package com.termux.app;
 
 import android.util.Log;
 
+import com.termux.terminal.term.R;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -21,6 +23,7 @@ import java.util.List;
 public final class BackgroundJob {
 
     private static final String LOG_TAG = "termux-task";
+    private static final int LOGCAT_MAX_LENGTH = 4000;
 
     final Process mProcess;
 
@@ -36,7 +39,7 @@ public final class BackgroundJob {
             process = Runtime.getRuntime().exec(progArray, env, new File(cwd));
         } catch (IOException e) {
             mProcess = null;
-            // TODO: Visible error message?
+            service.showToast(service.getString(R.string.background_job_failed_to_start, processDescription));
             Log.e(LOG_TAG, "Failed running background job: " + processDescription, e);
             return;
         }
@@ -48,17 +51,7 @@ public final class BackgroundJob {
             @Override
             public void run() {
                 Log.i(LOG_TAG, "[" + pid + "] starting: " + processDescription);
-                InputStream stdout = mProcess.getInputStream();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(stdout, StandardCharsets.UTF_8));
-                String line;
-                try {
-                    // FIXME: Long lines.
-                    while ((line = reader.readLine()) != null) {
-                        Log.i(LOG_TAG, "[" + pid + "] stdout: " + line);
-                    }
-                } catch (IOException e) {
-                    Log.e(LOG_TAG, "Error reading output", e);
-                }
+                readStream(pid, "stdout", mProcess.getInputStream());
 
                 try {
                     int exitCode = mProcess.waitFor();
@@ -78,19 +71,33 @@ public final class BackgroundJob {
         new Thread() {
             @Override
             public void run() {
-                InputStream stderr = mProcess.getErrorStream();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(stderr, StandardCharsets.UTF_8));
-                String line;
-                try {
-                    // FIXME: Long lines.
-                    while ((line = reader.readLine()) != null) {
-                        Log.i(LOG_TAG, "[" + pid + "] stderr: " + line);
-                    }
-                } catch (IOException e) {
-                    // Ignore.
-                }
+                readStream(pid, "stderr", mProcess.getErrorStream());
             }
-        };
+        }.start();
+    }
+
+    private static void readStream(int pid, String streamName, InputStream stream) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                logLine(pid, streamName, line);
+            }
+        } catch (IOException e) {
+            Log.e(LOG_TAG, "Error reading " + streamName + " output", e);
+        }
+    }
+
+    private static void logLine(int pid, String streamName, String line) {
+        String prefix = "[" + pid + "] " + streamName + ": ";
+        int maxLength = LOGCAT_MAX_LENGTH - prefix.length();
+        if (maxLength <= 0 || line.length() <= maxLength) {
+            Log.i(LOG_TAG, prefix + line);
+            return;
+        }
+        for (int start = 0; start < line.length(); start += maxLength) {
+            int end = Math.min(line.length(), start + maxLength);
+            Log.i(LOG_TAG, prefix + line.substring(start, end));
+        }
     }
 
 
