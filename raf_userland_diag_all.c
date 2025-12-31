@@ -199,7 +199,7 @@ static size_t json_escape(char *dst, size_t cap, const char *src) {
             case '\t': esc = "\\t"; break;
             default:
                 if (c < 0x20u) {
-                    if (pos + 6u >= cap) {
+                    if (pos + 7u > cap) {
                         break;
                     }
                     int w = snprintf(dst + pos, cap - pos, "\\u%04x", c);
