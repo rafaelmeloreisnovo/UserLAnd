@@ -37,7 +37,6 @@ while [[ $# -gt 0 ]]; do
       BUILD_TASK="$2"
       shift 2
       ;;
-    --arch|--sdk-dir|--skip-sdk|--skip-build)
     --abi)
       abi_value="${2-}"
       if [[ $# -lt 2 || -z "$abi_value" || "$abi_value" == -* ]]; then
@@ -49,9 +48,19 @@ while [[ $# -gt 0 ]]; do
       FORWARDED_ARGS+=(--gradle-arg "-PabiFilters=$2")
       shift 2
       ;;
+    --arch)
+      arch_value="${2-}"
+      if [[ $# -lt 2 || -z "$arch_value" || "$arch_value" == -* ]]; then
+        echo "Error: --arch requires a non-empty value that does not start with '-'" >&2
+        usage
+        exit 1
+      fi
+      FORWARDED_ARGS+=(--arch "$arch_value")
+      shift 2
+      ;;
     --sdk-dir|--skip-sdk|--skip-build)
       FORWARDED_ARGS+=("$1")
-      if [[ "$1" == "--sdk-dir" || "$1" == "--arch" ]]; then
+      if [[ "$1" == "--sdk-dir" ]]; then
         FORWARDED_ARGS+=("$2")
         shift 2
       else

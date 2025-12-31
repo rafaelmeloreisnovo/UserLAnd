@@ -51,7 +51,14 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --arch)
+      if [[ $# -lt 2 || -z "${2:-}" || "$2" == -* ]]; then
+        echo "Error: --arch requires a non-empty value." >&2
+        usage
+        exit 1
+      fi
       ARCHITECTURES="$2"
+      shift 2
+      ;;
     --abi)
       if [[ $# -lt 2 || -z "${2:-}" || "$2" == -* ]]; then
         echo "Error: --abi requires a non-empty value." >&2
@@ -201,6 +208,7 @@ fi
 
 if [[ -n "$ARCHITECTURES" ]]; then
   GRADLE_ARGS+=("-Parchitectures=$ARCHITECTURES")
+fi
 if [[ -n "$ABI_FILTERS" ]]; then
   GRADLE_ARGS+=("-PabiFilters=$ABI_FILTERS")
 fi
