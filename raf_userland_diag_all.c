@@ -215,7 +215,7 @@ static size_t json_escape(char *dst, size_t cap, const char *src) {
         if (!esc) {
             break;
         }
-        size_t esc_len = strlen(esc);
+        size_t esc_len = 2u;  // All escape sequences above are exactly two characters long.
         if (pos + esc_len + 1u > cap) {
             break;
         }
