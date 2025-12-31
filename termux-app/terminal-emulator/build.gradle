@@ -4,12 +4,12 @@ def resolvedNdkVersion = rootProject.findProperty('ndkVersion') ?: '27.3.1375072
 
 android {
     namespace 'com.termux.terminal.emulator'
-    compileSdk 34
+    compileSdk 35
     ndkVersion resolvedNdkVersion
 
     defaultConfig {
         minSdk 21
-        targetSdk 34
+        targetSdk 35
 
         externalNativeBuild {
             ndkBuild {
