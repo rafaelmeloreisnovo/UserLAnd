@@ -231,7 +231,7 @@ static size_t json_escape(char *dst, size_t cap, const char *src) {
 static size_t o(char *dst, size_t cap, const QTrace *q) {
     if (!dst || cap == 0u || !q) return 0u;
     uint32_t mask_gap = q->seen_a ^ q->seen_b;
-    char tag_esc[96];
+    char tag_esc[192];
     json_escape(tag_esc, sizeof(tag_esc), q->tag);
     int w = snprintf(dst, cap,
         "{\"tag\":\"%s\","\
