@@ -74,15 +74,18 @@ class GithubApiClient(
             logger.addExceptionBreadcrumb(err)
             throw err
         }
-        if (!response.isSuccessful) {
-            val err = IOException("Unexpected code: $response")
-            logger.addExceptionBreadcrumb(err)
-            throw err
-        }
+        return@withContext response.use { closeableResponse ->
+            if (!closeableResponse.isSuccessful) {
+                val err = IOException("Unexpected code: $closeableResponse")
+                logger.addExceptionBreadcrumb(err)
+                throw err
+            }
 
-        val result = adapter.fromJson(response.body()!!.source())!!
-        latestResults[repo] = result
-        return@withContext result
+            val responseBody = closeableResponse.body ?: throw IOException("Empty response body")
+            val result = adapter.fromJson(responseBody.source())!!
+            latestResults[repo] = result
+            result
+        }
     }
 
     @JsonClass(generateAdapter = true)
