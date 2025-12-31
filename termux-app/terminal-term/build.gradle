@@ -10,7 +10,6 @@ android {
 
     dependencies {
         implementation "androidx.annotation:annotation:1.7.1"
-        implementation "androidx.legacy:legacy-support-core-ui:1.0.0"
         implementation project(":terminal-view")
     }
 
