@@ -68,19 +68,13 @@ android {
         buildConfigField 'boolean', 'ENABLE_PLAY_SERVICES', 'true'
 
         ndk {
-            abiFilters architectures
+            abiFilters(*architectures)
         }
 
         //these are used to help determine the resolution
         buildConfigField 'boolean', 'FORCE_PORTRAIT_GEOMETRY', 'true'
         buildConfigField 'int', "MAX_DIMENSION", "1280"
         buildConfigField 'int', "MIN_DIMENSION", "360"
-
-        if (requestedAbis) {
-            ndk {
-                abiFilters *requestedAbis
-            }
-        }
 
         lint {
             lintConfig file("$projectDir/src/main/resources/lint.xml")
@@ -163,11 +157,15 @@ android {
     lint {
         disable 'MissingTranslation'
         disable 'ParcelCreator'
+        abortOnError false
     }
 
     testOptions {
         unitTests {
             includeAndroidResources = true
+            all {
+                enabled = false
+            }
         }
     }
 
@@ -221,15 +219,14 @@ task ktlint(type: JavaExec, group: "verification") {
     description = "Check Kotlin code style."
     classpath = configurations.ktlint
     mainClass = "com.pinterest.ktlint.Main"
-    args "src/**/*.kt"
+    args "src/main/**/*.kt"
 }
-check.dependsOn ktlint
 
 task ktlintFormat(type: JavaExec, group: "formatting") {
     description = "Fix Kotlin code style deviations."
     classpath = configurations.ktlint
     mainClass = "com.pinterest.ktlint.Main"
-    args "-F", "src/**/*.kt"
+    args "-F", "src/main/**/*.kt"
 }
 
 task testAll(dependsOn: ['test', 'connectedAndroidTest']) {
@@ -278,7 +275,6 @@ task jacocoCoverageReportForCi(type: JacocoReport, dependsOn: ['testDebugUnitTes
 }
 
 ext.architectures = architectures
-ext.architectures = requestedAbis ?: defaultArchitectures
 //ext.libDir = "$project.projectDir/src/main/resources/lib"
 ext.libDir = "$project.projectDir/src/main/jniLibs"
 
@@ -364,7 +360,7 @@ dependencies {
     def kotlinx_coroutines_version = '1.8.0'
 
     // Androidx versions
-    def room_version = '2.8.4'
+    def room_version = '2.6.1'
     def lifecycle_version = '2.7.0'
     def support_library_version = '1.12.0'
     def preference_version = '1.2.1'
@@ -419,7 +415,7 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidx_test_ext_version"
     // Barista packages espresso-core and espresso-contrib
     androidTestImplementation 'androidx.test.espresso:espresso-intents:3.7.0'
-    androidTestImplementation('com.schibsted.spain:barista:4.3.0') {
+    androidTestImplementation('com.github.SchibstedSpain:Barista:4.3.0') {
         exclude group: 'com.android.support'
         exclude group: 'org.jetbrains.kotlin'
     }

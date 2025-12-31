@@ -8,11 +8,6 @@ android {
         targetSdk 35
     }
 
-    dependencies {
-        implementation "androidx.annotation:annotation:1.7.1"
-        implementation project(":terminal-view")
-    }
-
     buildTypes {
         beta {
             minifyEnabled false
@@ -28,9 +23,18 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
+    lint {
+        disable 'MissingLeanbackLauncher'
+    }
 }
 
 dependencies {
+    implementation "androidx.annotation:annotation:1.7.1"
+    implementation "androidx.core:core:1.12.0"
+    implementation "androidx.drawerlayout:drawerlayout:1.2.0"
+    implementation "androidx.viewpager:viewpager:1.0.0"
+    implementation project(":terminal-view")
     testImplementation 'junit:junit:4.13.2'
 }
 

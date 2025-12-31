@@ -31,6 +31,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.viewpager.widget.PagerAdapter;
 import androidx.viewpager.widget.ViewPager;
+import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import android.text.SpannableString;
 import android.text.Spanned;
@@ -564,7 +565,12 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
             mListViewAdapter.notifyDataSetChanged();
         }
 
-        registerReceiver(mBroadcastReceiever, new IntentFilter(RELOAD_STYLE_ACTION));
+        ContextCompat.registerReceiver(
+                this,
+                mBroadcastReceiever,
+                new IntentFilter(RELOAD_STYLE_ACTION),
+                ContextCompat.RECEIVER_NOT_EXPORTED
+        );
 
         // The current terminal session may have changed while being away, force
         // a refresh of the displayed terminal:
