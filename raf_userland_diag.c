@@ -3,7 +3,7 @@
 // Focus: matrix diffing for debugging signals; no dynamic allocation.
 // Function blocks include defensive notes to surface mitigations for common bugs.
 
-#include "raf_core.h"
+#include "core/include/raf_core.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -70,6 +70,69 @@ static float c01(float v, float min, float max, uint32_t *bad) {
     return n01(v, min, max);
 }
 
+// Locale-independent float parser (comma-separated, dot decimal).
+static int parse_float(const char **cursor, float *out) {
+    const char *s = *cursor;
+    while (*s == ' ' || *s == '\t' || *s == ',') {
+        ++s;
+    }
+
+    int neg = 0;
+    if (*s == '+') {
+        ++s;
+    } else if (*s == '-') {
+        neg = 1;
+        ++s;
+    }
+
+    uint32_t whole = 0u;
+    uint32_t frac = 0u;
+    uint32_t frac_div = 1u;
+    int has_digit = 0;
+
+    while (*s >= '0' && *s <= '9') {
+        has_digit = 1;
+        whole = whole * 10u + (uint32_t)(*s - '0');
+        ++s;
+    }
+
+    if (*s == '.') {
+        ++s;
+        while (*s >= '0' && *s <= '9') {
+            has_digit = 1;
+            frac = frac * 10u + (uint32_t)(*s - '0');
+            frac_div *= 10u;
+            ++s;
+        }
+    }
+
+    if (!has_digit) {
+        return 0;
+    }
+
+    float val = (float)whole + ((float)frac / (float)frac_div);
+    if (neg) {
+        val = -val;
+    }
+    *out = val;
+    *cursor = s;
+    return 1;
+}
+
+static int drain_long_line(char *line) {
+    size_t len = strlen(line);
+    if (len > 0u && line[len - 1u] == '\n') {
+        return 0;
+    }
+    int ch = 0;
+    while ((ch = fgetc(stdin)) != EOF) {
+        if (ch == '\n') {
+            break;
+        }
+    }
+    return 1;
+}
+
 // Parse a CSV line into either baseline or live matrix.
 // Manual parsing avoids locale surprises and truncates at Q_COLS to cap footprint.
 static int u(QTrace *q, const char *line) {
@@ -84,14 +147,12 @@ static int u(QTrace *q, const char *line) {
         if (*p == '#') break;            // inline comment guard
         if (*p == '\0' || *p == '\n') break;
 
-        char *endptr = NULL;
-        vals[count] = strtof(p, &endptr);
-        if (endptr == p) break;          // stop on non-numeric token
+        if (!parse_float(&p, &vals[count])) {
+            break;
+        }
         ++count;
 
-        while (*endptr == ' ' || *endptr == '\t') { ++endptr; }
-        if (*endptr == ',') { ++endptr; }
-        p = endptr;
+        while (*p == ' ' || *p == '\t' || *p == ',') { ++p; }
     }
 
     if (count == 0u) return -2;
@@ -221,6 +282,10 @@ int main(void) {
 
     char line[256];
     while (fgets(line, sizeof(line), stdin)) {
+        if (drain_long_line(line)) {
+            fprintf(stderr, "[RTRACE] parse_error code=%d\n", -6);
+            continue;
+        }
         if (line[0] == '#' ) continue;           // comment
         if (line[0] == '\n') { q.phase = 1u; continue; } // switch phase
 

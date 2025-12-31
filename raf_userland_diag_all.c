@@ -2,7 +2,7 @@
 // Draft – Aggregated UserLAnd developer-mode tracer for multi-file coverage.
 // Low-level, no dynamic allocation; function blocks include mitigation notes.
 
-#include "raf_core.h"
+#include "core/include/raf_core.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -82,6 +82,69 @@ static void t(QTrace *q, const char *tag) {
     q->used = 1u;
 }
 
+// Locale-independent float parser (comma-separated, dot decimal).
+static int parse_float(const char **cursor, float *out) {
+    const char *s = *cursor;
+    while (*s == ' ' || *s == '\t' || *s == ',') {
+        ++s;
+    }
+
+    int neg = 0;
+    if (*s == '+') {
+        ++s;
+    } else if (*s == '-') {
+        neg = 1;
+        ++s;
+    }
+
+    uint32_t whole = 0u;
+    uint32_t frac = 0u;
+    uint32_t frac_div = 1u;
+    int has_digit = 0;
+
+    while (*s >= '0' && *s <= '9') {
+        has_digit = 1;
+        whole = whole * 10u + (uint32_t)(*s - '0');
+        ++s;
+    }
+
+    if (*s == '.') {
+        ++s;
+        while (*s >= '0' && *s <= '9') {
+            has_digit = 1;
+            frac = frac * 10u + (uint32_t)(*s - '0');
+            frac_div *= 10u;
+            ++s;
+        }
+    }
+
+    if (!has_digit) {
+        return 0;
+    }
+
+    float val = (float)whole + ((float)frac / (float)frac_div);
+    if (neg) {
+        val = -val;
+    }
+    *out = val;
+    *cursor = s;
+    return 1;
+}
+
+static int drain_long_line(char *line) {
+    size_t len = strlen(line);
+    if (len > 0u && line[len - 1u] == '\n') {
+        return 0;
+    }
+    int ch = 0;
+    while ((ch = fgetc(stdin)) != EOF) {
+        if (ch == '\n') {
+            break;
+        }
+    }
+    return 1;
+}
+
 // Parse CSV row into baseline or live matrices; truncates to Q_COLS for safety.
 static int u(QTrace *q, const char *line) {
     if (!q || !line || q->used == 0u) return -1;
@@ -95,14 +158,12 @@ static int u(QTrace *q, const char *line) {
         if (*p == '#') break;
         if (*p == '\0' || *p == '\n') break;
 
-        char *endptr = NULL;
-        vals[count] = strtof(p, &endptr);
-        if (endptr == p) break;
+        if (!parse_float(&p, &vals[count])) {
+            break;
+        }
         ++count;
 
-        while (*endptr == ' ' || *endptr == '\t') { ++endptr; }
-        if (*endptr == ',') { ++endptr; }
-        p = endptr;
+        while (*p == ' ' || *p == '\t' || *p == ',') { ++p; }
     }
 
     if (count == 0u) return -2;
@@ -320,6 +381,10 @@ int main(void) {
     uint32_t blank_run = 0u;
 
     while (fgets(line, sizeof(line), stdin)) {
+        if (drain_long_line(line)) {
+            fprintf(stderr, "[RTRACE_ALL] parse_error idx=%u code=%d\n", idx, -6);
+            continue;
+        }
         if (line[0] == '#') continue;
 
         if (line[0] == '@') {

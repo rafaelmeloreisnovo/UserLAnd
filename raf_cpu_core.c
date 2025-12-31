@@ -30,6 +30,20 @@ static uint64_t now_ms(void) {
   return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)(ts.tv_nsec / 1000000ULL);
 }
 
+static int drain_long_line(FILE *fp, char *line) {
+  size_t len = strlen(line);
+  if (len > 0u && line[len - 1u] == '\n') {
+    return 0;
+  }
+  int ch = 0;
+  while ((ch = fgetc(fp)) != EOF) {
+    if (ch == '\n') {
+      break;
+    }
+  }
+  return 1;
+}
+
 static int parse_cpu_line(const char *line, cpu_sample *out) {
   if (strncmp(line, "cpu", 3) != 0) {
     return 0;  // not a CPU line
@@ -93,6 +107,9 @@ int main(void) {
   char line[MAX_LINE];
 
   while (fgets(line, sizeof(line), stdin) != NULL) {
+    if (drain_long_line(stdin, line)) {
+      continue;
+    }
     if (strncmp(line, "cpu", 3) != 0) {
       break;  // stop at first non-CPU line to keep interface predictable
     }
@@ -107,7 +124,7 @@ int main(void) {
     return 1;  // no cpu lines
   }
 
-  printf("{\"timestamp_ms\":%llu,\"cpus\":[",
+  printf("{\"timestamp_ms\":%llu,\"schema\":\"proc_stat\",\"cpus\":[",
          (unsigned long long)now_ms());
   for (size_t i = 0; i < sample_count; ++i) {
     print_cpu_json(&samples[i], i + 1 == sample_count);
