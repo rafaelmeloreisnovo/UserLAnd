@@ -29,13 +29,24 @@ if (!requestedArchitectures.isEmpty()) {
 }
 def architectures = requestedArchitectures.isEmpty() ? defaultArchitectures : requestedArchitectures
 
-def resolvedNdkVersion = project.findProperty('ndkVersion') ?: '27.3.13750724'
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { localProperties.load(it) }
+}
+def localNdkDir = localProperties.getProperty('ndk.dir')
+        ?: System.getenv('ANDROID_NDK_HOME')
+        ?: System.getenv('NDK_HOME')
+def defaultNdkVersion = '27.3.13750724'
+def resolvedNdkVersion = project.findProperty('ndkVersion') ?: defaultNdkVersion
 def abiFiltersProperty = project.findProperty('abiFilters') ?: project.findProperty('userlandAbiFilters')
 
 android {
     namespace 'tech.ula'
     compileSdk 35
-    ndkVersion resolvedNdkVersion
+    if (resolvedNdkVersion && !localNdkDir) {
+        ndkVersion resolvedNdkVersion
+    }
 
     defaultConfig {
         // Version code is generated as time since June 1, 2019. These allows for constantly
