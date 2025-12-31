@@ -38,6 +38,7 @@
 
   <string name="error_empty_intent_data">Intent data is empty.  Only UserLAnd intents are supported</string>
   <string name="error_regex_parsing">Error occurred while parsing intent data with regex</string>
+  <string name="background_job_failed_to_start">Failed to start background job: %1$s</string>
 
   <string name="button_exit">Exit</string>
   <string name="dialog_error_title">An error has occurred</string>

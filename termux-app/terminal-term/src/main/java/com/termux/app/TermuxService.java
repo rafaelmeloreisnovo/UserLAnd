@@ -18,6 +18,7 @@ import android.os.PowerManager;
 import android.system.Os;
 import android.util.Log;
 import android.widget.ArrayAdapter;
+import android.widget.Toast;
 
 import com.termux.terminal.term.R;
 import com.termux.terminal.EmulatorDebug;
@@ -170,6 +171,10 @@ public final class TermuxService extends Service implements SessionChangedCallba
         } else {
             ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(NOTIFICATION_ID, buildNotification());
         }
+    }
+
+    void showToast(String message) {
+        mHandler.post(() -> Toast.makeText(TermuxService.this, message, Toast.LENGTH_LONG).show());
     }
 
     String GROUP_KEY_USERLAND = "tech.ula.userland";
