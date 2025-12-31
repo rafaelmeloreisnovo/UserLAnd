@@ -216,7 +216,7 @@ static size_t json_escape(char *dst, size_t cap, const char *src) {
             break;
         }
         size_t esc_len = strlen(esc);
-        if (pos + esc_len >= cap) {
+        if (pos + esc_len + 1u > cap) {
             break;
         }
         memcpy(dst + pos, esc, esc_len);
