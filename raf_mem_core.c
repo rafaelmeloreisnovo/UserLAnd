@@ -23,6 +23,20 @@ static uint64_t now_ms(void) {
   return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)(ts.tv_nsec / 1000000ULL);
 }
 
+static int drain_long_line(FILE *fp, char *line) {
+  size_t len = strlen(line);
+  if (len > 0u && line[len - 1u] == '\n') {
+    return 0;
+  }
+  int ch = 0;
+  while ((ch = fgetc(fp)) != EOF) {
+    if (ch == '\n') {
+      break;
+    }
+  }
+  return 1;
+}
+
 static int parse_meminfo_line(const char *line, mem_field *out) {
   const char *colon = strchr(line, ':');
   if (colon == NULL) {
@@ -54,7 +68,7 @@ static int parse_meminfo_line(const char *line, mem_field *out) {
 
 static void print_meminfo_json(const mem_field *fields, size_t count) {
   fputs("{\"timestamp_ms\":", stdout);
-  printf("%llu,\"meminfo\":{", (unsigned long long)now_ms());
+  printf("%llu,\"meminfo_unit\":\"kB\",\"meminfo\":{", (unsigned long long)now_ms());
 
   for (size_t i = 0; i < count; ++i) {
     if (i > 0) {
@@ -80,6 +94,9 @@ int main(void) {
   char line[MAX_LINE];
 
   while (fgets(line, sizeof(line), fp) != NULL && count < MAX_MEM_FIELDS) {
+    if (drain_long_line(fp, line)) {
+      continue;
+    }
     mem_field field;
     if (parse_meminfo_line(line, &field)) {
       fields[count++] = field;

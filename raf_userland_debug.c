@@ -4,7 +4,7 @@
 
 #define _POSIX_C_SOURCE 200809L
 
-#include "raf_core.h"   // Reuse AbsoluteMatrix, RNG, CRC helpers where possible.
+#include "core/include/raf_core.h"   // Reuse AbsoluteMatrix, RNG, CRC helpers where possible.
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -159,8 +159,8 @@ static size_t append_f6(char *out, size_t pos, size_t cap, float v) {
 }
 
 // Lightweight float parser for positive/negative decimals.
-static int parse_float(const char **p, float *out) {
-    const char *s = *p;
+static int parse_float(const char **cursor, float *out) {
+    const char *s = *cursor;
     while (*s == ' ' || *s == '\t' || *s == ',') {
         ++s;
     }
@@ -203,7 +203,7 @@ static int parse_float(const char **p, float *out) {
         val = -val;
     }
     *out = val;
-    *p = s;
+    *cursor = s;
     return 1;
 }
 
@@ -412,6 +412,7 @@ int main(int argc, char **argv) {
     // Strict stdin processing: CSV lines from shell or another tool.
     char line[256];
     size_t line_len = 0u;
+    int line_overflow = 0;
     char in_buf[512];
 
     while (f.r_used < R_MAX_ROWS) {
@@ -426,28 +427,35 @@ int main(int argc, char **argv) {
             }
             if (c == '\n') {
                 line[line_len] = '\0';
-                if (line_len > 0u && line[0] != '#') {
+                if (!line_overflow && line_len > 0u && line[0] != '#') {
                     int r = v(line, &f);
                     if (r != 0) {
                         log_parse_error(r);
                     }
+                } else if (line_overflow) {
+                    log_parse_error(-6);
                 }
                 line_len = 0u;
+                line_overflow = 0;
                 continue;
             }
-            if (line_len + 1u < sizeof(line)) {
+            if (!line_overflow && line_len + 1u < sizeof(line)) {
                 line[line_len++] = c;
+            } else {
+                line_overflow = 1;
             }
         }
     }
 
     if (line_len > 0u && f.r_used < R_MAX_ROWS) {
         line[line_len] = '\0';
-        if (line[0] != '#') {
+        if (!line_overflow && line[0] != '#') {
             int r = v(line, &f);
             if (r != 0) {
                 log_parse_error(r);
             }
+        } else if (line_overflow) {
+            log_parse_error(-6);
         }
     }
 

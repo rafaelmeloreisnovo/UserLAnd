@@ -9,7 +9,7 @@
 
 #define MAX_DISKS 256
 #define MAX_LINE 512
-#define MAX_NAME_LEN 32
+#define MAX_NAME_LEN 64
 #define DISK_FIELD_COUNT 11
 
 static const char *DISK_FIELD_NAMES[DISK_FIELD_COUNT] = {
@@ -32,6 +32,20 @@ static uint64_t now_ms(void) {
     return 0;
   }
   return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)(ts.tv_nsec / 1000000ULL);
+}
+
+static int drain_long_line(FILE *fp, char *line) {
+  size_t len = strlen(line);
+  if (len > 0u && line[len - 1u] == '\n') {
+    return 0;
+  }
+  int ch = 0;
+  while ((ch = fgetc(fp)) != EOF) {
+    if (ch == '\n') {
+      break;
+    }
+  }
+  return 1;
 }
 
 static void skip_spaces(const char **cursor) {
@@ -132,6 +146,9 @@ int main(void) {
   char line[MAX_LINE];
 
   while (fgets(line, sizeof(line), fp) != NULL && sample_count < MAX_DISKS) {
+    if (drain_long_line(fp, line)) {
+      continue;
+    }
     disk_sample sample;
     int parsed = parse_disk_line(line, &sample);
     if (parsed == 1) {
@@ -145,7 +162,7 @@ int main(void) {
     return 1;
   }
 
-  printf("{\"timestamp_ms\":%llu,\"disks\":[",
+  printf("{\"timestamp_ms\":%llu,\"schema\":\"proc_diskstats\",\"disks\":[",
          (unsigned long long)now_ms());
   for (size_t i = 0; i < sample_count; ++i) {
     print_disk_json(&samples[i], i + 1 == sample_count);
