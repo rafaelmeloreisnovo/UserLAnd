@@ -325,9 +325,9 @@ task fetchAssets(dependsOn: downloadAssets) {
     
     doLast {
         for (arch in localArchitectures) {
-            def extractDir = new File(localBuildDir.toString(), arch)
-            def targetDir = new File(localLibDir.toString(), arch)
-            def zipFile = new File(localBuildDir.toString(), "$arch-assets.zip")
+            def extractDir = new File(localBuildDir, arch)
+            def targetDir = new File(localLibDir, arch)
+            def zipFile = new File(localBuildDir, "$arch-assets.zip")
             
             // Clean previous directories completely
             extractDir.deleteDir()
@@ -371,7 +371,7 @@ task checkIfAssetsMissing {
     def localLibDir = capturedLibDir
     
     for (arch in localArchitectures) {
-        File[] archLibDirContents = new File(localLibDir.toString(), arch).listFiles()
+        File[] archLibDirContents = new File(localLibDir, arch).listFiles()
         if (archLibDirContents == null || archLibDirContents.length == 0) {
             dependsOn 'fetchAssets'
         }
