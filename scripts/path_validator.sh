@@ -3,7 +3,25 @@
 # Prevents path doubling issues in build scripts
 set -euo pipefail
 
-# Function to normalize a path by removing duplicate path segments
+# Common directory names that might legitimately repeat at multiple levels
+COMMON_REPEAT_SEGMENTS=(
+    bin lib usr opt etc var tmp home root
+    src build test tests dist out
+    node_modules vendor
+)
+
+is_common_repeat_segment() {
+    local segment="$1"
+    local candidate
+    for candidate in "${COMMON_REPEAT_SEGMENTS[@]}"; do
+        if [[ "$segment" == "$candidate" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Function to normalize a path by removing duplicate non-common path segments
 # Usage: normalize_path "/path/to/UserLAnd/UserLAnd/file"
 # Output: "/path/to/UserLAnd/file"
 normalize_path() {
@@ -18,7 +36,7 @@ normalize_path() {
     local -a components
     IFS='/' read -ra components <<< "$input_path"
     
-    # Remove duplicate consecutive segments
+    # Remove duplicate consecutive segments (except common repeated names)
     local -a normalized
     local prev=""
     for comp in "${components[@]}"; do
@@ -28,6 +46,8 @@ normalize_path() {
         
         # Check for duplicate segment
         if [[ "$comp" != "$prev" ]] || [[ -z "$prev" ]]; then
+            normalized+=("$comp")
+        elif is_common_repeat_segment "$comp"; then
             normalized+=("$comp")
         fi
         prev="$comp"
@@ -72,16 +92,10 @@ has_doubled_path() {
         # Only flag as doubled if it's an exact consecutive duplicate
         # AND it's not a common name that might legitimately appear at multiple levels
         if [[ "$comp" == "$prev" ]]; then
-            # List of common directory names that might legitimately repeat
-            case "$comp" in
-                bin|lib|usr|opt|etc|var|tmp|home|root|src|build|test|tests|dist|out|node_modules|vendor)
-                    # These are common and might appear at multiple levels
-                    ;;
-                *)
-                    # Any other repeated segment is likely an error
-                    return 0
-                    ;;
-            esac
+            if ! is_common_repeat_segment "$comp"; then
+                # Any other repeated segment is likely an error
+                return 0
+            fi
         fi
         prev="$comp"
     done
