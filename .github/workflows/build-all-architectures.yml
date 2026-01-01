@@ -126,7 +126,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
       - name: 📤 Upload Debug APK (${{ matrix.architecture.name }})
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: userland-${{ matrix.architecture.artifact_suffix }}-debug-${{ github.sha }}
           path: app/build/outputs/apk/debug/*.apk
@@ -134,7 +134,7 @@ jobs:
           if-no-files-found: error
 
       - name: 📤 Upload Release APK (${{ matrix.architecture.name }})
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: userland-${{ matrix.architecture.artifact_suffix }}-release-${{ github.sha }}
           path: app/build/outputs/apk/release/*.apk
