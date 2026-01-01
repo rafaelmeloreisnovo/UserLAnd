@@ -1,10 +1,16 @@
+// Optimized low-level architecture probe - minimal dependencies
+// Removed: inttypes.h, stdbool.h (replaced with inline definitions)
+// Benefits: Reduced binary size, faster compilation
 #define _POSIX_C_SOURCE 199309L
 
-#include <inttypes.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <time.h>
+
+// Inline bool type definition to avoid stdbool.h
+typedef uint8_t bool;
+#define true 1
+#define false 0
 
 #define BITS_PER_BYTE 8u
 #define ENDIANNESS_PROBE 0x0102u  // Distinct byte pattern for endian detection
@@ -66,7 +72,7 @@ int main(void) {
   printf("{\"arch\":\"%s\",", arch);
   printf("\"word_bits\":%zu,", word_bits);
   printf("\"endianness\":\"%s\",", endianness);
-  printf("\"cycle_counter\":%" PRIu64 ",", counter);
+  printf("\"cycle_counter\":%llu,", (unsigned long long)counter);
   printf("\"used_inline_asm\":%s", used_asm ? "true" : "false");
   printf("}\n");
 
