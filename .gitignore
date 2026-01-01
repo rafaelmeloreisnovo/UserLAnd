@@ -70,3 +70,9 @@ app/src/main/resources/sentry.properties
 # Lib resources should be left out of source tree
 app/src/main/jniLibs/*
 _codeql_detected_source_root
+
+# RAFAELIA Matrix generated files
+add2/RAFAELIA_CORE_MATRIX_absolute
+add2/RAFAELIA_CORE_MATRIX_lowlevel
+add2/RAFAELIA_CORE_noincludes
+add2/fractalMatrix.txt
