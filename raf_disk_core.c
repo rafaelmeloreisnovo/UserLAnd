@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <limits.h>
 
 #define MAX_DISKS 256
 #define MAX_LINE 512
@@ -67,11 +68,15 @@ static int parse_disk_line(const char *line, disk_sample *out) {
   const char *cursor = buffer;
   skip_spaces(&cursor);
 
-  // Parse major number inline
+  // Parse major number inline with overflow protection
   unsigned long major = 0;
   const char *start = cursor;
   while (*cursor >= '0' && *cursor <= '9') {
-    major = major * 10 + (*cursor - '0');
+    unsigned long digit = *cursor - '0';
+    if (major > ULONG_MAX / 10) {
+      break;
+    }
+    major = major * 10 + digit;
     cursor++;
   }
   if (cursor == start) {
@@ -79,11 +84,15 @@ static int parse_disk_line(const char *line, disk_sample *out) {
   }
   skip_spaces(&cursor);
 
-  // Parse minor number inline
+  // Parse minor number inline with overflow protection
   unsigned long minor = 0;
   start = cursor;
   while (*cursor >= '0' && *cursor <= '9') {
-    minor = minor * 10 + (*cursor - '0');
+    unsigned long digit = *cursor - '0';
+    if (minor > ULONG_MAX / 10) {
+      break;
+    }
+    minor = minor * 10 + digit;
     cursor++;
   }
   if (cursor == start) {
@@ -106,18 +115,26 @@ static int parse_disk_line(const char *line, disk_sample *out) {
   out->major = (unsigned int)major;
   out->minor = (unsigned int)minor;
 
-  // Parse numeric fields
+  // Parse numeric fields with overflow protection
   size_t idx = 0;
   while (*cursor != '\0' && idx < DISK_FIELD_COUNT) {
     skip_spaces(&cursor);
     if (*cursor == '\0' || *cursor == '\n') {
       break;
     }
-    // Parse number inline
+    // Parse number inline with overflow protection
     uint64_t value = 0;
     start = cursor;
     while (*cursor >= '0' && *cursor <= '9') {
-      value = value * 10 + (*cursor - '0');
+      uint64_t digit = *cursor - '0';
+      if (value > UINT64_MAX / 10) {
+        break;
+      }
+      uint64_t new_value = value * 10;
+      if (new_value > UINT64_MAX - digit) {
+        break;
+      }
+      value = new_value + digit;
       cursor++;
     }
     if (cursor == start) {

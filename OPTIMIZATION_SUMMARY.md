@@ -30,10 +30,19 @@ This document summarizes the low-level optimizations applied to the UserLAnd cod
 // Before (using stdlib.h):
 unsigned long long value = strtoull(cursor, &endptr, 10);
 
-// After (inline parsing):
+// After (inline parsing with overflow protection):
 uint64_t value = 0;
 while (*cursor >= '0' && *cursor <= '9') {
-  value = value * 10 + (*cursor - '0');
+  uint64_t digit = *cursor - '0';
+  // Check for overflow: if value > UINT64_MAX/10, multiplication will overflow
+  if (value > UINT64_MAX / 10) {
+    break;  // overflow would occur
+  }
+  uint64_t new_value = value * 10;
+  if (new_value > UINT64_MAX - digit) {
+    break;  // overflow would occur
+  }
+  value = new_value + digit;
   cursor++;
 }
 ```

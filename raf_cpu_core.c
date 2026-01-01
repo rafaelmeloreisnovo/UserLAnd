@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <limits.h>
 
 #define MAX_CPUS 256
 #define MAX_LINE 512
@@ -71,11 +72,20 @@ static int parse_cpu_line(const char *line, cpu_sample *out) {
     if (*cursor == '\0' || *cursor == '\n') {
       break;
     }
-    // Parse number inline without strtoull for better performance
+    // Parse number inline with overflow protection
     uint64_t value = 0;
     const char *start = cursor;
     while (*cursor >= '0' && *cursor <= '9') {
-      value = value * 10 + (*cursor - '0');
+      uint64_t digit = *cursor - '0';
+      // Check for overflow: if value > UINT64_MAX/10, multiplication will overflow
+      if (value > UINT64_MAX / 10) {
+        break;  // overflow would occur
+      }
+      uint64_t new_value = value * 10;
+      if (new_value > UINT64_MAX - digit) {
+        break;  // overflow would occur
+      }
+      value = new_value + digit;
       cursor++;
     }
     if (cursor == start) {

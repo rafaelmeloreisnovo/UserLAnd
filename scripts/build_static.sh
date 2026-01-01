@@ -67,11 +67,13 @@ TARGET="${TARGET:-}"
 # -pipe: use pipes instead of temp files (faster compilation)
 # -fvisibility=hidden: reduce symbol visibility for smaller binaries
 # -ffunction-sections -fdata-sections: enable dead code elimination
-# -flto: link-time optimization (optional, requires linker support)
 # -DNDEBUG: disable assertions in production
-# -fno-exceptions: disable C++ exceptions (smaller code, C doesn't need this but safe)
 # -fomit-frame-pointer: smaller code, better register allocation
-CFLAGS="${CFLAGS:-"-O3 -pipe -fvisibility=hidden -ffunction-sections -fdata-sections -DNDEBUG -fomit-frame-pointer -fno-asynchronous-unwind-tables"}"
+# -fno-asynchronous-unwind-tables: no unwind tables (smaller binaries)
+CFLAGS="${CFLAGS:-"-O3 -pipe -fvisibility=hidden \
+  -ffunction-sections -fdata-sections \
+  -DNDEBUG -fomit-frame-pointer \
+  -fno-asynchronous-unwind-tables"}"
 
 # Extra linker flags: enable garbage collection of unused sections
 # -Wl,--gc-sections: remove unused code and data
