@@ -374,14 +374,14 @@ dependencies {
     def sentry_version = '8.29.0'
     def slf4j_version = '2.0.9'
 
-    def kotlinx_coroutines_version = '1.10.3'
+    def kotlinx_coroutines_version = '1.8.1'
 
     // Androidx versions
-    def room_version = '2.8.5'
-    def lifecycle_version = '2.10.1'
+    def room_version = '2.6.1'
+    def lifecycle_version = '2.8.7'
     def support_library_version = '1.13.0'
     def preference_version = '1.2.1'
-    def ktx_version = '1.17.0'
+    def ktx_version = '1.15.0'
     def billing_version = '8.3.0'
 
     implementation project(':terminal-term')

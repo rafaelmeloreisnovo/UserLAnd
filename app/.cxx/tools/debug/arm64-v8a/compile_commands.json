@@ -1,0 +1,22 @@
+[
+{
+  "directory": "/home/runner/work/UserLAnd/UserLAnd/app/.cxx/Debug/1b4xf1a1/arm64-v8a",
+  "command": "/usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android23 --sysroot=/usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/sysroot -Drafaelia_EXPORTS -I/home/runner/work/UserLAnd/UserLAnd/core/librafaelia -I/home/runner/work/UserLAnd/UserLAnd/core/librafaelia/../include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fno-limit-debug-info  -fPIC -O3 -ffast-math -fno-exceptions -fvisibility=hidden -Wall -Wextra -std=c11 -o CMakeFiles/rafaelia.dir/raf_cpu_parser.c.o -c /home/runner/work/UserLAnd/UserLAnd/core/librafaelia/raf_cpu_parser.c",
+  "file": "/home/runner/work/UserLAnd/UserLAnd/core/librafaelia/raf_cpu_parser.c"
+},
+{
+  "directory": "/home/runner/work/UserLAnd/UserLAnd/app/.cxx/Debug/1b4xf1a1/arm64-v8a",
+  "command": "/usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android23 --sysroot=/usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/sysroot -Drafaelia_EXPORTS -I/home/runner/work/UserLAnd/UserLAnd/core/librafaelia -I/home/runner/work/UserLAnd/UserLAnd/core/librafaelia/../include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fno-limit-debug-info  -fPIC -O3 -ffast-math -fno-exceptions -fvisibility=hidden -Wall -Wextra -std=c11 -o CMakeFiles/rafaelia.dir/raf_crc_ecc.c.o -c /home/runner/work/UserLAnd/UserLAnd/core/librafaelia/raf_crc_ecc.c",
+  "file": "/home/runner/work/UserLAnd/UserLAnd/core/librafaelia/raf_crc_ecc.c"
+},
+{
+  "directory": "/home/runner/work/UserLAnd/UserLAnd/app/.cxx/Debug/1b4xf1a1/arm64-v8a",
+  "command": "/usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android23 --sysroot=/usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/sysroot -Drafaelia_EXPORTS -I/home/runner/work/UserLAnd/UserLAnd/core/librafaelia -I/home/runner/work/UserLAnd/UserLAnd/core/librafaelia/../include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fno-limit-debug-info  -fPIC -O3 -ffast-math -fno-exceptions -fvisibility=hidden -Wall -Wextra -std=c11 -o CMakeFiles/rafaelia.dir/home/runner/work/UserLAnd/UserLAnd/add2/bitstack_Version2.c.o -c /home/runner/work/UserLAnd/UserLAnd/add2/bitstack_Version2.c",
+  "file": "/home/runner/work/UserLAnd/UserLAnd/add2/bitstack_Version2.c"
+},
+{
+  "directory": "/home/runner/work/UserLAnd/UserLAnd/app/.cxx/Debug/1b4xf1a1/arm64-v8a",
+  "command": "/usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android23 --sysroot=/usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/sysroot -Drafaelia_EXPORTS -I/home/runner/work/UserLAnd/UserLAnd/core/librafaelia -I/home/runner/work/UserLAnd/UserLAnd/core/librafaelia/../include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fno-limit-debug-info  -fPIC -O3 -ffast-math -fno-exceptions -fvisibility=hidden -Wall -Wextra -std=c11 -o CMakeFiles/rafaelia.dir/home/runner/work/UserLAnd/UserLAnd/app/src/main/cpp/rafaelia_jni.c.o -c /home/runner/work/UserLAnd/UserLAnd/app/src/main/cpp/rafaelia_jni.c",
+  "file": "/home/runner/work/UserLAnd/UserLAnd/app/src/main/cpp/rafaelia_jni.c"
+}
+]

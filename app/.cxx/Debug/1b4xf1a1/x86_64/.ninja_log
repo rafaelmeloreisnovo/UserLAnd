@@ -1,0 +1,6 @@
+# ninja log v5
+1	89	1767281932037192389	CMakeFiles/rafaelia.dir/raf_crc_ecc.c.o	462d6eb8ce7a7877
+0	90	1767281932036192391	CMakeFiles/rafaelia.dir/home/runner/work/UserLAnd/UserLAnd/add2/bitstack_Version2.c.o	3b93ed21c364c6fc
+89	138	1767281932088192312	CMakeFiles/rafaelia.dir/home/runner/work/UserLAnd/UserLAnd/app/src/main/cpp/rafaelia_jni.c.o	5a1465af6ddeb853
+0	179	1767281932129192250	CMakeFiles/rafaelia.dir/raf_cpu_parser.c.o	de67e89f6015a678
+179	238	1767281932181192172	/home/runner/work/UserLAnd/UserLAnd/app/build/intermediates/cxx/Debug/1b4xf1a1/obj/x86_64/librafaelia.so	4f84126f3c782e5f
