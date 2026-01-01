@@ -1,10 +1,49 @@
 version: 2
 updates:
+  # GitHub Actions workflow dependencies
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    reviewers:
+      - "CypherpunkArmory/maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 5
+  
+  # Gradle/Android dependencies
   - package-ecosystem: "gradle"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "10:00"
+    labels:
+      - "dependencies"
+      - "android"
+    reviewers:
+      - "CypherpunkArmory/maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 10
+    # Group minor and patch updates together to reduce PR noise
+    groups:
+      androidx:
+        patterns:
+          - "androidx.*"
+      kotlin:
+        patterns:
+          - "org.jetbrains.kotlin*"
+      testing:
+        patterns:
+          - "junit:junit"
+          - "androidx.test*"
+          - "org.mockito*"
+          - "org.robolectric*"
