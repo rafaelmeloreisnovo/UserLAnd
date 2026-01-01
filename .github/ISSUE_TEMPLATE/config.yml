@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/CypherpunkArmory/UserLAnd/discussions
+    about: Ask questions, share ideas, and discuss UserLAnd with the community
+  - name: 📚 Documentation & Wiki
+    url: https://github.com/CypherpunkArmory/UserLAnd/wiki
+    about: Browse documentation, guides, and tutorials
+  - name: 🔒 Security Vulnerability
+    url: https://github.com/CypherpunkArmory/UserLAnd/security/advisories
+    about: Report a security vulnerability privately (do not create a public issue)
+  - name: ❓ General Support
+    url: https://github.com/CypherpunkArmory/UserLAnd/discussions/categories/q-a
+    about: Get help with using UserLAnd

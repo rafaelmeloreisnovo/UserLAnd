@@ -11,14 +11,27 @@ Features:
 [<img src="https://play.google.com/intl/en_us/badges/images/generic/en-play-badge.png"
      alt="Get it on Google Play"
      height="80">](https://play.google.com/store/apps/details?id=tech.ula)
+
+## 📚 Documentation
+
+- **[Development Setup Guide](docs/DEVELOPMENT_SETUP.md)** - Complete guide to set up your development environment
+- **[Build Troubleshooting](docs/BUILD_TROUBLESHOOTING.md)** - Solutions to common build issues
+- **[Best Practices](docs/BEST_PRACTICES.md)** - Coding standards and architectural patterns
+- **[Common Tasks](docs/COMMON_TASKS.md)** - Quick reference for everyday development tasks
+- **[Technical Documentation](docs/TECHNICAL_DOCUMENTATION.md)** - Architecture overview and component map
+- **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to UserLAnd
+- **[Security Policy](SECURITY.md)** - Reporting vulnerabilities and security guidelines
+- **[Changelog](CHANGELOG.md)** - Version history and release notes
      
 ## Have a bug report or a feature request?
 You can see our templates by visiting our [issue center](https://github.com/CypherpunkArmory/UserLAnd/issues).
 
 ## Want to contribute?
-See our [CONTRIBUTING](https://github.com/CypherpunkArmory/UserLAnd/blob/master/CONTRIBUTING.md) document.
+See our [CONTRIBUTING](CONTRIBUTING.md) document and [Development Setup Guide](docs/DEVELOPMENT_SETUP.md).
 
-## Build the APK locally
+## 🚀 Quick Start
+
+### Build the APK locally
 UserLAnd depends on modern Android Gradle Plugin tooling that expects Java 17 or
 newer alongside Android SDK platform 35 (Android 15). To build from a clean
 machine:
