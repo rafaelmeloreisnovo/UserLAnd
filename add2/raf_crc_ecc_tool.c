@@ -1,4 +1,3 @@
-```c
 /*
  * raf_crc_ecc_tool.c
  * RAFAELIA :: BITRAF64 :: CRC + PARITY (CLI tool)
@@ -492,7 +491,10 @@ static int op_bench(void) {
   printf("Micro-benchmarks (CRC32C, CRC64 optional, XOR parity)\n");
   printf("Allocating buffer up to %zu bytes\n", sizes[nsizes-1]);
   uint8_t *buf = malloc(sizes[nsizes-1]);
-  if (!buf) return -1;
+  if (!buf) {
+    fprintf(stderr, "Failed to allocate benchmark buffer\n");
+    return -1;
+  }
   for (size_t i=0;i<sizes[nsizes-1];i++) buf[i] = (uint8_t)(i & 0xff);
 
   double max_throughput = 0.0;
@@ -516,11 +518,31 @@ static int op_bench(void) {
   const int k = 8;
   size_t shard_size = 256*1024;
   uint8_t **shards = malloc((size_t)k * sizeof(uint8_t*));
+  if (!shards) {
+    fprintf(stderr, "Failed to allocate shard pointers\n");
+    free(buf);
+    return -2;
+  }
+  for (int i=0;i<k;i++) shards[i] = NULL;
   for (int i=0;i<k;i++) {
     shards[i] = malloc(shard_size);
+    if (!shards[i]) {
+      fprintf(stderr, "Failed to allocate shard %d\n", i);
+      for (int j=0;j<k;j++) free(shards[j]);
+      free(shards);
+      free(buf);
+      return -3;
+    }
     for (size_t j=0;j<shard_size;j++) shards[i][j] = (uint8_t)((i+j) & 0xff);
   }
   uint8_t *parity = malloc(shard_size);
+  if (!parity) {
+    fprintf(stderr, "Failed to allocate parity buffer\n");
+    for (int i=0;i<k;i++) free(shards[i]);
+    free(shards);
+    free(buf);
+    return -4;
+  }
   memset(parity, 0, shard_size);
   struct timespec p0, p1;
   clock_gettime(CLOCK_MONOTONIC, &p0);
@@ -573,6 +595,11 @@ static int op_selftests(void) {
   uint8_t *s1 = calloc(shard_size,1);
   uint8_t *s2 = calloc(shard_size,1);
   uint8_t *s3 = calloc(shard_size,1);
+  if (!s0 || !s1 || !s2 || !s3) {
+    fprintf(stderr, "Parity test allocation failed\n");
+    free(s0); free(s1); free(s2); free(s3);
+    return -3;
+  }
   for (size_t i=0;i<shard_size;i++) {
     s0[i] = (uint8_t)(i & 0xff);
     s1[i] = (uint8_t)((i*3) & 0xff);
@@ -581,10 +608,20 @@ static int op_selftests(void) {
   }
   const uint8_t *const shards[] = {s0,s1,s2,s3};
   uint8_t *par = calloc(shard_size,1);
+  if (!par) {
+    fprintf(stderr, "Parity buffer allocation failed\n");
+    free(s0); free(s1); free(s2); free(s3);
+    return -3;
+  }
   raf_parity_xor_make(shards, (size_t)k, par, shard_size);
 
   /* simulate missing s2 */
   uint8_t *rec = calloc(shard_size,1);
+  if (!rec) {
+    fprintf(stderr, "Recovery buffer allocation failed\n");
+    free(s0); free(s1); free(s2); free(s3); free(par);
+    return -3;
+  }
   uint8_t *shards_with_null[4];
   shards_with_null[0]=s0; shards_with_null[1]=s1; shards_with_null[2]=NULL; shards_with_null[3]=s3;
   raf_parity_xor_recover_one((const uint8_t *const *)shards_with_null, (size_t)k, 2, par, rec, shard_size);
