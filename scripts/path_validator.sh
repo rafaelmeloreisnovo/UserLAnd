@@ -43,14 +43,16 @@ normalize_path() {
         
         # Check for duplicate segment
         if [[ "$comp" == "$prev" ]]; then
+            # Found a duplicate consecutive segment
             # If this is GitHub Actions workspace structure at positions 4-5, preserve it
             # /home/runner/work/UserLAnd/UserLAnd is valid (org/repo)
             if [[ $is_github_actions -eq 1 ]] && [[ $idx -eq 5 ]]; then
                 # This is the repo name following org name, preserve it even if duplicate
                 normalized+=("$comp")
             fi
-            # Otherwise skip the duplicate
+            # Otherwise skip the duplicate (implicit - no else needed)
         else
+            # Not a duplicate, always add it
             normalized+=("$comp")
         fi
         prev="$comp"
