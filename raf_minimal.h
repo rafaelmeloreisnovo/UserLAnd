@@ -50,11 +50,21 @@ static inline uint64_t raf_now_ns(void) {
 /*
  * Parse unsigned 64-bit integer from string (replaces strtoull)
  * Returns parsed value and advances cursor pointer
+ * Includes overflow protection
  */
 static inline uint64_t raf_parse_u64(const char **cursor) {
   uint64_t value = 0;
   while (**cursor >= '0' && **cursor <= '9') {
-    value = value * 10 + (**cursor - '0');
+    uint64_t digit = **cursor - '0';
+    // Check for overflow
+    if (value > UINT64_MAX / 10) {
+      break;  // would overflow
+    }
+    uint64_t new_value = value * 10;
+    if (new_value > UINT64_MAX - digit) {
+      break;  // would overflow
+    }
+    value = new_value + digit;
     (*cursor)++;
   }
   return value;
@@ -63,11 +73,21 @@ static inline uint64_t raf_parse_u64(const char **cursor) {
 /*
  * Parse unsigned 32-bit integer from string (replaces strtoul)
  * Returns parsed value and advances cursor pointer
+ * Includes overflow protection
  */
 static inline uint32_t raf_parse_u32(const char **cursor) {
   uint32_t value = 0;
   while (**cursor >= '0' && **cursor <= '9') {
-    value = value * 10 + (**cursor - '0');
+    uint32_t digit = **cursor - '0';
+    // Check for overflow
+    if (value > UINT32_MAX / 10) {
+      break;  // would overflow
+    }
+    uint32_t new_value = value * 10;
+    if (new_value > UINT32_MAX - digit) {
+      break;  // would overflow
+    }
+    value = new_value + digit;
     (*cursor)++;
   }
   return value;
