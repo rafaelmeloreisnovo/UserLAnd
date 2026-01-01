@@ -12,7 +12,7 @@ typedef unsigned char uchar;
 
 static inline long sys_call3(long num, long a, long b, long c) {
     long ret;
-    asm volatile (
+    __asm__ volatile (
         "mov %1, %%rax\n\t"
         "mov %2, %%rdi\n\t"
         "mov %3, %%rsi\n\t"
