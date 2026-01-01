@@ -3,9 +3,15 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Check if Android SDK is configured
+# Check if Android SDK is configured via ANDROID_HOME or local.properties
 has_android_sdk() {
-  [[ -n "${ANDROID_HOME:-}" ]] || ([[ -f "$ROOT_DIR/local.properties" ]] && grep -q '^sdk.dir=' "$ROOT_DIR/local.properties")
+  if [[ -n "${ANDROID_HOME:-}" ]]; then
+    return 0
+  elif [[ -f "$ROOT_DIR/local.properties" ]]; then
+    grep -q '^sdk.dir=' "$ROOT_DIR/local.properties"
+  else
+    return 1
+  fi
 }
 
 # Build the Android APK
