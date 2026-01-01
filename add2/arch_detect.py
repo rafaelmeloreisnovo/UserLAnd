@@ -118,7 +118,7 @@ class ArchitectureDetector:
                             if key in ['model name', 'cpu', 'processor']:
                                 info['cpu_model'] = value.strip()
                                 break
-            except:
+            except (IOError, OSError):
                 pass
         
         return info
@@ -174,7 +174,7 @@ class ArchitectureDetector:
                     elif self.arch in ['arm64', 'arm32']:
                         features['neon'] = 'neon' in content or 'asimd' in content
                         features['sve'] = 'sve' in content
-            except:
+            except (IOError, OSError):
                 pass
         
         return features

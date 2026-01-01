@@ -186,10 +186,11 @@ static inline slong sys_call() {
 }
 #else
 // Fallback for unknown architectures - uses function pointers
+#warning "Unsupported architecture - syscalls will fail. Please add support for this platform."
 static slong s[4];
 static inline slong sys_call() {
     // Generic fallback - will need libc in this case
-    return -1; // Indicate unsupported
+    return -38; // ENOSYS - Function not implemented
 }
 #endif
 
@@ -321,17 +322,20 @@ int main() {
     }
     
     // Phase 4: Open output file using architecture-specific syscalls
+    // O_WRONLY(1) | O_CREAT(64) | O_TRUNC(512) = 0x241 = 577
+    #define FILE_FLAGS 0x241
+    #define FILE_MODE 0644
     const uchar fname[18] = {'f','r','a','c','t','a','l','M','a','t','r','i','x','.','t','x','t',0};
     
     // Architecture-adaptive syscall numbers
     #ifdef ARCH_X86_64
-        s[0] = 2; s[1] = (slong)fname; s[2] = 0x241; // sys_open
+        s[0] = 2; s[1] = (slong)fname; s[2] = FILE_FLAGS; // sys_open
     #elif defined(ARCH_ARM64) || defined(ARCH_ARM32)
-        s[0] = 5; s[1] = (slong)fname; s[2] = 0x241; s[3] = 0644; // sys_openat or sys_open
+        s[0] = 5; s[1] = (slong)fname; s[2] = FILE_FLAGS; s[3] = FILE_MODE; // sys_openat or sys_open
     #elif defined(ARCH_RISCV)
-        s[0] = 56; s[1] = (slong)fname; s[2] = 0x241; s[3] = 0644; // sys_openat
+        s[0] = 56; s[1] = (slong)fname; s[2] = FILE_FLAGS; s[3] = FILE_MODE; // sys_openat
     #else
-        s[0] = 2; s[1] = (slong)fname; s[2] = 0x241; s[3] = 0644; // generic
+        s[0] = 2; s[1] = (slong)fname; s[2] = FILE_FLAGS; s[3] = FILE_MODE; // generic
     #endif
     
     slong fd[1];
