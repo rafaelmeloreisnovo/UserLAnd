@@ -41,20 +41,20 @@ static inline uint rng_get() {
 }
 
 // Integer to decimal ASCII using only matrix operations
-static int i2d(uint v[1], uchar b[]) {
+static int i2d(uint val, uchar b[]) {
     uchar t[16]; // temp matrix
     int ti[1] = {0};
     int n[1];
     int idx[1];
     
-    if (v[0] == 0) {
+    if (val == 0) {
         b[0] = '0';
         return 1;
     }
     
-    while (v[0] > 0 && ti[0] < 16) {
-        t[ti[0]++] = (uchar)('0' + (v[0] % 10));
-        v[0] /= 10;
+    while (val > 0 && ti[0] < 16) {
+        t[ti[0]++] = (uchar)('0' + (val % 10));
+        val /= 10;
     }
     
     n[0] = ti[0];
@@ -66,20 +66,20 @@ static int i2d(uint v[1], uchar b[]) {
 }
 
 // Integer to hex ASCII using matrix lookup
-static int i2h(uint v[1], uchar b[]) {
+static int i2h(uint val, uchar b[]) {
     uchar t[16]; // temp matrix
     int ti[1] = {0};
     int n[1];
     int idx[1];
     
-    if (v[0] == 0) {
+    if (val == 0) {
         b[0] = '0';
         return 1;
     }
     
-    while (v[0] > 0 && ti[0] < 16) {
-        t[ti[0]++] = hex[v[0] & 0xF];
-        v[0] >>= 4;
+    while (val > 0 && ti[0] < 16) {
+        t[ti[0]++] = hex[val & 0xF];
+        val >>= 4;
     }
     
     n[0] = ti[0];
@@ -159,7 +159,8 @@ int main() {
     
     // Phase 4: Open output file using syscalls
     const uchar fname[18] = {'f','r','a','c','t','a','l','M','a','t','r','i','x','.','t','x','t',0};
-    s[0] = 2; s[1] = (slong)fname; s[2] = 577; // sys_open, O_WRONLY|O_CREAT|O_TRUNC
+    // flags: O_WRONLY(1) | O_CREAT(64) | O_TRUNC(512) = 0x241 = 577
+    s[0] = 2; s[1] = (slong)fname; s[2] = 0x241; // sys_open
     slong fd[1];
     fd[0] = sys_call();
     
@@ -173,7 +174,6 @@ int main() {
     int p[1]; // position in buffer
     uchar hval[1]; // hyperforma value
     uint tag[1]; // tag14 value
-    uint tmp[1]; // temporary value matrix
     
     for (ijk[0] = 0; ijk[0] < 10; ++ijk[0]) {
         for (ijk[1] = 0; ijk[1] < 10; ++ijk[1]) {
@@ -181,25 +181,24 @@ int main() {
                 p[0] = 0;
                 
                 // Write matrix value as decimal
-                tmp[0] = (uint)m[ijk[0]][ijk[1]][ijk[2]];
+                uint tmp = (uint)m[ijk[0]][ijk[1]][ijk[2]];
                 p[0] += i2d(tmp, buf + p[0]);
                 buf[p[0]++] = ':';
                 
                 // Write hyperforma value
                 hval[0] = h[(ijk[0] + ijk[1] + ijk[2]) % 3];
-                tmp[0] = (uint)hval[0];
+                tmp = (uint)hval[0];
                 p[0] += i2d(tmp, buf + p[0]);
                 buf[p[0]++] = ':';
                 
                 // Write tag14 as hex
                 tag[0] = (uint)((ijk[0] * 3 + ijk[1] * 5 + ijk[2] * 7) % 16384);
-                tmp[0] = tag[0];
+                tmp = tag[0];
                 p[0] += i2h(tmp, buf + p[0]);
                 buf[p[0]++] = ' ';
                 
                 // Write buffer to file
                 s[0] = 1; s[1] = fd[0]; s[2] = (slong)buf; // sys_write
-                s[2] = (slong)buf; // reassign for clarity
                 __asm__ volatile (
                     "mov %0, %%rax\n\t"
                     "mov %1, %%rdi\n\t"

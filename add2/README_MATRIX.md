@@ -73,7 +73,9 @@ All implementations follow the same deterministic fractal generation algorithm:
 
 1. **Initialization**: Create 10x10x10 3D matrix
 2. **Fibonacci-Rafael**: Modified Fibonacci sequence based on coordinate sum
-   - Formula: `fib(n) = fib(n-1) + fib(n-2) + 1` (Rafael modification)
+   - Iterative formula: `c = a + b + 1` (Rafael modification: adds 1)
+   - Then: `a = b; b = c`
+   - Applied for each index from 2 to n (where n = i + j + k)
 3. **Fractal XOR**: Apply XOR pattern at 4 deterministic positions
    - Uses deterministic PRNG with seed 123456789
    - XOR value: 0xAA

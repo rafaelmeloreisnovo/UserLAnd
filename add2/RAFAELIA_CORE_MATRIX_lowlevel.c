@@ -128,7 +128,8 @@ int main() {
     
     // Open output file
     const char fname[] = "fractalMatrix.txt";
-    slong fd = sys_open(fname, 0x241, 0644); // O_WRONLY|O_CREAT|O_TRUNC
+    // flags: O_WRONLY(1) | O_CREAT(64) | O_TRUNC(512) = 0x241 = 577
+    slong fd = sys_open(fname, 0x241, 0644);
     if (fd < 0) {
         sys_exit(1);
     }
