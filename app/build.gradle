@@ -101,6 +101,13 @@ android {
         }
     }
 
+    externalNativeBuild {
+        cmake {
+            path rootProject.file("core/librafaelia/CMakeLists.txt")
+            version "3.22.1"
+        }
+    }
+
     def keystoreFile = project.file('../keystore.jks')
     def hasSigningCredentials = keystoreFile.exists() && [
             'ANDROID_KEY_ALIAS', 'ANDROID_STORE_PASSWORD', 'ANDROID_KEY_PASSWORD'
