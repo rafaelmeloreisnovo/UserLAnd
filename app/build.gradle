@@ -404,7 +404,7 @@ dependencies {
     implementation "org.slf4j:slf4j-nop:$slf4j_version"
 
     implementation "com.android.billingclient:billing-ktx:$billing_version"
-    implementation "com.google.android.gms:play-services-base:18.3.0"
+    implementation "com.google.android.gms:play-services-base:18.9.0"
 
     def mockito_version = '5.2.0'
     def mockito_kotlin_version = '2.2.0'
