@@ -399,7 +399,7 @@ dependencies {
     implementation "com.squareup.okhttp3:okhttp:$okhttp_version"
     implementation "com.squareup.moshi:moshi:$moshi_version"
     kapt "com.squareup.moshi:moshi-kotlin-codegen:$moshi_version"
-    implementation 'org.rauschig:jarchivelib:0.8.0' // v1.0.0+ requires API 26+, keep 0.8.0 for minSdk 21 compatibility
+    implementation 'org.rauschig:jarchivelib:1.2.0' // v1.0.0+ requires API 26+, keep 1.2.0 for minSdk 21 compatibility
     implementation "io.sentry:sentry-android:$sentry_version"
     implementation "org.slf4j:slf4j-nop:$slf4j_version"
 
