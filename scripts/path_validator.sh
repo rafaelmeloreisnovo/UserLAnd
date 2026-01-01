@@ -77,8 +77,6 @@ normalize_path() {
         else
             # Not a duplicate, always add it
             normalized+=("$comp")
-        elif is_common_repeat_segment "$comp"; then
-            normalized+=("$comp")
         fi
         prev="$comp"
         ((idx++)) || true
