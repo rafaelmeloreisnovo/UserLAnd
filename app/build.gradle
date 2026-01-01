@@ -53,7 +53,7 @@ android {
         def vcode = (int)(((new Date().getTime()/1000) - 1559347200) / 10)
 
         applicationId "tech.ula"
-        minSdk 21
+        minSdk 23
         targetSdk 35
         versionCode vcode
         versionName "2.8.3"
