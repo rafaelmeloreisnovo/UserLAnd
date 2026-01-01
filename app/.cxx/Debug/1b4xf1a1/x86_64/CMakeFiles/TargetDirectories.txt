@@ -1,3 +1,0 @@
-/home/runner/work/UserLAnd/UserLAnd/app/.cxx/Debug/1b4xf1a1/x86_64/CMakeFiles/rafaelia.dir
-/home/runner/work/UserLAnd/UserLAnd/app/.cxx/Debug/1b4xf1a1/x86_64/CMakeFiles/edit_cache.dir
-/home/runner/work/UserLAnd/UserLAnd/app/.cxx/Debug/1b4xf1a1/x86_64/CMakeFiles/rebuild_cache.dir
