@@ -33,7 +33,7 @@ normalize_and_warn() {
     if (( have_normalize )); then
       normalized="$(normalize_path "$value")"
       if [[ "$normalized" != "$value" ]]; then
-        echo "[WARN] $label contains consecutive duplicate segments (original: '$value', normalized: '$normalized')" >&2
+        echo "[WARN] Normalized $label from '$value' to '$normalized'" >&2
       else
         echo "[WARN] $label contains consecutive duplicate segments: $value" >&2
       fi

@@ -24,6 +24,9 @@ is_common_repeat_segment() {
 # Function to normalize a path by removing duplicate non-common path segments
 # Usage: normalize_path "/path/to/UserLAnd/UserLAnd/file"
 # Output: "/path/to/UserLAnd/file"
+#
+# Note: This preserves legitimate path structures like GitHub Actions workspaces
+# (/home/runner/work/ORG/REPO where ORG==REPO is valid)
 normalize_path() {
     local input_path="$1"
 
@@ -37,20 +40,48 @@ normalize_path() {
     IFS='/' read -ra components <<< "$input_path"
     
     # Remove duplicate consecutive segments (except common repeated names)
+    # Check if this looks like a GitHub Actions workspace path
+    # Pattern: /home/runner/work/{org}/{repo}
+    local is_github_actions=0
+    if [[ "${components[0]:-}" == "" ]] && 
+       [[ "${components[1]:-}" == "home" ]] && 
+       [[ "${components[2]:-}" == "runner" ]] && 
+       [[ "${components[3]:-}" == "work" ]]; then
+        is_github_actions=1
+    fi
+    
+    # Remove duplicate consecutive segments
     local -a normalized
     local prev=""
+    local idx=0
     for comp in "${components[@]}"; do
         if [[ -z "$comp" ]]; then
+            ((idx++)) || true
             continue  # Skip empty components
         fi
         
         # Check for duplicate segment
-        if [[ "$comp" != "$prev" ]] || [[ -z "$prev" ]]; then
+        if [[ "$comp" == "$prev" ]]; then
+            # Found a duplicate consecutive segment
+            # If this is GitHub Actions workspace structure at positions 4-5, preserve it
+            # /home/runner/work/UserLAnd/UserLAnd is valid (org/repo)
+            if [[ $is_github_actions -eq 1 ]] && [[ $idx -eq 5 ]]; then
+                # This is the repo name following org name, preserve it even if duplicate
+                normalized+=("$comp")
+            # Check if this is a common directory name that might legitimately repeat
+            elif [[ "$comp" =~ ^(bin|lib|usr|opt|etc|var|tmp|home|root|src|build|test|tests|dist|out|node_modules|vendor)$ ]]; then
+                # Common directory names can appear at multiple levels, preserve them
+                normalized+=("$comp")
+            fi
+            # Otherwise skip the duplicate (implicit - no else needed)
+        else
+            # Not a duplicate, always add it
             normalized+=("$comp")
         elif is_common_repeat_segment "$comp"; then
             normalized+=("$comp")
         fi
         prev="$comp"
+        ((idx++)) || true
     done
     
     # Reconstruct path
@@ -74,6 +105,9 @@ normalize_path() {
 # - bin, lib, usr, opt, etc, var, tmp, home, root (system directories)
 # - src, build, test, tests, dist, out (build artifacts and source organization)
 # - node_modules, vendor (dependency directories that might nest)
+#
+# Also handles GitHub Actions workspace paths: /home/runner/work/{org}/{repo}
+# where org and repo might be the same (e.g., UserLAnd/UserLAnd)
 has_doubled_path() {
     local input_path="$1"
     
@@ -81,23 +115,50 @@ has_doubled_path() {
     local -a components
     IFS='/' read -ra components <<< "$input_path"
     
+    # Check if this looks like a GitHub Actions workspace path
+    # Pattern: /home/runner/work/{org}/{repo}
+    local is_github_actions=0
+    if [[ "${components[0]:-}" == "" ]] && 
+       [[ "${components[1]:-}" == "home" ]] && 
+       [[ "${components[2]:-}" == "runner" ]] && 
+       [[ "${components[3]:-}" == "work" ]]; then
+        is_github_actions=1
+    fi
+    
     # Check for consecutive duplicate segments
     # But exclude common directory names that might legitimately repeat
     local prev=""
+    local idx=0
     for comp in "${components[@]}"; do
         if [[ -z "$comp" ]]; then
+            ((idx++)) || true
             continue
         fi
         
         # Only flag as doubled if it's an exact consecutive duplicate
         # AND it's not a common name that might legitimately appear at multiple levels
         if [[ "$comp" == "$prev" ]]; then
-            if ! is_common_repeat_segment "$comp"; then
-                # Any other repeated segment is likely an error
-                return 0
+            # Special case: GitHub Actions workspace at positions 4-5
+            if [[ $is_github_actions -eq 1 ]] && [[ $idx -eq 5 ]]; then
+                # This is /home/runner/work/{org}/{repo} where org==repo, which is valid
+                prev="$comp"
+                ((idx++)) || true
+                continue
             fi
+            
+            # List of common directory names that might legitimately repeat
+            case "$comp" in
+                bin|lib|usr|opt|etc|var|tmp|home|root|src|build|test|tests|dist|out|node_modules|vendor)
+                    # These are common and might appear at multiple levels
+                    ;;
+                *)
+                    # Any other repeated segment is likely an error
+                    return 0
+                    ;;
+            esac
         fi
         prev="$comp"
+        ((idx++)) || true
     done
     
     return 1  # No problematic doubled segments
