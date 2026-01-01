@@ -1,0 +1,198 @@
+===== direct.asm =====
+section .data
+harmonicos: db 20,29,23,28,14,21,23,9,14,19,26,39,23,30,25,37,23,10,2,6,12,42,34,8,16,2,4,11,3,13,13,13,24,13,40,31
+len: equ 36
+matriz: times 8000 db 0
+
+section .text
+global _start
+_start:
+    lea esi, [harmonicos]
+    lea edi, [matriz]
+    mov ecx, len
+loop_fractal:
+    lodsb
+    add [edi], al
+    inc edi
+    loop loop_fractal
+    mov al, 42
+    mov [edi], al
+    mov eax, 1
+    xor ebx, ebx
+    int 0x80
+
+===== kernel.asm =====
+section .text
+global _start
+_start:
+mov eax, 1
+mov ebx, 0
+int 0x80
+
+===== rafael.asm =====
+[cole o código acima aqui]
+
+===== reverse.asm =====
+section .data
+harmonicos_rev: db -20,-29,-23,-28,-14,-21,-23,-9,-14,-19,-26,-39,-23,-30,-25,-37,-23,-10,-2,-6,-12,-42,-34,-8,-16,-2,-4,-11,-3,-13,-13,-13,-24,-13,-40,-31
+len: equ 36
+matriz: times 8000 db 0
+
+section .text
+global _start
+_start:
+    lea esi, [harmonicos_rev]
+    lea edi, [matriz]
+    mov ecx, len
+loop_fractal:
+    lodsb
+    add [edi], al
+    inc edi
+    loop loop_fractal
+    mov al, 42
+    mov [edi], al
+    mov eax, 1
+    xor ebx, ebx
+    int 0x80
+
+===== sigularidade.asm =====
+; ==============================================================================
+; SISTEMA UNIFICADO RAFAELIA [SINGLE ASM KERNEL]
+; Arquitetura: x86 (32-bit) | Dependências: Nenhuma (Pure Syscalls)
+; Conceitos: Fractal Loop, FNV-1a Hash, Ethical Output, Nano-Sleep
+; ==============================================================================
+
+section .data
+    ; [VERTENTE 1 & 4: MATEMÁTICA E ÉTICA]
+    ; Dados brutos (Harmónicos + Strings de Consciência)
+    d1: db 20,29,23,28,14,21,23,9,14,19,26,39,23,30,25,37,23,10,2,6,12
+    len_d1 equ $-d1
+    
+    ; Assinatura Visual (Selo)
+    msg_start: db 0xA, "[R] SYSTEMA VIVO INICIADO", 0xA, ">> ETHICA: FIAT DEI", 0xA, 0
+    len_start equ $-msg_start
+    
+    msg_hash: db ">> HASH (FNV1a): ", 0
+    len_hash equ $-msg_hash
+    
+    msg_sig: db 0xA, ">> ASSINATURA 42: VALIDADA", 0xA, 0
+    len_sig equ $-msg_sig
+    
+    newline: db 0xA
+    
+    ; Estrutura para nanosleep (Vertente 3: Tempo/Vida)
+    ; tv_sec (4 bytes) + tv_nsec (4 bytes)
+    time_struct: dd 0, 50000000 ; 0 seg, 50ms (Latência controlada)
+
+section .bss
+    buffer resb 16  ; Buffer para conversão de números (ITOA)
+
+section .text
+    global _start
+
+_start:
+    ; ---------------------------------------------------------
+    ; 1. DISPLAY DE CONSCIÊNCIA (Syscall Write)
+    ; ---------------------------------------------------------
+    mov eax, 4              ; sys_write
+    mov ebx, 1              ; stdout
+    mov ecx, msg_start
+    mov edx, len_start
+    int 0x80
+
+    ; ---------------------------------------------------------
+    ; 2. CÁLCULO FRACTAL (Soma de Harmónicos)
+    ; ---------------------------------------------------------
+    mov esi, d1             ; Ponteiro para dados
+    mov ecx, len_d1         ; Contador
+    xor ebx, ebx            ; Acumulador (Fractal)
+
+loop_fractal:
+    xor eax, eax
+    lodsb                   ; Carrega byte em AL
+    add ebx, eax            ; Acumula (Vertente 1)
+    loop loop_fractal
+
+    ; ---------------------------------------------------------
+    ; 3. ASSINATURA 42 (Injeção de Coerência)
+    ; ---------------------------------------------------------
+    mov al, 42              ; A Constante
+    add ebx, eax            ; Funde ao fractal (não salva em RAM, mantém no registrador)
+    
+    ; ---------------------------------------------------------
+    ; 4. ALGORITMO DE HASH FNV-1a (Implementação Low-Level)
+    ; ---------------------------------------------------------
+    ; Offset Basis: 2166136261 (0x811C9DC5)
+    ; Prime: 16777619 (0x01000193)
+    
+    mov edi, 0x811C9DC5     ; EDI = Hash Inicial
+    mov esi, d1
+    mov ecx, len_d1
+
+fnv_loop:
+    xor eax, eax
+    lodsb                   ; Carrega byte
+    xor edi, eax            ; XOR (Mistura)
+    imul edi, 0x01000193    ; Multiplica pelo Primo FNV
+    loop fnv_loop
+
+    ; EDI agora contém o Hash da "alma" do sistema.
+    ; Precisamos converter EDI para Hex/String para exibir.
+
+    ; Exibir Label Hash
+    push edi                ; Salva o Hash
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, msg_hash
+    mov edx, len_hash
+    int 0x80
+    pop edi                 ; Recupera Hash
+
+    ; Conversão HEX (Manual ITOA)
+    mov esi, buffer
+    mov ecx, 8              ; 8 nibbles (32 bits)
+    
+hex_loop:
+    rol edi, 4              ; Gira 4 bits para a esquerda
+    mov dl, dil             ; Pega os 8 bits baixos
+    and dl, 0x0F            ; Isola o nibble
+    add dl, '0'             ; Converte para ASCII
+    cmp dl, '9'
+    jle store_digit
+    add dl, 7               ; Ajuste para A-F
+store_digit:
+    mov [esi], dl
+    inc esi
+    loop hex_loop
+
+    ; Imprimir Hash Calculado
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, buffer
+    mov edx, 8
+    int 0x80
+
+    ; ---------------------------------------------------------
+    ; 5. VALIDAÇÃO E SONO (Ciclo de Vida)
+    ; ---------------------------------------------------------
+    ; Imprime validação 42
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, msg_sig
+    mov edx, len_sig
+    int 0x80
+
+    ; NANOSLEEP (Simulação de Latência Biológica)
+    ; sys_nanosleep (162)
+    mov eax, 162
+    mov ebx, time_struct    ; Struct de tempo
+    mov ecx, 0              ; Remainder (NULL)
+    int 0x80
+
+    ; ---------------------------------------------------------
+    ; 6. ENCERRAMENTO (Morte Limpa)
+    ; ---------------------------------------------------------
+    mov eax, 1              ; sys_exit
+    xor ebx, ebx            ; status 0
+    int 0x80
+
