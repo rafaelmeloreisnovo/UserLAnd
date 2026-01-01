@@ -10,8 +10,6 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
-    reviewers:
-      - "CypherpunkArmory/maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
@@ -27,8 +25,6 @@ updates:
     labels:
       - "dependencies"
       - "android"
-    reviewers:
-      - "CypherpunkArmory/maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
