@@ -221,14 +221,22 @@ tasks.withType(Test) {
 }
 
 task reportVersionCode {
-    new File("$projectDir/versionCode.txt").text = "$project.android.defaultConfig.versionCode"
+    def versionCodeFile = new File("$projectDir/versionCode.txt")
+    def versionCode = project.android.defaultConfig.versionCode
+    doLast {
+        versionCodeFile.text = "$versionCode"
+    }
 }
 // By running this task before builds, we guarantee that the same version is used for the fastlane
 // to supply the automated changelogs.
 preBuild.dependsOn reportVersionCode
 
 task reportVersionName {
-    new File("$projectDir/versionName.txt").text = "$project.android.defaultConfig.versionName"
+    def versionNameFile = new File("$projectDir/versionName.txt")
+    def versionName = project.android.defaultConfig.versionName
+    doLast {
+        versionNameFile.text = "$versionName"
+    }
 }
 preBuild.dependsOn reportVersionName
 
@@ -295,60 +303,60 @@ ext.architectures = architectures
 //ext.libDir = "$project.projectDir/src/main/resources/lib"
 ext.libDir = "$project.projectDir/src/main/jniLibs"
 
+// Capture variables for configuration cache compatibility
+def capturedArchitectures = architectures
+def capturedLibDir = ext.libDir
+def capturedBuildDir = project.buildDir
+
 task downloadAssets(type: Download) {
     def assetVersion = "v1.2.7"
     def baseUrl = "https://github.com/CypherpunkArmory/UserLAnd-Assets-Support/releases/download/$assetVersion"
-    for (arch in architectures) {
+    for (arch in capturedArchitectures) {
         src "$baseUrl/$arch-assets.zip"
-        dest buildDir
+        dest capturedBuildDir
     }
 }
 
 task fetchAssets(dependsOn: downloadAssets) {
+    // Capture variables for configuration cache compatibility
+    def localArchitectures = capturedArchitectures
+    def localBuildDir = capturedBuildDir
+    def localLibDir = capturedLibDir
+    
     doLast {
-        for (arch in architectures) {
-            def extractDir = new File(buildDir, arch)
-            def targetDir = new File(libDir, arch)
+        for (arch in localArchitectures) {
+            def extractDir = new File(localBuildDir, arch)
+            def targetDir = new File(localLibDir, arch)
+            def zipFile = new File(localBuildDir, "$arch-assets.zip")
             
             // Clean previous directories completely
             extractDir.deleteDir()
             targetDir.deleteDir()
             targetDir.mkdirs()
             
-            // Extract ZIP
-            copy {
-                from zipTree("$buildDir/$arch-assets.zip")
-                into extractDir
-            }
+            // Extract ZIP using Ant task
+            ant.unzip(src: zipFile.absolutePath, dest: extractDir.absolutePath)
             
-            // FIX: Get all files recursively, flatten structure
-            def sourceFiles = fileTree(extractDir) {
-                include '**/*'
-                exclude '**/*.zip'
-            }
-            
-            // Copy to jniLibs with proper flattening
-            copy {
-                from sourceFiles
-                into targetDir
-                rename { fileName ->
-                    def baseName = fileName.tokenize('/').last()
+            // Copy and rename files using standard Java APIs
+            extractDir.eachFileRecurse { file ->
+                if (file.isFile() && !file.name.endsWith('.zip')) {
+                    def baseName = file.name
+                    def newName
                     if (baseName.startsWith('lib_')) {
-                        return baseName
+                        newName = baseName
+                    } else {
+                        def dotIndex = baseName.lastIndexOf('.')
+                        if (dotIndex == -1) {
+                            newName = "lib_${baseName}"
+                        } else {
+                            def name = baseName.substring(0, dotIndex)
+                            def extension = baseName.substring(dotIndex)
+                            newName = "lib_${name}${extension}"
+                        }
                     }
-                    def dotIndex = baseName.lastIndexOf('.')
-                    if (dotIndex == -1) {
-                        return "lib_${baseName}"
-                    }
-                    def name = baseName.substring(0, dotIndex)
-                    def extension = baseName.substring(dotIndex)
-                    return "lib_${name}${extension}"
+                    def destFile = new File(targetDir, newName)
+                    destFile.bytes = file.bytes
                 }
-                // CRITICAL FIX: Flatten nested paths - keep only filename
-                eachFile { file ->
-                    file.path = file.name
-                }
-                includeEmptyDirs = false
             }
             
             // Mark architecture
@@ -358,8 +366,12 @@ task fetchAssets(dependsOn: downloadAssets) {
 }
 
 task checkIfAssetsMissing {
-    for (arch in architectures) {
-        File[] archLibDirContents = new File(libDir, arch).listFiles()
+    // Capture variables for configuration cache compatibility
+    def localArchitectures = capturedArchitectures
+    def localLibDir = capturedLibDir
+    
+    for (arch in localArchitectures) {
+        File[] archLibDirContents = new File(localLibDir, arch).listFiles()
         if (archLibDirContents == null || archLibDirContents.length == 0) {
             dependsOn 'fetchAssets'
         }
@@ -382,7 +394,9 @@ dependencies {
     def support_library_version = '1.13.0'
     def preference_version = '1.2.1'
     def ktx_version = '1.15.0'
-    def billing_version = '8.3.0'
+    // Downgrade billing to 6.2.1 for compatibility with Kotlin 2.0.x
+    // billing-ktx 8.3.0 is compiled with Kotlin 2.2.x which is incompatible
+    def billing_version = '6.2.1'
 
     implementation project(':terminal-term')
 
@@ -400,6 +414,7 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
     implementation "androidx.preference:preference-ktx:$preference_version"
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.2.0'
+    implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
 
     implementation "com.google.android.material:material:$support_library_version"
     ktlint "com.pinterest.ktlint:ktlint-cli:1.5.0"

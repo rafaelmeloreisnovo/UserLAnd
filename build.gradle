@@ -7,10 +7,14 @@ buildscript {
     }
 
     ext {
-        kotlin_version = '2.3.0'
+        // Downgrade Kotlin to 2.0.21 for compatibility with Room 2.6.1
+        // Kotlin 2.3.0 generates metadata version 2.3.0, while Room 2.6.1 only supports up to 2.0.0
+        kotlin_version = '2.0.21'
         android_plugin = '8.6.0'
         jacoco_version = '0.8.14'
-        navigation_version = '2.9.6'
+        // Downgrade navigation to 2.7.7 for compatibility with AGP 8.6.0 and compileSdk 35
+        // Navigation 2.9.6 requires core:1.17.0 which needs AGP 8.9.1+ and compileSdk 36
+        navigation_version = '2.7.7'
     }
 
     dependencies {
