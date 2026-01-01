@@ -77,3 +77,5 @@ add2/RAFAELIA_CORE_MATRIX_lowlevel
 add2/RAFAELIA_CORE_noincludes
 add2/fractalMatrix.txt
 add2/RAFAELIA_CORE_MATRIX_cpp
+add2/RAFAELIA_CORE_MATRIX_multiarch
+add2/arch_detect.h
