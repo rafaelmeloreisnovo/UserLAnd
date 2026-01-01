@@ -28,14 +28,16 @@ echo "[build] add (BLAKE3 example)"
 want_apk="${1:-}"
 if [[ "$want_apk" == "--apk" ]]; then
   echo "[build] UserLAnd APK"
-  if has_android_sdk; then
-    build_apk
+  if [[ -n "${ANDROID_HOME:-}" ]]; then
+    (cd "$ROOT_DIR" && ./gradlew assembleDebug)
+  elif [[ -f "$ROOT_DIR/local.properties" ]] && grep -q '^sdk.dir=' "$ROOT_DIR/local.properties"; then
+    (cd "$ROOT_DIR" && ./gradlew assembleDebug)
   else
     echo "[error] Android SDK not configured. Set ANDROID_HOME or add sdk.dir=... to local.properties." >&2
     exit 1
   fi
 else
-  if has_android_sdk; then
+  if [[ -n "${ANDROID_HOME:-}" ]] || ([[ -f "$ROOT_DIR/local.properties" ]] && grep -q '^sdk.dir=' "$ROOT_DIR/local.properties"); then
     echo "[build] UserLAnd APK (auto)"
     build_apk
   else
