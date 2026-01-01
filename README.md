@@ -22,6 +22,7 @@ Features:
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to UserLAnd
 - **[Security Policy](SECURITY.md)** - Reporting vulnerabilities and security guidelines
 - **[Changelog](CHANGELOG.md)** - Version history and release notes
+- **[Vantagens e Ganhos](docs/VANTAGENS_E_GANHOS.md)** - Advantages and estimated gains of RAFAELIA optimizations (PT-BR)
      
 ## Have a bug report or a feature request?
 You can see our templates by visiting our [issue center](https://github.com/CypherpunkArmory/UserLAnd/issues).
