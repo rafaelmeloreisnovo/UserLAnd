@@ -1,29 +1,32 @@
-cmake_minimum_required(VERSION 3.16)
-project(rafaelia_core C)
+cmake_minimum_required(VERSION 3.22.1)
+project(rafaelia C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-add_library(rafaelia_static STATIC raf_cpu_parser.c)
-add_library(rafaelia_shared SHARED raf_cpu_parser.c)
+set(RAFAELIA_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
-set_target_properties(rafaelia_static rafaelia_shared PROPERTIES OUTPUT_NAME rafaelia)
+add_library(rafaelia SHARED
+  ${CMAKE_CURRENT_SOURCE_DIR}/raf_cpu_parser.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/raf_crc_ecc.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../add2/bitstack_Version2.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../app/src/main/cpp/rafaelia_jni.c
+)
 
-set(RAFAELIA_WARNINGS -Wall -Wextra -Werror)
-set(RAFAELIA_PUBLIC_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+target_include_directories(rafaelia PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${RAFAELIA_ROOT}/include
+)
 
-foreach(target rafaelia_static rafaelia_shared)
-  target_include_directories(${target}
-    PUBLIC
-      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-      $<BUILD_INTERFACE:${RAFAELIA_PUBLIC_INCLUDE_DIR}>
-      $<INSTALL_INTERFACE:include>)
-  target_compile_options(${target} PRIVATE ${RAFAELIA_WARNINGS})
-  target_compile_definitions(${target} PRIVATE _POSIX_C_SOURCE=200809L)
-endforeach()
+target_compile_options(rafaelia PRIVATE
+  -O3
+  -ffast-math
+  -fno-exceptions
+  -fvisibility=hidden
+  -Wall
+  -Wextra
+)
 
-install(TARGETS rafaelia_static rafaelia_shared
-        ARCHIVE DESTINATION lib
-        LIBRARY DESTINATION lib)
-install(FILES ${RAFAELIA_PUBLIC_INCLUDE_DIR}/raf_core.h DESTINATION include)
+find_library(log-lib log)
+target_link_libraries(rafaelia ${log-lib})
