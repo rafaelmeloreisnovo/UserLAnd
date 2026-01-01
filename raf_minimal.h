@@ -16,6 +16,10 @@
 #include <string.h>
 #include <time.h>
 
+/* Compile-time constants for overflow checking (avoids runtime division) */
+#define RAF_U64_MAX_DIV_10 1844674407370955161ULL  /* UINT64_MAX / 10 */
+#define RAF_U32_MAX_DIV_10 429496729U               /* UINT32_MAX / 10 */
+
 /*
  * Inline bool type definition (replaces stdbool.h)
  */
@@ -50,14 +54,15 @@ static inline uint64_t raf_now_ns(void) {
 /*
  * Parse unsigned 64-bit integer from string (replaces strtoull)
  * Returns parsed value and advances cursor pointer
- * Includes overflow protection
+ * Includes overflow protection with compile-time constants
+ * Note: Returns 0 if no digits found (check cursor advancement for error detection)
  */
 static inline uint64_t raf_parse_u64(const char **cursor) {
   uint64_t value = 0;
   while (**cursor >= '0' && **cursor <= '9') {
     uint64_t digit = **cursor - '0';
-    // Check for overflow
-    if (value > UINT64_MAX / 10) {
+    // Check for overflow (uses pre-computed constant)
+    if (value > RAF_U64_MAX_DIV_10) {
       break;  // would overflow
     }
     uint64_t new_value = value * 10;
@@ -73,14 +78,15 @@ static inline uint64_t raf_parse_u64(const char **cursor) {
 /*
  * Parse unsigned 32-bit integer from string (replaces strtoul)
  * Returns parsed value and advances cursor pointer
- * Includes overflow protection
+ * Includes overflow protection with compile-time constants
+ * Note: Returns 0 if no digits found (check cursor advancement for error detection)
  */
 static inline uint32_t raf_parse_u32(const char **cursor) {
   uint32_t value = 0;
   while (**cursor >= '0' && **cursor <= '9') {
     uint32_t digit = **cursor - '0';
-    // Check for overflow
-    if (value > UINT32_MAX / 10) {
+    // Check for overflow (uses pre-computed constant)
+    if (value > RAF_U32_MAX_DIV_10) {
       break;  // would overflow
     }
     uint32_t new_value = value * 10;
