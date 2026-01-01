@@ -5,7 +5,13 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Helper function to check if Android SDK is configured
 has_android_sdk() {
-  [[ -n "${ANDROID_HOME:-}" ]] || ([[ -f "$ROOT_DIR/local.properties" ]] && grep -q '^sdk.dir=' "$ROOT_DIR/local.properties")
+  if [[ -n "${ANDROID_HOME:-}" ]]; then
+    return 0
+  elif [[ -f "$ROOT_DIR/local.properties" ]] && grep -q '^sdk.dir=' "$ROOT_DIR/local.properties"; then
+    return 0
+  else
+    return 1
+  fi
 }
 
 # Helper function to build the APK
