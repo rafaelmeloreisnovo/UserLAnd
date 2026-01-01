@@ -5,9 +5,8 @@ import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 class CredentialValidator {
-
-    fun validateFilesystemName(filesystemName: String): CredentialValidationStatus {
-        return when {
+    fun validateFilesystemName(filesystemName: String): CredentialValidationStatus =
+        when {
             filesystemName.isEmpty() ->
                 CredentialValidationStatus(false, R.string.error_filesystem_name)
 
@@ -19,10 +18,12 @@ class CredentialValidator {
 
             else -> CredentialValidationStatus(true)
         }
-    }
 
-    fun validateUsername(username: String, blacklistUsernames: Array<String>): CredentialValidationStatus {
-        return when {
+    fun validateUsername(
+        username: String,
+        blacklistUsernames: Array<String>,
+    ): CredentialValidationStatus =
+        when {
             username.isEmpty() ->
                 CredentialValidationStatus(false, R.string.error_empty_field)
 
@@ -34,10 +35,9 @@ class CredentialValidator {
 
             else -> CredentialValidationStatus(true)
         }
-    }
 
-    fun validatePassword(password: String): CredentialValidationStatus {
-        return when {
+    fun validatePassword(password: String): CredentialValidationStatus =
+        when {
             password.isEmpty() ->
                 CredentialValidationStatus(false, R.string.error_empty_field)
 
@@ -46,10 +46,9 @@ class CredentialValidator {
 
             else -> CredentialValidationStatus(true)
         }
-    }
 
-    fun validateVncPassword(vncPassword: String): CredentialValidationStatus {
-        return when {
+    fun validateVncPassword(vncPassword: String): CredentialValidationStatus =
+        when {
             vncPassword.isEmpty() ->
                 CredentialValidationStatus(false, R.string.error_empty_field)
 
@@ -61,7 +60,6 @@ class CredentialValidator {
 
             else -> CredentialValidationStatus(true)
         }
-    }
 
     private fun validateFilesystemNameCharacters(filesystemName: String): Boolean {
         val filesystemNameRegex = "([a-zA-Z0-9!@#$%^&()_+=,.?<>]{0,50})"
@@ -91,4 +89,7 @@ class CredentialValidator {
     }
 }
 
-data class CredentialValidationStatus(val credentialIsValid: Boolean, val errorMessageId: Int = R.string.general_error_title)
+data class CredentialValidationStatus(
+    val credentialIsValid: Boolean,
+    val errorMessageId: Int = R.string.general_error_title,
+)

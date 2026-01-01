@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package tech.ula.viewmodel
 
 import androidx.lifecycle.LiveData
@@ -13,17 +15,17 @@ import tech.ula.model.entities.Filesystem
 import tech.ula.model.entities.ServiceType
 import tech.ula.model.entities.Session
 import tech.ula.model.repositories.DownloadMetadata
-import tech.ula.model.state.* // ktlint-disable no-wildcard-imports
-import tech.ula.utils.* // ktlint-disable no-wildcard-imports
+import tech.ula.model.state.*
+import tech.ula.utils.*
 import java.io.FileNotFoundException
 import kotlin.coroutines.CoroutineContext
 
 class MainActivityViewModel(
     private val appsStartupFsm: AppsStartupFsm,
     private val sessionStartupFsm: SessionStartupFsm,
-    private val logger: Logger = SentryLogger()
-) : ViewModel(), CoroutineScope {
-
+    private val logger: Logger = SentryLogger(),
+) : ViewModel(),
+    CoroutineScope {
     private val className = "MainVM"
 
     private var appsAreWaitingForSelection = false
@@ -42,9 +44,10 @@ class MainActivityViewModel(
 
     private val sessionState = sessionStartupFsm.getState()
 
-    private val state = MediatorLiveData<State>().apply {
-        postValue(WaitingForInput)
-    }
+    private val state =
+        MediatorLiveData<State>().apply {
+            postValue(WaitingForInput)
+        }
 
     private fun postIllegalStateWithLog(newState: IllegalState) {
         logger.sendIllegalStateLog(newState)
@@ -61,51 +64,56 @@ class MainActivityViewModel(
     }
 
     init {
-        state.addSource(appsState) { it?.let { update ->
-            val breadcrumb = UlaBreadcrumb(className, BreadcrumbType.ObservedState, "$update")
-            logger.addBreadcrumb(breadcrumb)
-            // Update stateful variables before handling the update so they can be used during it
-            if (update !is WaitingForAppSelection) {
-                appsAreWaitingForSelection = false
+        state.addSource(appsState) {
+            it?.let { update ->
+                val breadcrumb = UlaBreadcrumb(className, BreadcrumbType.ObservedState, "$update")
+                logger.addBreadcrumb(breadcrumb)
+                // Update stateful variables before handling the update so they can be used during it
+                if (update !is WaitingForAppSelection) {
+                    appsAreWaitingForSelection = false
+                }
+                when (update) {
+                    is WaitingForAppSelection -> {
+                        appsAreWaitingForSelection = true
+                    }
+                    is DatabaseEntriesFetched -> {
+                        lastSelectedSession = update.appSession
+                        lastSelectedFilesystem = update.appsFilesystem
+                    }
+                    is AppDatabaseEntriesSynced -> {
+                        lastSelectedApp = update.app
+                        lastSelectedSession = update.session
+                        lastSelectedFilesystem = update.filesystem
+                    }
+                    else -> {
+                        // Handle other app startup states like AppHasServiceTypeSet, AppRequiresServiceType,
+                        // AppScriptCopyFailed, AppScriptCopySucceeded, AppsFilesystemHasCredentials,
+                        // AppsFilesystemRequiresCredentials, CopyingAppScript, etc.
+                        // These are handled in handleAppsPreparationState() below
+                    }
+                }
+                handleAppsPreparationState(update)
             }
-            when (update) {
-                is WaitingForAppSelection -> {
-                    appsAreWaitingForSelection = true
-                }
-                is DatabaseEntriesFetched -> {
-                    lastSelectedSession = update.appSession
-                    lastSelectedFilesystem = update.appsFilesystem
-                }
-                is AppDatabaseEntriesSynced -> {
-                    lastSelectedApp = update.app
-                    lastSelectedSession = update.session
-                    lastSelectedFilesystem = update.filesystem
-                }
-                else -> {
-                    // Handle other app startup states like AppHasServiceTypeSet, AppRequiresServiceType,
-                    // AppScriptCopyFailed, AppScriptCopySucceeded, AppsFilesystemHasCredentials,
-                    // AppsFilesystemRequiresCredentials, CopyingAppScript, etc.
-                    // These are handled in handleAppsPreparationState() below
-                }
+        }
+        state.addSource(sessionState) {
+            it?.let { update ->
+                val breadcrumb = UlaBreadcrumb(className, BreadcrumbType.ObservedState, "$update")
+                logger.addBreadcrumb(breadcrumb)
+                handleSessionPreparationState(update)
             }
-            handleAppsPreparationState(update)
-        } }
-        state.addSource(sessionState) { it?.let { update ->
-            val breadcrumb = UlaBreadcrumb(className, BreadcrumbType.ObservedState, "$update")
-            logger.addBreadcrumb(breadcrumb)
-            handleSessionPreparationState(update)
-        } }
+        }
     }
 
-    fun getState(): LiveData<State> {
-        return state
-    }
+    fun getState(): LiveData<State> = state
 
     fun handleOnResume() {
         submitSessionStartupEvent(SyncDownloadState)
     }
 
-    fun waitForPermissions(appToContinue: App = unselectedApp, sessionToContinue: Session = unselectedSession) {
+    fun waitForPermissions(
+        appToContinue: App = unselectedApp,
+        sessionToContinue: Session = unselectedSession,
+    ) {
         resetStartupState()
         lastSelectedApp = appToContinue
         lastSelectedSession = sessionToContinue
@@ -128,7 +136,10 @@ class MainActivityViewModel(
         }
     }
 
-    fun submitAppSelection(app: App, autoStart: Boolean) {
+    fun submitAppSelection(
+        app: App,
+        autoStart: Boolean,
+    ) {
         if (!autoStart && !selectionsCanBeMade()) return
         lastSelectedApp = app
         submitAppsStartupEvent(AppSelected(app))
@@ -144,7 +155,11 @@ class MainActivityViewModel(
         submitSessionStartupEvent(AssetDownloadComplete(id))
     }
 
-    fun submitFilesystemCredentials(username: String, password: String, vncPassword: String) {
+    fun submitFilesystemCredentials(
+        username: String,
+        password: String,
+        vncPassword: String,
+    ) {
         if (lastSelectedFilesystem == unselectedFilesystem) {
             postIllegalStateWithLog(NoFilesystemSelectedWhenCredentialsSubmitted)
             return
@@ -293,18 +308,19 @@ class MainActivityViewModel(
         }
     }
 
-    private fun handleAssetRetrievalState(newState: AssetRetrievalState) {
-        return when (newState) {
+    private fun handleAssetRetrievalState(newState: AssetRetrievalState) =
+        when (newState) {
             is RetrievingAssetLists -> state.postValue(FetchingAssetLists)
-            is AssetListsRetrievalSucceeded -> { doTransitionIfRequirementsAreSelected {
+            is AssetListsRetrievalSucceeded -> {
+                doTransitionIfRequirementsAreSelected {
                     submitSessionStartupEvent(GenerateDownloads(lastSelectedFilesystem, newState.assetList))
-            } }
+                }
+            }
             is AssetListsRetrievalFailed -> postIllegalStateWithLog(ErrorFetchingAssetLists)
         }
-    }
 
-    private fun handleDownloadRequirementsGenerationState(newState: DownloadRequirementsGenerationState) {
-        return when (newState) {
+    private fun handleDownloadRequirementsGenerationState(newState: DownloadRequirementsGenerationState) =
+        when (newState) {
             is GeneratingDownloadRequirements -> state.postValue(CheckingForAssetsUpdates)
             is RemoteUnreachableForGeneration -> {
                 postIllegalStateWithLog(ErrorGeneratingDownloads(R.string.illegal_state_remote_unreachable_during_generation))
@@ -316,14 +332,15 @@ class MainActivityViewModel(
                     startAssetDownloads(newState.downloadsRequired)
                 }
             }
-            is NoDownloadsRequired -> { doTransitionIfRequirementsAreSelected {
+            is NoDownloadsRequired -> {
+                doTransitionIfRequirementsAreSelected {
                     submitSessionStartupEvent(VerifyFilesystemAssets(lastSelectedFilesystem))
-            } }
+                }
+            }
         }
-    }
 
-    private fun handleDownloadingAssetsState(newState: DownloadingAssetsState) {
-        return when (newState) {
+    private fun handleDownloadingAssetsState(newState: DownloadingAssetsState) =
+        when (newState) {
             is DownloadingAssets -> state.postValue(DownloadProgress(newState.numCompleted, newState.numTotal))
             is DownloadsHaveSucceeded -> submitSessionStartupEvent(CopyDownloadsToLocalStorage)
             is DownloadsHaveFailed -> postIllegalStateWithLog(DownloadsDidNotCompleteSuccessfully(newState.reason))
@@ -331,10 +348,9 @@ class MainActivityViewModel(
                 postIllegalStateWithLog(DownloadCacheAccessedWhileEmpty)
             }
         }
-    }
 
-    private fun handleCopyingFilesLocallyState(newState: CopyingFilesLocallyState) {
-        return when (newState) {
+    private fun handleCopyingFilesLocallyState(newState: CopyingFilesLocallyState) =
+        when (newState) {
             is CopyingFilesToLocalDirectories -> state.postValue(CopyingDownloads)
             is LocalDirectoryCopySucceeded -> {
                 if (sessionPreparationRequirementsHaveBeenSelected()) {
@@ -346,39 +362,41 @@ class MainActivityViewModel(
             }
             is LocalDirectoryCopyFailed -> postIllegalStateWithLog(FailedToCopyAssetsToLocalStorage)
         }
-    }
 
-    private fun handleAssetVerificationState(newState: AssetVerificationState) {
-        return when (newState) {
+    private fun handleAssetVerificationState(newState: AssetVerificationState) =
+        when (newState) {
             is VerifyingFilesystemAssets -> state.postValue(VerifyingFilesystem)
-            is FilesystemAssetVerificationSucceeded -> { doTransitionIfRequirementsAreSelected {
+            is FilesystemAssetVerificationSucceeded -> {
+                doTransitionIfRequirementsAreSelected {
                     submitSessionStartupEvent(VerifyAvailableStorage)
-            } }
+                }
+            }
             is AssetsAreMissingFromSupportDirectories -> postIllegalStateWithLog(AssetsHaveNotBeenDownloaded)
             is FilesystemAssetCopyFailed -> postIllegalStateWithLog(FailedToCopyAssetsToFilesystem)
         }
-    }
 
-    private fun handleStorageVerificationState(newState: StorageVerificationState) {
-        return when (newState) {
+    private fun handleStorageVerificationState(newState: StorageVerificationState) =
+        when (newState) {
             is VerifyingSufficientStorage -> state.postValue(VerifyingAvailableStorage)
             is VerifyingSufficientStorageFailed -> postIllegalStateWithLog(InsufficientAvailableStorage)
             is LowAvailableStorage -> state.postValue(LowStorageAcknowledgementRequired)
-            is StorageVerificationCompletedSuccessfully -> { doTransitionIfRequirementsAreSelected {
-                submitSessionStartupEvent(ExtractFilesystem(lastSelectedFilesystem))
-            } }
+            is StorageVerificationCompletedSuccessfully -> {
+                doTransitionIfRequirementsAreSelected {
+                    submitSessionStartupEvent(ExtractFilesystem(lastSelectedFilesystem))
+                }
+            }
         }
-    }
 
-    private fun handleExtractionState(newState: ExtractionState) {
-        return when (newState) {
+    private fun handleExtractionState(newState: ExtractionState) =
+        when (newState) {
             is ExtractingFilesystem -> state.postValue(FilesystemExtractionStep(newState.extractionTarget))
-            is ExtractionHasCompletedSuccessfully -> { doTransitionIfRequirementsAreSelected {
-                state.postValue(SessionCanBeStarted(lastSelectedSession))
-            } }
+            is ExtractionHasCompletedSuccessfully -> {
+                doTransitionIfRequirementsAreSelected {
+                    state.postValue(SessionCanBeStarted(lastSelectedSession))
+                }
+            }
             is ExtractionFailed -> postIllegalStateWithLog(FailedToExtractFilesystem(newState.reason))
         }
-    }
 
     private fun resetStartupState() {
         lastSelectedApp = unselectedApp
@@ -389,13 +407,10 @@ class MainActivityViewModel(
         submitSessionStartupEvent(ResetSessionState)
     }
 
-    private fun selectionsCanBeMade(): Boolean {
-        return appsAreWaitingForSelection && sessionsAreWaitingForSelection
-    }
+    private fun selectionsCanBeMade(): Boolean = appsAreWaitingForSelection && sessionsAreWaitingForSelection
 
-    private fun appsPreparationRequirementsHaveBeenSelected(): Boolean {
-        return lastSelectedApp != unselectedApp && sessionPreparationRequirementsHaveBeenSelected()
-    }
+    private fun appsPreparationRequirementsHaveBeenSelected(): Boolean =
+        lastSelectedApp != unselectedApp && sessionPreparationRequirementsHaveBeenSelected()
 
     private fun doTransitionIfRequirementsAreSelected(transition: () -> Unit) {
         if (!sessionPreparationRequirementsHaveBeenSelected()) {
@@ -405,9 +420,8 @@ class MainActivityViewModel(
         transition()
     }
 
-    private fun sessionPreparationRequirementsHaveBeenSelected(): Boolean {
-        return lastSelectedSession != unselectedSession && lastSelectedFilesystem != unselectedFilesystem
-    }
+    private fun sessionPreparationRequirementsHaveBeenSelected(): Boolean =
+        lastSelectedSession != unselectedSession && lastSelectedFilesystem != unselectedFilesystem
 
     private fun submitAppsStartupEvent(event: AppsStartupEvent) {
         val breadcrumb = UlaBreadcrumb(className, BreadcrumbType.SubmittedEvent, "$event")
@@ -423,57 +437,114 @@ class MainActivityViewModel(
 }
 
 sealed class State
+
 object WaitingForInput : State()
+
 object CanOnlyStartSingleSession : State()
-data class SessionCanBeStarted(val session: Session) : State()
-data class SessionCanBeRestarted(val session: Session) : State()
+
+data class SessionCanBeStarted(
+    val session: Session,
+) : State()
+
+data class SessionCanBeRestarted(
+    val session: Session,
+) : State()
 
 sealed class IllegalState : State()
-data class IllegalStateTransition(val transition: String) : IllegalState()
+
+data class IllegalStateTransition(
+    val transition: String,
+) : IllegalState()
+
 object TooManySelectionsMadeWhenPermissionsGranted : IllegalState()
+
 object NoSelectionsMadeWhenPermissionsGranted : IllegalState()
 
 object NoFilesystemSelectedWhenCredentialsSubmitted : IllegalState()
+
 object NoAppSelectedWhenPreferenceSubmitted : IllegalState()
+
 object NoAppSelectedWhenTransitionNecessary : IllegalState()
+
 object ErrorFetchingAppDatabaseEntries : IllegalState()
+
 object ErrorCopyingAppScript : IllegalState()
 
 object NoSessionSelectedWhenTransitionNecessary : IllegalState()
+
 object ErrorFetchingAssetLists : IllegalState()
-data class ErrorGeneratingDownloads(val errorId: Int) : IllegalState()
-data class DownloadsDidNotCompleteSuccessfully(val reason: DownloadFailureLocalizationData) : IllegalState()
+
+data class ErrorGeneratingDownloads(
+    val errorId: Int,
+) : IllegalState()
+
+data class DownloadsDidNotCompleteSuccessfully(
+    val reason: DownloadFailureLocalizationData,
+) : IllegalState()
+
 object DownloadCacheAccessedWhileEmpty : IllegalState()
+
 object FailedToCopyAssetsToLocalStorage : IllegalState()
+
 object AssetsHaveNotBeenDownloaded : IllegalState()
+
 object FailedToCopyAssetsToFilesystem : IllegalState()
-data class FailedToExtractFilesystem(val reason: String) : IllegalState()
+
+data class FailedToExtractFilesystem(
+    val reason: String,
+) : IllegalState()
+
 object FailedToClearSupportFiles : IllegalState()
+
 object InsufficientAvailableStorage : IllegalState()
+
 object BusyboxMissing : IllegalState()
 
 sealed class UserInputRequiredState : State()
+
 object FilesystemCredentialsRequired : UserInputRequiredState()
+
 object LowStorageAcknowledgementRequired : UserInputRequiredState()
+
 object AppServiceTypePreferenceRequired : UserInputRequiredState()
-data class LargeDownloadRequired(val downloadRequirements: List<DownloadMetadata>) : UserInputRequiredState()
+
+data class LargeDownloadRequired(
+    val downloadRequirements: List<DownloadMetadata>,
+) : UserInputRequiredState()
+
 object ActiveSessionsMustBeDeactivated : UserInputRequiredState()
 
 sealed class ProgressBarUpdateState : State()
+
 object StartingSetup : ProgressBarUpdateState()
+
 object FetchingAssetLists : ProgressBarUpdateState()
+
 object CheckingForAssetsUpdates : ProgressBarUpdateState()
-data class DownloadProgress(val numComplete: Int, val numTotal: Int) : ProgressBarUpdateState()
+
+data class DownloadProgress(
+    val numComplete: Int,
+    val numTotal: Int,
+) : ProgressBarUpdateState()
+
 object CopyingDownloads : ProgressBarUpdateState()
+
 object VerifyingFilesystem : ProgressBarUpdateState()
+
 object VerifyingAvailableStorage : ProgressBarUpdateState()
-data class FilesystemExtractionStep(val extractionTarget: String) : ProgressBarUpdateState()
+
+data class FilesystemExtractionStep(
+    val extractionTarget: String,
+) : ProgressBarUpdateState()
+
 object ClearingSupportFiles : ProgressBarUpdateState()
+
 object ProgressBarOperationComplete : ProgressBarUpdateState()
 
-class MainActivityViewModelFactory(private val appsStartupFsm: AppsStartupFsm, private val sessionStartupFsm: SessionStartupFsm) : ViewModelProvider.NewInstanceFactory() {
+class MainActivityViewModelFactory(
+    private val appsStartupFsm: AppsStartupFsm,
+    private val sessionStartupFsm: SessionStartupFsm,
+) : ViewModelProvider.NewInstanceFactory() {
     @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return MainActivityViewModel(appsStartupFsm, sessionStartupFsm) as T
-    }
+    override fun <T : ViewModel> create(modelClass: Class<T>): T = MainActivityViewModel(appsStartupFsm, sessionStartupFsm) as T
 }

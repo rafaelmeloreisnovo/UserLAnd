@@ -1,21 +1,23 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package tech.ula.ui
 
 import android.app.AlertDialog
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProvider
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import androidx.fragment.app.Fragment
-import androidx.recyclerview.widget.LinearLayoutManager
 import android.view.LayoutInflater
-import android.view.ViewGroup
-import android.view.View
 import android.view.Menu
-import android.view.MenuItem
 import android.view.MenuInflater
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import androidx.core.os.bundleOf
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.LinearLayoutManager
 import tech.ula.MainActivity
 import tech.ula.R
 import tech.ula.ServerService
@@ -25,17 +27,22 @@ import tech.ula.model.remote.GithubAppsFetcher
 import tech.ula.model.repositories.AppsRepository
 import tech.ula.model.repositories.RefreshStatus
 import tech.ula.model.repositories.UlaDatabase
-import tech.ula.utils.* // ktlint-disable no-wildcard-imports
+import tech.ula.utils.*
 import tech.ula.utils.preferences.AppsPreferences
 import tech.ula.viewmodel.AppsListViewModel
 import tech.ula.viewmodel.AppsListViewModelFactory
 
-class AppsListFragment : Fragment(), AppsListAdapter.AppsClickHandler {
-
+class AppsListFragment :
+    Fragment(),
+    AppsListAdapter.AppsClickHandler {
     interface AppSelection {
-        fun appHasBeenSelected(app: App, autoStart: Boolean)
+        fun appHasBeenSelected(
+            app: App,
+            autoStart: Boolean,
+        )
     }
 
+    @Suppress("ktlint:standard:backing-property-naming")
     private var _binding: FragAppListBinding? = null
     private val binding get() = _binding!!
 
@@ -61,46 +68,52 @@ class AppsListFragment : Fragment(), AppsListAdapter.AppsClickHandler {
 
         val appsRepository = AppsRepository(appsDao, githubFetcher, appsPreferences)
         ViewModelProvider(this, AppsListViewModelFactory(appsRepository))
-                .get(AppsListViewModel::class.java)
+            .get(AppsListViewModel::class.java)
     }
 
-    private val appsObserver = Observer<List<App>> {
-        it?.let { list ->
-            appsAdapter.updateApps(list)
-            binding.listApps.scrollToPosition(0)
-            if (list.isEmpty() || userlandIsNewVersion()) {
-                doRefresh()
+    private val appsObserver =
+        Observer<List<App>> {
+            it?.let { list ->
+                appsAdapter.updateApps(list)
+                binding.listApps.scrollToPosition(0)
+                if (list.isEmpty() || userlandIsNewVersion()) {
+                    doRefresh()
+                }
             }
         }
-    }
 
-    private val activeAppsObserver = Observer<List<App>> {
-        it?.let { list ->
-            appsAdapter.updateActiveApps(list)
+    private val activeAppsObserver =
+        Observer<List<App>> {
+            it?.let { list ->
+                appsAdapter.updateActiveApps(list)
+            }
         }
-    }
 
-    private val refreshStatusObserver = Observer<RefreshStatus> {
-        it?.let { newStatus ->
-            refreshStatus = newStatus
-            binding.swipeRefresh.isRefreshing = refreshStatus == RefreshStatus.ACTIVE
+    private val refreshStatusObserver =
+        Observer<RefreshStatus> {
+            it?.let { newStatus ->
+                refreshStatus = newStatus
+                binding.swipeRefresh.isRefreshing = refreshStatus == RefreshStatus.ACTIVE
 
-            if (refreshStatus == RefreshStatus.FAILED) showRefreshUnavailableDialog()
+                if (refreshStatus == RefreshStatus.FAILED) showRefreshUnavailableDialog()
+            }
         }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setHasOptionsMenu(true)
     }
 
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+    override fun onCreateOptionsMenu(
+        menu: Menu,
+        inflater: MenuInflater,
+    ) {
         super.onCreateOptionsMenu(menu, inflater)
         inflater.inflate(R.menu.menu_refresh, menu)
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when {
+    override fun onOptionsItemSelected(item: MenuItem): Boolean =
+        when {
             item.itemId == R.id.menu_item_refresh -> {
                 binding.swipeRefresh.isRefreshing = true
                 doRefresh()
@@ -108,7 +121,6 @@ class AppsListFragment : Fragment(), AppsListAdapter.AppsClickHandler {
             }
             else -> super.onOptionsItemSelected(item)
         }
-    }
 
     override fun onClick(app: App) {
         doOnAppSelection.appHasBeenSelected(app, false)
@@ -118,15 +130,18 @@ class AppsListFragment : Fragment(), AppsListAdapter.AppsClickHandler {
         activityContext.menuInflater.inflate(R.menu.context_menu_apps, menu)
     }
 
-    override fun onContextItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
+    override fun onContextItemSelected(item: MenuItem): Boolean =
+        when (item.itemId) {
             R.id.menu_item_app_details -> showAppDetails(appsAdapter.contextMenuItem)
             R.id.menu_item_stop_app -> stopAppSession(appsAdapter.contextMenuItem)
             else -> super.onContextItemSelected(item)
         }
-    }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
+    ): View {
         _binding = FragAppListBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -145,10 +160,11 @@ class AppsListFragment : Fragment(), AppsListAdapter.AppsClickHandler {
 
         binding.swipeRefresh.setOnRefreshListener { doRefresh() }
         binding.swipeRefresh.setColorSchemeResources(
-                R.color.holo_blue_light,
-                R.color.holo_green_light,
-                R.color.holo_orange_light,
-                R.color.holo_red_light)
+            R.color.holo_blue_light,
+            R.color.holo_green_light,
+            R.color.holo_orange_light,
+            R.color.holo_red_light,
+        )
     }
 
     override fun onDestroyView() {
@@ -168,7 +184,8 @@ class AppsListFragment : Fragment(), AppsListAdapter.AppsClickHandler {
     }
 
     private fun stopAppSession(app: App): Boolean {
-        val serviceIntent = Intent(activityContext, ServerService::class.java)
+        val serviceIntent =
+            Intent(activityContext, ServerService::class.java)
                 .putExtra("type", "stopApp")
                 .putExtra("app", app)
         activityContext.startService(serviceIntent)
@@ -176,14 +193,14 @@ class AppsListFragment : Fragment(), AppsListAdapter.AppsClickHandler {
     }
 
     private fun showRefreshUnavailableDialog() {
-        AlertDialog.Builder(activityContext)
-                .setMessage(R.string.alert_network_required_for_refresh)
-                .setTitle(R.string.general_error_title)
-                .setPositiveButton(R.string.button_ok) {
-                    dialog, _ ->
-                    dialog.dismiss()
-                }
-                .create().show()
+        AlertDialog
+            .Builder(activityContext)
+            .setMessage(R.string.alert_network_required_for_refresh)
+            .setTitle(R.string.general_error_title)
+            .setPositiveButton(R.string.button_ok) { dialog, _ ->
+                dialog.dismiss()
+            }.create()
+            .show()
     }
 
     private fun userlandIsNewVersion(): Boolean {
@@ -206,13 +223,12 @@ class AppsListFragment : Fragment(), AppsListAdapter.AppsClickHandler {
         }
     }
 
-    private fun getUserlandVersion(): String? {
-        return try {
+    private fun getUserlandVersion(): String? =
+        try {
             val info = activityContext.packageManager.getPackageInfo(activityContext.packageName, 0)
             info.versionName
         } catch (error: Exception) {
             Log.w("AppsListFragment", "Failed to read package version for refresh check", error)
             null
         }
-    }
 }

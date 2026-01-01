@@ -16,20 +16,26 @@ import tech.ula.MainActivity
 import tech.ula.R
 
 interface UserPrompter {
-    @get: StringRes val initialPrompt: Int
-    @get: StringRes val initialPosBtnText: Int
-    @get: StringRes val initialNegBtnText: Int
+    @get:StringRes val initialPrompt: Int
+
+    @get:StringRes val initialPosBtnText: Int
+
+    @get:StringRes val initialNegBtnText: Int
     val altInitialPosFlow: Boolean
     val initialPositiveBtnAction: () -> Unit
 
-    @get: StringRes val primaryRequest: Int
-    @get: StringRes val primaryPosBtnText: Int
-    @get: StringRes val primaryNegBtnText: Int
+    @get:StringRes val primaryRequest: Int
+
+    @get:StringRes val primaryPosBtnText: Int
+
+    @get:StringRes val primaryNegBtnText: Int
     val primaryPositiveBtnAction: () -> Unit
 
-    @get: StringRes val secondaryRequest: Int
-    @get: StringRes val secondaryPosBtnText: Int
-    @get: StringRes val secondaryNegBtnText: Int
+    @get:StringRes val secondaryRequest: Int
+
+    @get:StringRes val secondaryPosBtnText: Int
+
+    @get:StringRes val secondaryNegBtnText: Int
     val secondaryPositiveBtnAction: () -> Unit
 
     val finishedAction: () -> Unit
@@ -38,6 +44,7 @@ interface UserPrompter {
     val savedViewGroup: ViewGroup
 
     fun viewShouldBeShown(): Boolean
+
     fun showView() {
         val view = savedActivity.layoutInflater.inflate(R.layout.layout_user_prompt, null)
         val prompt = view.findViewById<TextView>(R.id.text_prompt)
@@ -92,11 +99,15 @@ interface UserPrompter {
     }
 }
 
-class UserFeedbackPrompter(private val activity: Activity, private val viewGroup: ViewGroup) : UserPrompter {
+class UserFeedbackPrompter(
+    private val activity: Activity,
+    private val viewGroup: ViewGroup,
+) : UserPrompter {
     companion object {
-        const val prefString = "usage"
+        const val PREF_STRING = "usage"
     }
-    private val prefs = activity.getSharedPreferences(prefString, Context.MODE_PRIVATE)
+
+    private val prefs = activity.getSharedPreferences(PREF_STRING, Context.MODE_PRIVATE)
 
     private val numberOfTimesOpenedKey = "numberOfTimesOpened"
     private val userGaveFeedbackKey = "userGaveFeedback"
@@ -163,15 +174,12 @@ class UserFeedbackPrompter(private val activity: Activity, private val viewGroup
         }
     }
 
-    override fun viewShouldBeShown(): Boolean {
-        return askingForFeedbackIsAppropriate()
-    }
+    override fun viewShouldBeShown(): Boolean = askingForFeedbackIsAppropriate()
 
-    private fun askingForFeedbackIsAppropriate(): Boolean {
-        return getIsSufficientTimeElapsedSinceFirstOpen() &&
-                numberOfTimesOpenedIsGreaterThanThreshold() &&
-                !getUserGaveFeedback()
-    }
+    private fun askingForFeedbackIsAppropriate(): Boolean =
+        getIsSufficientTimeElapsedSinceFirstOpen() &&
+            numberOfTimesOpenedIsGreaterThanThreshold() &&
+            !getUserGaveFeedback()
 
     private fun getIsSufficientTimeElapsedSinceFirstOpen(): Boolean {
         val dateTimeFirstOpened = prefs.getLong(dateTimeFirstOpenKey, 0L)
@@ -194,12 +202,13 @@ class UserFeedbackPrompter(private val activity: Activity, private val viewGroup
         }
     }
 
-    private fun getUserGaveFeedback(): Boolean {
-        return prefs.getBoolean(userGaveFeedbackKey, false)
-    }
+    private fun getUserGaveFeedback(): Boolean = prefs.getBoolean(userGaveFeedbackKey, false)
 }
 
-class CollectionOptInPrompter(private val activity: Activity, private val viewGroup: ViewGroup) : UserPrompter {
+class CollectionOptInPrompter(
+    private val activity: Activity,
+    private val viewGroup: ViewGroup,
+) : UserPrompter {
     private val prefs = activity.defaultSharedPreferences
     private val logger = SentryLogger()
 
@@ -215,9 +224,9 @@ class CollectionOptInPrompter(private val activity: Activity, private val viewGr
         get() = doNothing
 
     companion object {
-        const val userHasOptedInPreference = "pref_opt_in"
+        const val USER_HAS_OPTED_IN_PREFERENCE = "pref_opt_in"
 
-        const val userHasBeenPromptedToOptIn = "opt_in_checked"
+        const val USER_HAS_BEEN_PROMPTED_TO_OPT_IN = "opt_in_checked"
     }
 
     override val initialPrompt: Int
@@ -249,31 +258,30 @@ class CollectionOptInPrompter(private val activity: Activity, private val viewGr
     override val finishedAction: () -> Unit
         get() = userHasBeenPrompted
 
-    override fun viewShouldBeShown(): Boolean {
-        return !prefs.getBoolean(userHasBeenPromptedToOptIn, false)
-    }
+    override fun viewShouldBeShown(): Boolean = !prefs.getBoolean(USER_HAS_BEEN_PROMPTED_TO_OPT_IN, false)
 
-    fun userHasOptedIn(): Boolean {
-        return prefs.getBoolean(userHasOptedInPreference, false)
-    }
+    fun userHasOptedIn(): Boolean = prefs.getBoolean(USER_HAS_OPTED_IN_PREFERENCE, false)
 
     private val setOptInOn = {
         logger.initialize(activity)
         with(prefs.edit()) {
-            putBoolean(userHasOptedInPreference, true)
+            putBoolean(USER_HAS_OPTED_IN_PREFERENCE, true)
             apply()
         }
     }
 
     private val userHasBeenPrompted = {
         with(prefs.edit()) {
-            putBoolean(userHasBeenPromptedToOptIn, true)
+            putBoolean(USER_HAS_BEEN_PROMPTED_TO_OPT_IN, true)
             apply()
         }
     }
 }
 
-class ContributionPrompter(private val activity: MainActivity, private val viewGroup: ViewGroup) : UserPrompter {
+class ContributionPrompter(
+    private val activity: MainActivity,
+    private val viewGroup: ViewGroup,
+) : UserPrompter {
     private val numberOfTimesOpenedKey = "numberOfTimesOpenedContribution"
     private val hasMadeSubPurchaseKey = "hasMadeSubPurchase"
     private val hasMadeInAppPurchaseKey = "hasMadeInAppPurchase"
@@ -299,25 +307,31 @@ class ContributionPrompter(private val activity: MainActivity, private val viewG
         yearlyRadioButton.isEnabled = subscriptionSupported
         monthlyRadioButton.isEnabled = subscriptionSupported
 
-        amountSeekBar?.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                when (progress) {
-                    0 -> chosenAmount.text = "$1 USD"
-                    1 -> chosenAmount.text = "$5 USD"
-                    2 -> chosenAmount.text = "$10 USD"
-                    3 -> chosenAmount.text = "$20 USD"
-                    else -> chosenAmount.text = "invalid"
+        amountSeekBar?.setOnSeekBarChangeListener(
+            object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(
+                    seekBar: SeekBar,
+                    progress: Int,
+                    fromUser: Boolean,
+                ) {
+                    when (progress) {
+                        0 -> chosenAmount.text = "$1 USD"
+                        1 -> chosenAmount.text = "$5 USD"
+                        2 -> chosenAmount.text = "$10 USD"
+                        3 -> chosenAmount.text = "$20 USD"
+                        else -> chosenAmount.text = "invalid"
+                    }
                 }
-            }
 
-            override fun onStartTrackingTouch(seekBar: SeekBar) {
-                // here we can write some code to do something whenever the user touche the seekbar
-            }
+                override fun onStartTrackingTouch(seekBar: SeekBar) {
+                    // here we can write some code to do something whenever the user touche the seekbar
+                }
 
-            override fun onStopTrackingTouch(seekBar: SeekBar) {
-                // show some message after user stopped scrolling the seekbar
-            }
-        })
+                override fun onStopTrackingTouch(seekBar: SeekBar) {
+                    // show some message after user stopped scrolling the seekbar
+                }
+            },
+        )
 
         processBtn.setOnClickListener initial@{
             var productId = ""
@@ -351,10 +365,10 @@ class ContributionPrompter(private val activity: MainActivity, private val viewG
         get() = openContributionView
 
     companion object {
-        const val prefString = "usage"
+        const val PREF_STRING = "usage"
     }
 
-    private val prefs = savedActivity.getSharedPreferences(prefString, Context.MODE_PRIVATE)
+    private val prefs = savedActivity.getSharedPreferences(PREF_STRING, Context.MODE_PRIVATE)
 
     val onSubscriptionSupportedChecked: (Boolean) -> Unit = {
         subscriptionSupported = it
@@ -384,10 +398,11 @@ class ContributionPrompter(private val activity: MainActivity, private val viewG
         // TODO: Migrate to new billing library API - Purchase.sku is deprecated
         // Use purchase.products instead
         val productId = purchase.products.firstOrNull() ?: ""
-        if (productId.endsWith("onetime"))
+        if (productId.endsWith("onetime")) {
             setHasMadeInAppPurchase(true)
-        else
+        } else {
             setHasMadeSubPurchase(true)
+        }
         Toast.makeText(savedActivity, "Thanks for your contribution", Toast.LENGTH_LONG).show()
     }
 
@@ -433,13 +448,10 @@ class ContributionPrompter(private val activity: MainActivity, private val viewG
         }
     }
 
-    override fun viewShouldBeShown(): Boolean {
-        return askingForContributionIsAppropriate()
-    }
+    override fun viewShouldBeShown(): Boolean = askingForContributionIsAppropriate()
 
-    private fun askingForContributionIsAppropriate(): Boolean {
-        return numberOfTimesOpenedIsGreaterThanThreshold() && !(hasMadeSubPurchase() || hasMadeInAppPurchase())
-    }
+    private fun askingForContributionIsAppropriate(): Boolean =
+        numberOfTimesOpenedIsGreaterThanThreshold() && !(hasMadeSubPurchase() || hasMadeInAppPurchase())
 
     private fun numberOfTimesOpenedIsGreaterThanThreshold(): Boolean {
         val numberTimesOpened = prefs.getInt(numberOfTimesOpenedKey, 0) + 1
@@ -454,19 +466,16 @@ class ContributionPrompter(private val activity: MainActivity, private val viewG
         }
     }
 
-    private fun hasMadeSubPurchase(): Boolean {
-        return prefs.getBoolean(hasMadeSubPurchaseKey, false)
-    }
+    private fun hasMadeSubPurchase(): Boolean = prefs.getBoolean(hasMadeSubPurchaseKey, false)
 
-    private fun hasMadeInAppPurchase(): Boolean {
-        return prefs.getBoolean(hasMadeInAppPurchaseKey, false)
-    }
+    private fun hasMadeInAppPurchase(): Boolean = prefs.getBoolean(hasMadeInAppPurchaseKey, false)
 
     private fun setHasMadeSubPurchase(hasMadePurchase: Boolean) {
         with(prefs.edit()) {
             putBoolean(hasMadeSubPurchaseKey, hasMadePurchase)
-            if (hasMadePurchase)
+            if (hasMadePurchase) {
                 putInt(numberOfTimesOpenedKey, 0)
+            }
             apply()
         }
     }
@@ -474,8 +483,9 @@ class ContributionPrompter(private val activity: MainActivity, private val viewG
     private fun setHasMadeInAppPurchase(hasMadePurchase: Boolean) {
         with(prefs.edit()) {
             putBoolean(hasMadeInAppPurchaseKey, hasMadePurchase)
-            if (hasMadePurchase)
+            if (hasMadePurchase) {
                 putInt(numberOfTimesOpenedKey, 0)
+            }
             apply()
         }
     }

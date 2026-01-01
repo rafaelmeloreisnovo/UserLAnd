@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package tech.ula.utils
 
 import android.app.Activity
@@ -13,7 +15,7 @@ import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.SkuDetails
 import com.android.billingclient.api.SkuDetailsParams
-import java.util.* // ktlint-disable no-wildcard-imports
+import java.util.*
 import kotlin.collections.HashMap
 
 /**
@@ -28,56 +30,64 @@ class BillingManager(
     private val onEntitledSubPurchases: (List<Purchase>) -> Unit,
     private val onEntitledInAppPurchases: (List<Purchase>) -> Unit,
     private val onPurchase: (Purchase) -> Unit,
-    private val onSubscriptionSupportedChecked: (Boolean) -> Unit
+    private val onSubscriptionSupportedChecked: (Boolean) -> Unit,
 ) {
-
-    private val purchasesUpdatedListener = PurchasesUpdatedListener { billingResult, purchases ->
-        when (billingResult.responseCode) {
-            BillingResponseCode.OK -> {
-                purchases?.let {
-                    for (purchase in purchases) {
-                        when (purchase.purchaseState) {
-                            Purchase.PurchaseState.PURCHASED -> {
-                                onPurchase(purchase)
-                                if (!purchase.isAcknowledged) {
-                                    val acknowledgePurchaseParams = AcknowledgePurchaseParams.newBuilder()
-                                        .setPurchaseToken(purchase.purchaseToken)
-                                        .build()
-                                    billingClient.acknowledgePurchase(acknowledgePurchaseParams) { billingResult ->
-                                        log("acknowledgePurchase(), billingResult=$billingResult")
+    private val purchasesUpdatedListener =
+        PurchasesUpdatedListener { billingResult, purchases ->
+            when (billingResult.responseCode) {
+                BillingResponseCode.OK -> {
+                    purchases?.let {
+                        for (purchase in purchases) {
+                            when (purchase.purchaseState) {
+                                Purchase.PurchaseState.PURCHASED -> {
+                                    onPurchase(purchase)
+                                    if (!purchase.isAcknowledged) {
+                                        val acknowledgePurchaseParams =
+                                            AcknowledgePurchaseParams
+                                                .newBuilder()
+                                                .setPurchaseToken(purchase.purchaseToken)
+                                                .build()
+                                        billingClient.acknowledgePurchase(acknowledgePurchaseParams) { billingResult ->
+                                            log("acknowledgePurchase(), billingResult=$billingResult")
+                                        }
                                     }
                                 }
-                            }
-                            Purchase.PurchaseState.PENDING -> {
-                                // Here you can confirm to the user that they've started the pending
-                                // purchase, and to complete it, they should follow instructions that
-                                // are given to them. You can also choose to remind the user in the
-                                // future to complete the purchase if you detect that it is still
-                                // pending.
+                                Purchase.PurchaseState.PENDING -> {
+                                    // Here you can confirm to the user that they've started the pending
+                                    // purchase, and to complete it, they should follow instructions that
+                                    // are given to them. You can also choose to remind the user in the
+                                    // future to complete the purchase if you detect that it is still
+                                    // pending.
+                                }
                             }
                         }
                     }
+                    log("onPurchasesUpdated(), $purchases")
                 }
-                log("onPurchasesUpdated(), $purchases")
+                BillingResponseCode.USER_CANCELED -> log("onPurchasesUpdated() - user cancelled the purchase flow - skipping")
+                else -> log("onPurchasesUpdated() got unknown resultCode: ${billingResult.responseCode}")
             }
-            BillingResponseCode.USER_CANCELED -> log("onPurchasesUpdated() - user cancelled the purchase flow - skipping")
-            else -> log("onPurchasesUpdated() got unknown resultCode: ${billingResult.responseCode}")
         }
-    }
 
     private val skuDetailsMap = HashMap<String, SkuDetails>()
 
-    private val billingClient: BillingClient = BillingClient.newBuilder(activity)
-        .enablePendingPurchases()
-        .setListener(purchasesUpdatedListener)
-        .build()
+    private val billingClient: BillingClient =
+        BillingClient
+            .newBuilder(activity)
+            .enablePendingPurchases()
+            .setListener(purchasesUpdatedListener)
+            .build()
 
     private var isBillingServiceConnected = false
 
     val populateSkus: (List<SkuDetails>) -> Unit = {
         it.forEach { skuDetailsMap.put(it.sku, it) }
     }
-    private fun handlePopulateSkuError(code: Int, message: String) {
+
+    private fun handlePopulateSkuError(
+        code: Int,
+        message: String,
+    ) {
         log("Error trying to populate skus.  code: $code message: $message")
     }
 
@@ -86,8 +96,25 @@ class BillingManager(
             onSubscriptionSupportedChecked(isSubscriptionPurchaseSupported())
             querySubPurchases()
             queryInAppPurchases()
-            querySubscriptionSkuDetails(listOf(Sku.US1_MONTHLY, Sku.US5_MONTHLY, Sku.US10_MONTHLY, Sku.US20_MONTHLY, Sku.US1_YEARLY, Sku.US5_YEARLY, Sku.US10_YEARLY, Sku.US20_YEARLY), populateSkus, ::handlePopulateSkuError)
-            queryInAppSkuDetails(listOf(Sku.US1_ONETIME, Sku.US5_ONETIME, Sku.US10_ONETIME, Sku.US20_ONETIME), populateSkus, ::handlePopulateSkuError)
+            querySubscriptionSkuDetails(
+                listOf(
+                    Sku.US1_MONTHLY,
+                    Sku.US5_MONTHLY,
+                    Sku.US10_MONTHLY,
+                    Sku.US20_MONTHLY,
+                    Sku.US1_YEARLY,
+                    Sku.US5_YEARLY,
+                    Sku.US10_YEARLY,
+                    Sku.US20_YEARLY,
+                ),
+                populateSkus,
+                ::handlePopulateSkuError,
+            )
+            queryInAppSkuDetails(
+                listOf(Sku.US1_ONETIME, Sku.US5_ONETIME, Sku.US10_ONETIME, Sku.US20_ONETIME),
+                populateSkus,
+                ::handlePopulateSkuError,
+            )
         }
     }
 
@@ -101,7 +128,7 @@ class BillingManager(
     }
 
     fun queryInAppPurchases() {
-        // TODO: Migrate to queryPurchasesAsync for billing library 6.x  
+        // TODO: Migrate to queryPurchasesAsync for billing library 6.x
         // val purchasesResult = billingClient.queryPurchases(BillingClient.SkuType.INAPP)
         // Using stub for now to fix compilation
         log("queryInAppPurchases() called - migration to queryPurchasesAsync needed")
@@ -129,26 +156,32 @@ class BillingManager(
         if (isBillingServiceConnected) {
             task()
         } else {
-            billingClient.startConnection(object : BillingClientStateListener {
-                override fun onBillingSetupFinished(billingResult: BillingResult) {
-                    log("onBillingSetupFinished(...), billingResult=$billingResult")
-                    if (billingResult.responseCode == BillingResponseCode.OK) {
-                        isBillingServiceConnected = true
-                        task()
+            billingClient.startConnection(
+                object : BillingClientStateListener {
+                    override fun onBillingSetupFinished(billingResult: BillingResult) {
+                        log("onBillingSetupFinished(...), billingResult=$billingResult")
+                        if (billingResult.responseCode == BillingResponseCode.OK) {
+                            isBillingServiceConnected = true
+                            task()
+                        }
                     }
-                }
 
-                override fun onBillingServiceDisconnected() {
-                    log("onBillingServiceDisconnected()")
-                    isBillingServiceConnected = false
-                    // Try to restart the connection on the next request to
-                    // Google Play by calling the startConnection() method.
-                }
-            })
+                    override fun onBillingServiceDisconnected() {
+                        log("onBillingServiceDisconnected()")
+                        isBillingServiceConnected = false
+                        // Try to restart the connection on the next request to
+                        // Google Play by calling the startConnection() method.
+                    }
+                },
+            )
         }
     }
 
-    private fun querySubscriptionSkuDetails(skus: List<String>, onSuccess: (List<SkuDetails>) -> Unit, onError: (code: Int, message: String) -> Unit) {
+    private fun querySubscriptionSkuDetails(
+        skus: List<String>,
+        onSuccess: (List<SkuDetails>) -> Unit,
+        onError: (code: Int, message: String) -> Unit,
+    ) {
         val params = SkuDetailsParams.newBuilder().setSkusList(skus).setType(BillingClient.SkuType.SUBS)
         billingClient.querySkuDetailsAsync(params.build()) { billingResult, skuDetailsList ->
             if (billingResult.responseCode == BillingResponseCode.OK && skuDetailsList != null) {
@@ -159,7 +192,11 @@ class BillingManager(
         }
     }
 
-    private fun queryInAppSkuDetails(skus: List<String>, onSuccess: (List<SkuDetails>) -> Unit, onError: (code: Int, message: String) -> Unit) {
+    private fun queryInAppSkuDetails(
+        skus: List<String>,
+        onSuccess: (List<SkuDetails>) -> Unit,
+        onError: (code: Int, message: String) -> Unit,
+    ) {
         val params = SkuDetailsParams.newBuilder().setSkusList(skus).setType(BillingClient.SkuType.INAPP)
         billingClient.querySkuDetailsAsync(params.build()) { billingResult, skuDetailsList ->
             if (billingResult.responseCode == BillingResponseCode.OK && skuDetailsList != null) {

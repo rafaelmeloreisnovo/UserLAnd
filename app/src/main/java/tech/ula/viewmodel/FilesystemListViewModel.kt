@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package tech.ula.viewmodel
 
 import android.content.ContentResolver
@@ -6,40 +8,49 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import kotlinx.coroutines.* // ktlint-disable no-wildcard-imports
+import kotlinx.coroutines.*
 import tech.ula.R
 import tech.ula.model.daos.FilesystemDao
 import tech.ula.model.daos.SessionDao
 import tech.ula.model.entities.Filesystem
-import tech.ula.utils.FilesystemManager
-import java.io.File
-import java.lang.Exception
-import kotlin.coroutines.CoroutineContext
 import tech.ula.model.entities.Session
 import tech.ula.utils.ExecutionResult
 import tech.ula.utils.FailedExecution
+import tech.ula.utils.FilesystemManager
+import java.io.File
 import java.io.IOException
+import java.lang.Exception
+import kotlin.coroutines.CoroutineContext
 
 sealed class FilesystemListViewState
 
 sealed class FilesystemExportState : FilesystemListViewState() {
-    data class Update(val details: String) : FilesystemExportState()
+    data class Update(
+        val details: String,
+    ) : FilesystemExportState()
+
     object Success : FilesystemExportState()
-    data class Failure(val reason: Int, val details: String = "") : FilesystemExportState()
+
+    data class Failure(
+        val reason: Int,
+        val details: String = "",
+    ) : FilesystemExportState()
 }
 
 sealed class FilesystemDeleteState : FilesystemListViewState() {
     object InProgress : FilesystemDeleteState()
+
     object Success : FilesystemDeleteState()
+
     object Failure : FilesystemDeleteState()
 }
 
 class FilesystemListViewModel(
     private val filesystemDao: FilesystemDao,
     private val sessionDao: SessionDao,
-    private val filesystemManager: FilesystemManager
-) : ViewModel(), CoroutineScope {
-
+    private val filesystemManager: FilesystemManager,
+) : ViewModel(),
+    CoroutineScope {
     private val job = Job()
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Main + job
@@ -61,27 +72,24 @@ class FilesystemListViewModel(
         filesystemToBackup = filesystem
     }
 
-    fun getViewState(): LiveData<FilesystemListViewState> {
-        return viewState
-    }
+    fun getViewState(): LiveData<FilesystemListViewState> = viewState
 
     private val filesystems: LiveData<List<Filesystem>> by lazy {
         filesystemDao.getAllFilesystems()
     }
 
-    fun getAllFilesystems(): LiveData<List<Filesystem>> {
-        return filesystems
-    }
+    fun getAllFilesystems(): LiveData<List<Filesystem>> = filesystems
 
     private val activeSessions: LiveData<List<Session>> by lazy {
         sessionDao.findActiveSessions()
     }
 
-    fun getAllActiveSessions(): LiveData<List<Session>> {
-        return activeSessions
-    }
+    fun getAllActiveSessions(): LiveData<List<Session>> = activeSessions
 
-    fun deleteFilesystemById(id: Long, coroutineScope: CoroutineScope = this) = coroutineScope.launch {
+    fun deleteFilesystemById(
+        id: Long,
+        coroutineScope: CoroutineScope = this,
+    ) = coroutineScope.launch {
         withContext(Dispatchers.IO) {
             viewState.postValue(FilesystemDeleteState.InProgress)
 
@@ -96,15 +104,13 @@ class FilesystemListViewModel(
         }
     }
 
-    fun getFilesystemBackupName(filesystem: Filesystem): String {
-        return "${filesystem.name}-${filesystem.distributionType}-rootfs.tar.gz"
-    }
+    fun getFilesystemBackupName(filesystem: Filesystem): String = "${filesystem.name}-${filesystem.distributionType}-rootfs.tar.gz"
 
     fun startExport(
         filesDir: File,
         publicExternalUri: Uri,
         contentResolver: ContentResolver,
-        coroutineScope: CoroutineScope = this
+        coroutineScope: CoroutineScope = this,
     ) = coroutineScope.launch {
         when {
             activeSessions.value!!.isNotEmpty() -> {
@@ -124,7 +130,7 @@ class FilesystemListViewModel(
     private suspend fun compressFilesystemAndExportToStorage(
         filesDir: File,
         publicExternalUri: Uri,
-        contentResolver: ContentResolver
+        contentResolver: ContentResolver,
     ) {
         withContext(Dispatchers.IO) {
             viewState.postValue(FilesystemExportState.Update("Starting export"))
@@ -152,7 +158,10 @@ class FilesystemListViewModel(
         }
     }
 
-    private fun localBackupFailed(localBackup: File, result: ExecutionResult): Boolean {
+    private fun localBackupFailed(
+        localBackup: File,
+        result: ExecutionResult,
+    ): Boolean {
         if (result is FailedExecution) {
             filesystemToBackup = unselectedFilesystem
             viewState.postValue(FilesystemExportState.Failure(R.string.error_export_execution_failure, result.reason))
@@ -169,9 +178,12 @@ class FilesystemListViewModel(
     }
 }
 
-class FilesystemListViewmodelFactory(private val filesystemDao: FilesystemDao, private val sessionDao: SessionDao, private val filesystemManager: FilesystemManager) : ViewModelProvider.NewInstanceFactory() {
+class FilesystemListViewmodelFactory(
+    private val filesystemDao: FilesystemDao,
+    private val sessionDao: SessionDao,
+    private val filesystemManager: FilesystemManager,
+) : ViewModelProvider.NewInstanceFactory() {
     @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return FilesystemListViewModel(filesystemDao, sessionDao, filesystemManager) as T
-    }
+    override fun <T : ViewModel> create(modelClass: Class<T>): T =
+        FilesystemListViewModel(filesystemDao, sessionDao, filesystemManager) as T
 }

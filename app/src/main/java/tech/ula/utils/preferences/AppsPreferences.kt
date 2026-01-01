@@ -2,8 +2,9 @@ package tech.ula.utils.preferences
 
 import android.content.Context
 
-class AppsPreferences(context: Context) {
-
+class AppsPreferences(
+    context: Context,
+) {
     private val prefs = context.getSharedPreferences("apps", Context.MODE_PRIVATE)
 
     fun setDistributionsList(distributionList: Set<String>) {
@@ -13,7 +14,5 @@ class AppsPreferences(context: Context) {
         }
     }
 
-    fun getDistributionsList(): Set<String> {
-        return prefs.getStringSet("distributionsList", setOf()) ?: setOf()
-    }
+    fun getDistributionsList(): Set<String> = prefs.getStringSet("distributionsList", setOf()) ?: setOf()
 }

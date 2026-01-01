@@ -3,7 +3,6 @@ package tech.ula.utils
 import android.app.DownloadManager
 import android.database.Cursor
 import android.net.Uri
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.rauschig.jarchivelib.Archiver
@@ -15,18 +14,32 @@ import java.io.File
 import java.io.IOException
 
 sealed class AssetDownloadState
+
 object CacheSyncAttemptedWhileCacheIsEmpty : AssetDownloadState()
+
 object NonUserlandDownloadFound : AssetDownloadState()
+
 object AllDownloadsCompletedSuccessfully : AssetDownloadState()
-data class CompletedDownloadsUpdate(val numCompleted: Int, val numTotal: Int) : AssetDownloadState()
-data class AssetDownloadFailure(val reason: DownloadFailureLocalizationData) : AssetDownloadState()
+
+data class CompletedDownloadsUpdate(
+    val numCompleted: Int,
+    val numTotal: Int,
+) : AssetDownloadState()
+
+data class AssetDownloadFailure(
+    val reason: DownloadFailureLocalizationData,
+) : AssetDownloadState()
 
 class AssetDownloader(
     private val assetPreferences: AssetPreferences,
     private val downloadManagerWrapper: DownloadManagerWrapper,
-    private val ulaFiles: UlaFiles
+    private val ulaFiles: UlaFiles,
 ) {
-    private data class ParsedAssetName(val repo: String, val filename: String, val version: String)
+    private data class ParsedAssetName(
+        val repo: String,
+        val filename: String,
+        val version: String,
+    )
 
     private fun parseAssetFileName(fileName: String): ParsedAssetName {
         val versionSeparatorIndex = fileName.lastIndexOf('-')
@@ -64,9 +77,7 @@ class AssetDownloader(
         if (!downloadDirectory.exists()) downloadDirectory.mkdirs()
     }
 
-    fun downloadStateHasBeenCached(): Boolean {
-        return assetPreferences.getDownloadsAreInProgress()
-    }
+    fun downloadStateHasBeenCached(): Boolean = assetPreferences.getDownloadsAreInProgress()
 
     fun syncStateWithCache(): AssetDownloadState {
         if (!downloadStateHasBeenCached()) return CacheSyncAttemptedWhileCacheIsEmpty
@@ -90,11 +101,13 @@ class AssetDownloader(
         enqueuedDownloadIds.clear()
         completedDownloadIds.clear()
 
-        enqueuedDownloadIds.addAll(downloadRequirements.map { metadata ->
-            val destination = File(downloadDirectory, metadata.downloadTitle)
-            val request = downloadManagerWrapper.generateDownloadRequest(metadata.url, destination)
-            downloadManagerWrapper.enqueue(request)
-        })
+        enqueuedDownloadIds.addAll(
+            downloadRequirements.map { metadata ->
+                val destination = File(downloadDirectory, metadata.downloadTitle)
+                val request = downloadManagerWrapper.generateDownloadRequest(metadata.url, destination)
+                downloadManagerWrapper.enqueue(request)
+            },
+        )
         assetPreferences.setDownloadsAreInProgress(inProgress = true)
         assetPreferences.setEnqueuedDownloads(enqueuedDownloadIds)
     }
@@ -124,9 +137,7 @@ class AssetDownloader(
         return AllDownloadsCompletedSuccessfully
     }
 
-    fun downloadIsForUserland(id: Long): Boolean {
-        return enqueuedDownloadIds.contains(id)
-    }
+    fun downloadIsForUserland(id: Long): Boolean = enqueuedDownloadIds.contains(id)
 
     private fun clearPreviousDownloadsFromDownloadsDirectory() {
         val downloadDirectoryFiles = downloadDirectory.listFiles()
@@ -138,44 +149,50 @@ class AssetDownloader(
     }
 
     @Throws(IOException::class)
-    suspend fun prepareDownloadsForUse(archiverFactory: ArchiveFactoryWrapper = ArchiveFactoryWrapper()) = withContext(Dispatchers.IO) {
-        val stagingDirectory = File("${ulaFiles.filesDir.path}/staging")
-        stagingDirectory.mkdirs()
-        val downloadFiles = downloadDirectory.listFiles() ?: return@withContext
-        downloadFiles.forEach {
-            if (it.name.contains("rootfs.tar.gz")) {
-                moveRootfsAssetInternal(it)
-                return@forEach
+    suspend fun prepareDownloadsForUse(archiverFactory: ArchiveFactoryWrapper = ArchiveFactoryWrapper()) =
+        withContext(Dispatchers.IO) {
+            val stagingDirectory = File("${ulaFiles.filesDir.path}/staging")
+            stagingDirectory.mkdirs()
+            val downloadFiles = downloadDirectory.listFiles() ?: return@withContext
+            downloadFiles.forEach {
+                if (it.name.contains("rootfs.tar.gz")) {
+                    moveRootfsAssetInternal(it)
+                    return@forEach
+                }
+                extractAssets(it, stagingDirectory, archiverFactory)
             }
-            extractAssets(it, stagingDirectory, archiverFactory)
-        }
-        stagingDirectory.deleteRecursively()
-    }
-
-    private suspend fun moveRootfsAssetInternal(rootFsFile: File) = withContext(Dispatchers.IO) {
-        val parsedAssetName = parseAssetFileName(rootFsFile.name)
-        val repo = parsedAssetName.repo
-        val filename = parsedAssetName.filename
-        val version = parsedAssetName.version
-        val destinationDirectory = File("${ulaFiles.filesDir.absolutePath}/$repo")
-        val target = File("${destinationDirectory.absolutePath}/$filename")
-
-        destinationDirectory.mkdirs()
-
-        // Clear old rootfs parts if they exist
-        val directoryFiles = destinationDirectory.listFiles()
-        directoryFiles?.let {
-            for (file in directoryFiles) {
-                if (file.name.contains("rootfs.tar.gz.part")) file.delete()
-            }
+            stagingDirectory.deleteRecursively()
         }
 
-        rootFsFile.copyTo(target, overwrite = true)
-        rootFsFile.delete()
-        assetPreferences.setLatestDownloadFilesystemVersion(repo, version)
-    }
+    private suspend fun moveRootfsAssetInternal(rootFsFile: File) =
+        withContext(Dispatchers.IO) {
+            val parsedAssetName = parseAssetFileName(rootFsFile.name)
+            val repo = parsedAssetName.repo
+            val filename = parsedAssetName.filename
+            val version = parsedAssetName.version
+            val destinationDirectory = File("${ulaFiles.filesDir.absolutePath}/$repo")
+            val target = File("${destinationDirectory.absolutePath}/$filename")
 
-    private suspend fun extractAssets(tarFile: File, stagingDirectory: File, archiverFactory: ArchiveFactoryWrapper) = withContext(Dispatchers.IO) {
+            destinationDirectory.mkdirs()
+
+            // Clear old rootfs parts if they exist
+            val directoryFiles = destinationDirectory.listFiles()
+            directoryFiles?.let {
+                for (file in directoryFiles) {
+                    if (file.name.contains("rootfs.tar.gz.part")) file.delete()
+                }
+            }
+
+            rootFsFile.copyTo(target, overwrite = true)
+            rootFsFile.delete()
+            assetPreferences.setLatestDownloadFilesystemVersion(repo, version)
+        }
+
+    private suspend fun extractAssets(
+        tarFile: File,
+        stagingDirectory: File,
+        archiverFactory: ArchiveFactoryWrapper,
+    ) = withContext(Dispatchers.IO) {
         val parsedAssetName = parseAssetFileName(tarFile.name)
         val repo = parsedAssetName.repo
         val filename = parsedAssetName.filename
@@ -196,8 +213,13 @@ class AssetDownloader(
     }
 }
 
-class DownloadManagerWrapper(private val downloadManager: DownloadManager) {
-    fun generateDownloadRequest(url: String, destination: File): DownloadManager.Request {
+class DownloadManagerWrapper(
+    private val downloadManager: DownloadManager,
+) {
+    fun generateDownloadRequest(
+        url: String,
+        destination: File,
+    ): DownloadManager.Request {
         val uri = Uri.parse(url)
         val request = DownloadManager.Request(uri)
         val destinationUri = Uri.fromFile(destination)
@@ -209,9 +231,7 @@ class DownloadManagerWrapper(private val downloadManager: DownloadManager) {
         return request
     }
 
-    fun enqueue(request: DownloadManager.Request): Long {
-        return downloadManager.enqueue(request)
-    }
+    fun enqueue(request: DownloadManager.Request): Long = downloadManager.enqueue(request)
 
     private fun generateQuery(id: Long): DownloadManager.Query {
         val query = DownloadManager.Query()
@@ -219,9 +239,7 @@ class DownloadManagerWrapper(private val downloadManager: DownloadManager) {
         return query
     }
 
-    private fun generateCursor(query: DownloadManager.Query): Cursor {
-        return downloadManager.query(query)
-    }
+    private fun generateCursor(query: DownloadManager.Query): Cursor = downloadManager.query(query)
 
     fun downloadHasSucceeded(id: Long): Boolean {
         val query = generateQuery(id)
@@ -250,19 +268,23 @@ class DownloadManagerWrapper(private val downloadManager: DownloadManager) {
         return generateCursor(query).use { cursor ->
             if (cursor.moveToFirst()) {
                 val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_REASON))
-                return@use DownloadFailureLocalizationData(resId = when (status) {
-                    in 100..500 -> R.string.download_failure_http_error
-                    1008 -> R.string.download_failure_cannot_resume
-                    1007 -> R.string.download_failure_no_external_devices
-                    1009 -> R.string.download_failure_destination_exists
-                    1001 -> R.string.download_failure_unknown_file_error
-                    1004 -> R.string.download_failure_http_processing
-                    1006 -> R.string.download_failure_insufficient_external_storage
-                    1005 -> R.string.download_failure_too_many_redirects
-                    1002 -> R.string.download_failure_unhandled_http_response
-                    1000 -> R.string.download_failure_unknown_error
-                    else -> R.string.download_failure_missing_error
-                }, formatStrings = listOf("$status")) // Format strings only used for http_error
+                return@use DownloadFailureLocalizationData(
+                    resId =
+                        when (status) {
+                            in 100..500 -> R.string.download_failure_http_error
+                            1008 -> R.string.download_failure_cannot_resume
+                            1007 -> R.string.download_failure_no_external_devices
+                            1009 -> R.string.download_failure_destination_exists
+                            1001 -> R.string.download_failure_unknown_file_error
+                            1004 -> R.string.download_failure_http_processing
+                            1006 -> R.string.download_failure_insufficient_external_storage
+                            1005 -> R.string.download_failure_too_many_redirects
+                            1002 -> R.string.download_failure_unhandled_http_response
+                            1000 -> R.string.download_failure_unknown_error
+                            else -> R.string.download_failure_missing_error
+                        },
+                    formatStrings = listOf("$status"),
+                ) // Format strings only used for http_error
             }
             DownloadFailureLocalizationData(R.string.download_failure_reason_not_found)
         }
@@ -274,7 +296,5 @@ class DownloadManagerWrapper(private val downloadManager: DownloadManager) {
 }
 
 class ArchiveFactoryWrapper {
-    fun createArchiver(archiverType: File): Archiver {
-        return ArchiverFactory.createArchiver(archiverType)
-    }
+    fun createArchiver(archiverType: File): Archiver = ArchiverFactory.createArchiver(archiverType)
 }

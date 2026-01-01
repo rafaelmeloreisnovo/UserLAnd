@@ -11,7 +11,12 @@ class DeviceDimensions {
     private var width = 1480f
     private var scaling = 1f
 
-    fun saveDeviceDimensions(windowManager: WindowManager, displayMetrics: DisplayMetrics, orientation: Int, sharedPreferences: SharedPreferences) {
+    fun saveDeviceDimensions(
+        windowManager: WindowManager,
+        displayMetrics: DisplayMetrics,
+        orientation: Int,
+        sharedPreferences: SharedPreferences,
+    ) {
         var scalingMin = 1f
         var scalingMax = 1f
         windowManager.defaultDisplay.getRealMetrics(displayMetrics)
@@ -36,24 +41,26 @@ class DeviceDimensions {
                 scalingMax = width / BuildConfig.MAX_DIMENSION
                 scalingMin = height / BuildConfig.MIN_DIMENSION
             }
-            if (scalingMin < 1f)
+            if (scalingMin < 1f) {
                 scalingMin = 1f
-            if (scalingMax < 1f)
+            }
+            if (scalingMax < 1f) {
                 scalingMax = 1f
-            if (scalingMax < scalingMin)
+            }
+            if (scalingMax < scalingMin) {
                 scaling = scalingMax
-            else
+            } else {
                 scaling = scalingMin
+            }
         }
 
         height = height / scaling
         width = width / scaling
     }
 
-    fun getScreenResolution(): String {
-        return when ((height > width) && BuildConfig.FORCE_PORTRAIT_GEOMETRY) {
+    fun getScreenResolution(): String =
+        when ((height > width) && BuildConfig.FORCE_PORTRAIT_GEOMETRY) {
             true -> "${height.toInt()}x${width.toInt()}"
             false -> "${width.toInt()}x${height.toInt()}"
         }
-    }
 }

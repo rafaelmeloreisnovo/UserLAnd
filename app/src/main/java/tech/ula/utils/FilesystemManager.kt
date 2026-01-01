@@ -26,18 +26,15 @@ import java.io.IOException
 class FilesystemManager(
     private val ulaFiles: UlaFiles,
     private val busyboxExecutor: BusyboxExecutor,
-    private val logger: Logger = SentryLogger()
+    private val logger: Logger = SentryLogger(),
 ) {
-
     private val filesDirPath = ulaFiles.filesDir.path
     private val filesystemExtractionSuccess = ".success_filesystem_extraction"
     private val filesystemExtractionFailure = ".failure_filesystem_extraction"
 
-    private val TAG = "FilesystemManager"
+    private val tag = "FilesystemManager"
 
-    private fun getSupportDirectoryPath(targetDirectoryName: String): String {
-        return "$filesDirPath/$targetDirectoryName/support"
-    }
+    private fun getSupportDirectoryPath(targetDirectoryName: String): String = "$filesDirPath/$targetDirectoryName/support"
 
     /**
      * Copy shared distribution assets (rootfs, scripts, etc.) into a specific filesystem support dir.
@@ -52,21 +49,21 @@ class FilesystemManager(
         if (!sharedDirectory.exists() || !sharedDirectory.isDirectory) {
             val msg =
                 "Shared distribution directory missing or invalid: '${sharedDirectory.absolutePath}' for type '$distributionType'"
-            Log.e(TAG, msg)
+            Log.e(tag, msg)
             throw IOException(msg)
         }
 
         val targetDirectory = File("$filesDirPath/$targetFilesystemName/support")
         if (!targetDirectory.exists() && !targetDirectory.mkdirs()) {
             val msg = "Failed to create target support directory: '${targetDirectory.absolutePath}'"
-            Log.e(TAG, msg)
+            Log.e(tag, msg)
             throw IOException(msg)
         }
 
         val files = sharedDirectory.listFiles()
         if (files == null || files.isEmpty()) {
             val msg = "No shared assets found in '${sharedDirectory.absolutePath}' for type '$distributionType'"
-            Log.e(TAG, msg)
+            Log.e(tag, msg)
             throw IOException(msg)
         }
 
@@ -79,7 +76,7 @@ class FilesystemManager(
                 file.copyTo(targetFile, overwrite = true)
                 ulaFiles.makePermissionsUsable(targetDirectory.absolutePath, file.name)
             } catch (e: Exception) {
-                Log.e(TAG, "copyAssetsToFilesystem() failed copying '${file.name}': ${e.message}", e)
+                Log.e(tag, "copyAssetsToFilesystem() failed copying '${file.name}': ${e.message}", e)
                 throw e
             }
         }
@@ -97,8 +94,8 @@ class FilesystemManager(
                 val deleted = runCatching { file.delete() }.getOrDefault(false)
                 if (!deleted) {
                     Log.w(
-                        TAG,
-                        "removeRootfsFilesFromFilesystem() failed to delete '${file.absolutePath}'"
+                        tag,
+                        "removeRootfsFilesFromFilesystem() failed to delete '${file.absolutePath}'",
                     )
                 }
             }
@@ -111,33 +108,35 @@ class FilesystemManager(
      */
     suspend fun extractFilesystem(
         filesystem: Filesystem,
-        listener: (String) -> Any
-    ): ExecutionResult = withContext(Dispatchers.IO) {
-        val filesystemDirName = "${filesystem.id}"
-        val command = "/support/common/extractFilesystem.sh"
-        val env = HashMap<String, String>().apply {
-            this["INITIAL_USERNAME"] = filesystem.defaultUsername
-            this["INITIAL_PASSWORD"] = filesystem.defaultPassword
-            this["INITIAL_VNC_PASSWORD"] = filesystem.defaultVncPassword
-            // Extra context for scripts / diagnostics:
-            this["USERLAND_FS_ID"] = filesystem.id.toString()
-            this["USERLAND_FS_DISTRO"] = filesystem.distributionType
-            this["USERLAND_FS_IS_BACKUP"] = filesystem.isCreatedFromBackup.toString()
+        listener: (String) -> Any,
+    ): ExecutionResult =
+        withContext(Dispatchers.IO) {
+            val filesystemDirName = "${filesystem.id}"
+            val command = "/support/common/extractFilesystem.sh"
+            val env =
+                HashMap<String, String>().apply {
+                    this["INITIAL_USERNAME"] = filesystem.defaultUsername
+                    this["INITIAL_PASSWORD"] = filesystem.defaultPassword
+                    this["INITIAL_VNC_PASSWORD"] = filesystem.defaultVncPassword
+                    // Extra context for scripts / diagnostics:
+                    this["USERLAND_FS_ID"] = filesystem.id.toString()
+                    this["USERLAND_FS_DISTRO"] = filesystem.distributionType
+                    this["USERLAND_FS_IS_BACKUP"] = filesystem.isCreatedFromBackup.toString()
+                }
+
+            Log.d(
+                tag,
+                "extractFilesystem(): id=${filesystem.id}, distro=${filesystem.distributionType}, fromBackup=${filesystem.isCreatedFromBackup}",
+            )
+
+            return@withContext busyboxExecutor.executeProotCommand(
+                command = command,
+                filesystemDirName = filesystemDirName,
+                commandShouldTerminate = true,
+                env = env,
+                listener = listener,
+            )
         }
-
-        Log.d(
-            TAG,
-            "extractFilesystem(): id=${filesystem.id}, distro=${filesystem.distributionType}, fromBackup=${filesystem.isCreatedFromBackup}"
-        )
-
-        return@withContext busyboxExecutor.executeProotCommand(
-            command = command,
-            filesystemDirName = filesystemDirName,
-            commandShouldTerminate = true,
-            env = env,
-            listener = listener
-        )
-    }
 
     /**
      * Compress a filesystem into a tarball located at [scopedExternalDestination].
@@ -145,29 +144,31 @@ class FilesystemManager(
     suspend fun compressFilesystem(
         filesystem: Filesystem,
         scopedExternalDestination: File,
-        listener: (String) -> Any
-    ): ExecutionResult = withContext(Dispatchers.IO) {
-        val filesystemDirName = "${filesystem.id}"
-        val command = "/support/common/compressFilesystem.sh"
-        val env = HashMap<String, String>().apply {
-            this["TAR_PATH"] = scopedExternalDestination.absolutePath
-            this["USERLAND_FS_ID"] = filesystem.id.toString()
-            this["USERLAND_FS_DISTRO"] = filesystem.distributionType
+        listener: (String) -> Any,
+    ): ExecutionResult =
+        withContext(Dispatchers.IO) {
+            val filesystemDirName = "${filesystem.id}"
+            val command = "/support/common/compressFilesystem.sh"
+            val env =
+                HashMap<String, String>().apply {
+                    this["TAR_PATH"] = scopedExternalDestination.absolutePath
+                    this["USERLAND_FS_ID"] = filesystem.id.toString()
+                    this["USERLAND_FS_DISTRO"] = filesystem.distributionType
+                }
+
+            Log.d(
+                tag,
+                "compressFilesystem(): id=${filesystem.id}, tarPath=${scopedExternalDestination.absolutePath}",
+            )
+
+            return@withContext busyboxExecutor.executeProotCommand(
+                command = command,
+                filesystemDirName = filesystemDirName,
+                commandShouldTerminate = true,
+                env = env,
+                listener = listener,
+            )
         }
-
-        Log.d(
-            TAG,
-            "compressFilesystem(): id=${filesystem.id}, tarPath=${scopedExternalDestination.absolutePath}"
-        )
-
-        return@withContext busyboxExecutor.executeProotCommand(
-            command = command,
-            filesystemDirName = filesystemDirName,
-            commandShouldTerminate = true,
-            env = env,
-            listener = listener
-        )
-    }
 
     /**
      * Extraction is considered complete if either a success or failure marker exists.
@@ -193,11 +194,11 @@ class FilesystemManager(
      */
     fun areAllRequiredAssetsPresent(
         targetDirectoryName: String,
-        distributionAssetList: List<Asset>
+        distributionAssetList: List<Asset>,
     ): Boolean {
         if (distributionAssetList.isEmpty()) {
             // No declared required assets -> treat as false (caller must be explicit).
-            Log.w(TAG, "areAllRequiredAssetsPresent(): empty distributionAssetList for '$targetDirectoryName'")
+            Log.w(tag, "areAllRequiredAssetsPresent(): empty distributionAssetList for '$targetDirectoryName'")
             return false
         }
 
@@ -208,14 +209,17 @@ class FilesystemManager(
         if (supportFiles.isEmpty()) return false
 
         val supportDirectoryFileNames = supportFiles.map { it.name }
-        val allPresent = distributionAssetList.all { asset ->
-            supportDirectoryFileNames.contains(asset.name)
-        }
+        val allPresent =
+            distributionAssetList.all { asset ->
+                supportDirectoryFileNames.contains(asset.name)
+            }
 
         if (!allPresent) {
             Log.w(
-                TAG,
-                "Missing required assets in '$targetDirectoryName'. Found=$supportDirectoryFileNames, Required=${distributionAssetList.map { it.name }}"
+                tag,
+                "Missing required assets in '$targetDirectoryName'. Found=$supportDirectoryFileNames, Required=${distributionAssetList.map {
+                    it.name
+                }}",
             )
         }
 
@@ -227,35 +231,39 @@ class FilesystemManager(
      * On script failure, logs and throws IOException.
      */
     @Throws(IOException::class)
-    suspend fun deleteFilesystem(filesystemId: Long) = withContext(Dispatchers.IO) {
-        val filesystemDirectory = File("$filesDirPath/$filesystemId")
-        if (!filesystemDirectory.exists() || !filesystemDirectory.isDirectory) {
-            Log.d(TAG, "deleteFilesystem(): directory does not exist for id=$filesystemId")
-            return@withContext
-        }
+    suspend fun deleteFilesystem(filesystemId: Long) =
+        withContext(Dispatchers.IO) {
+            val filesystemDirectory = File("$filesDirPath/$filesystemId")
+            if (!filesystemDirectory.exists() || !filesystemDirectory.isDirectory) {
+                Log.d(tag, "deleteFilesystem(): directory does not exist for id=$filesystemId")
+                return@withContext
+            }
 
-        val command = "support/deleteFilesystem.sh ${filesystemDirectory.path}"
-        val result = busyboxExecutor.executeScript(command)
+            val command = "support/deleteFilesystem.sh ${filesystemDirectory.path}"
+            val result = busyboxExecutor.executeScript(command)
 
-        if (result is FailedExecution) {
-            Log.e(TAG, "deleteFilesystem(): script failed for id=$filesystemId: ${result.reason}")
+            if (result is FailedExecution) {
+                Log.e(tag, "deleteFilesystem(): script failed for id=$filesystemId: ${result.reason}")
 
-            // Opcional: tentar fallback com delete recursivo seguro do BusyboxExecutor.
-            val fallback = busyboxExecutor.recursivelyDelete(filesystemDirectory.absolutePath)
-            if (fallback is FailedExecution) {
-                val err = IOException("deleteFilesystem() failed for id=$filesystemId: ${result.reason}; fallback=${fallback.reason}")
-                logger.addExceptionBreadcrumb(err)
-                throw err
+                // Opcional: tentar fallback com delete recursivo seguro do BusyboxExecutor.
+                val fallback = busyboxExecutor.recursivelyDelete(filesystemDirectory.absolutePath)
+                if (fallback is FailedExecution) {
+                    val err = IOException("deleteFilesystem() failed for id=$filesystemId: ${result.reason}; fallback=${fallback.reason}")
+                    logger.addExceptionBreadcrumb(err)
+                    throw err
+                }
             }
         }
-    }
 
     /**
      * Copies an app-specific script into profile.d of the target filesystem,
      * forcing it to execute last (alphabetical order).
      */
     @Throws(IOException::class)
-    fun moveAppScriptToRequiredLocation(appName: String, appFilesystem: Filesystem) {
+    fun moveAppScriptToRequiredLocation(
+        appName: String,
+        appFilesystem: Filesystem,
+    ) {
         val fileNameToForceAppScriptToExecuteLast = "zzzzzzzzzzzzzzzz.sh"
         val appScriptSource = File("$filesDirPath/apps/$appName/$appName.sh")
         val appFilesystemProfileDDir = File("$filesDirPath/${appFilesystem.id}/etc/profile.d")
@@ -263,7 +271,7 @@ class FilesystemManager(
 
         if (!appScriptSource.exists() || !appScriptSource.isFile) {
             val msg = "App script not found for '$appName' at '${appScriptSource.absolutePath}'"
-            Log.e(TAG, msg)
+            Log.e(tag, msg)
             val exception = IOException(msg)
             logger.addExceptionBreadcrumb(exception)
             throw exception
@@ -272,7 +280,7 @@ class FilesystemManager(
         try {
             if (!appFilesystemProfileDDir.exists() && !appFilesystemProfileDDir.mkdirs()) {
                 val msg = "Failed to create profile.d directory at '${appFilesystemProfileDDir.absolutePath}'"
-                Log.e(TAG, msg)
+                Log.e(tag, msg)
                 val exception = IOException(msg)
                 logger.addExceptionBreadcrumb(exception)
                 throw exception
@@ -281,9 +289,9 @@ class FilesystemManager(
             appScriptSource.copyTo(appScriptProfileDTarget, overwrite = true)
         } catch (err: Exception) {
             Log.e(
-                TAG,
+                tag,
                 "moveAppScriptToRequiredLocation() failed for app='$appName', fsId=${appFilesystem.id}: ${err.message}",
-                err
+                err,
             )
             val exception = IOException("Failed to move app script for '$appName' to profile.d")
             logger.addExceptionBreadcrumb(exception)

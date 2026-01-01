@@ -34,9 +34,11 @@ interface SessionDao {
     @Update(onConflict = OnConflictStrategy.REPLACE)
     fun updateSession(session: Session)
 
-    @Query("update session " +
+    @Query(
+        "update session " +
             "set " +
             "filesystemName = (select filesystem.name from filesystem " +
-            "where filesystem.id = session.filesystemId)")
+            "where filesystem.id = session.filesystemId)",
+    )
     fun updateFilesystemNamesForAllSessions()
 }

@@ -1,8 +1,8 @@
 package tech.ula.model.entities
 
+import android.os.Parcelable
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import android.os.Parcelable
 import kotlinx.android.parcel.Parcelize
 
 @Parcelize
@@ -18,11 +18,10 @@ data class Filesystem(
     var defaultVncPassword: String = "",
     var isAppsFilesystem: Boolean = false,
     var versionCodeUsed: String = "v0.0.0",
-    var isCreatedFromBackup: Boolean = false
+    var isCreatedFromBackup: Boolean = false,
 ) : Parcelable {
-    override fun toString(): String {
-        return "Filesystem(id=$id, name=$name, distributionType=$distributionType, archType=" +
-                "$archType, isAppsFilesystem=$isAppsFilesystem, versionCodeUsed=$versionCodeUsed, " +
-                "isCreatedFromBackup=$isCreatedFromBackup"
-    }
+    override fun toString(): String =
+        "Filesystem(id=$id, name=$name, distributionType=$distributionType, archType=" +
+            "$archType, isAppsFilesystem=$isAppsFilesystem, versionCodeUsed=$versionCodeUsed, " +
+            "isCreatedFromBackup=$isCreatedFromBackup"
 }

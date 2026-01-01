@@ -1,9 +1,9 @@
 package tech.ula.model.entities
 
+import android.os.Parcelable
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import android.os.Parcelable
 import kotlinx.android.parcel.Parcelize
 
 @Parcelize
@@ -16,5 +16,5 @@ data class App(
     var supportsCli: Boolean = false,
     var supportsGui: Boolean = false,
     var isPaidApp: Boolean = false,
-    var version: Long = 0
+    var version: Long = 0,
 ) : Parcelable
