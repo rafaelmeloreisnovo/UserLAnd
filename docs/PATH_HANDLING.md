@@ -167,7 +167,7 @@ Test path construction with various inputs:
 ./scripts/path_validator.sh check "/home/user/user/file.c"
 # Expected: WARNING
 
-# Test 3: Normalize doubled path (non-allowlisted)
+# Test 3: Normalize doubled path (non-common)
 ./scripts/path_validator.sh normalize "/path/to/dir/dir/file"
 # Expected: /path/to/dir/file
 ```
