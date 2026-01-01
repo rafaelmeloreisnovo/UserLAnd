@@ -135,6 +135,9 @@ static inline u8 gf_div(u8 a, u8 b){ if (!b) return 0; if (!a) return 0; int v =
 u8 *ziprafa_rs_build_matrix(int k, int m) {
   gf_init();
   u8 *mat = malloc((size_t)k * m);
+  if (!mat) {
+    return NULL;
+  }
   for (int i=0;i<m;i++){
     u8 alpha = (u8)(i + 1);
     for (int j=0;j<k;j++){
@@ -148,6 +151,9 @@ u8 *ziprafa_rs_build_matrix(int k, int m) {
 int ziprafa_rs_encode(int k, int m, size_t shard_size, const u8 **data_shards, u8 **parity_shards) {
   gf_init();
   u8 *mat = ziprafa_rs_build_matrix(k,m);
+  if (!mat) {
+    return -1;
+  }
   for (int i=0;i<m;i++){
     memset(parity_shards[i], 0, shard_size);
     for (int j=0;j<k;j++){
