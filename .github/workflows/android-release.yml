@@ -64,7 +64,7 @@ jobs:
           echo "✓ APK verification complete"
 
       - name: Upload release APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: userland-release-apk
           path: app/build/outputs/apk/release/*.apk
