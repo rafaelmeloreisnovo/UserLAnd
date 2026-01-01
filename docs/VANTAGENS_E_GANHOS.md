@@ -59,7 +59,7 @@ Este documento apresenta as vantagens e estimativas de ganhos obtidos com as oti
 ### Performance de Parsing
 
 ```
-Teste: Parse de 10.000.000 inteiros 64-bit
+Teste: Parse de 10.000.000 números inteiros de 64-bit
 
 strtoull() (biblioteca):    350ms
 inline (implementação nova): 245ms
@@ -106,10 +106,10 @@ raf_arch_probe:  4.5KB  (70% menor que x86_64)
 - **Responsividade**: Operações do sistema mais rápidas
 
 ### 2. Desenvolvedores
-- **Build mais rápido**: 30-50% de redução no tempo de build com caching
+- **Build mais rápido**: 30-50% de redução no tempo de build com cache
 - **Debugging melhorado**: Suporte a builds de debug documentado
 - **Manutenção simplificada**: Código consolidado e bem documentado
-- **CI/CD otimizado**: Detecção de problemas de segurança 40% mais rápida
+- **CI/CD otimizado**: Detecção de problemas de segurança 40% mais rápida (Integração e Entrega Contínua)
 
 ### 3. Segurança
 - **Proteção contra overflow**: Todas as operações de parsing protegidas
@@ -176,7 +176,7 @@ LDFLAGS="-Wl,--gc-sections -Wl,--as-needed -Wl,-s"
 | **Código** | Menos linhas | -28% |
 | **Dependências** | Menos headers | -44% |
 | **Build** | Tempo reduzido | +30-50% |
-| **Manutenção** | Documentação | +140% |
+| **Manutenção** | Documentação | +140% (de 5 para 12 arquivos) |
 
 ---
 
@@ -189,7 +189,7 @@ As otimizações RAFAELIA aplicadas ao UserLAnd resultam em:
 ✅ **28% menos código** → Mais fácil de manter  
 ✅ **44% menos dependências** → Mais seguro e portável  
 ✅ **100% proteção contra overflow** → Segurança reforçada  
-✅ **30-50% builds mais rápidos** → Melhor DX (Developer Experience)  
+✅ **30-50% builds mais rápidos** → Melhor experiência do desenvolvedor  
 
 O projeto atinge o **estado da arte** em programação C de baixo nível, com:
 - Footprint mínimo
