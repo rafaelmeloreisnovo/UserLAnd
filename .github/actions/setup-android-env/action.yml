@@ -7,10 +7,10 @@ inputs:
     default: "17"
   build-tools-version:
     description: "Android build tools version"
-    default: "34.0.0"
+    default: "35.0.0"
   platform-version:
     description: "Android platform version (e.g. 34)"
-    default: "34"
+    default: "35"
   ndk-version:
     description: "Android NDK version"
     default: "27.3.13750724"
@@ -33,7 +33,10 @@ runs:
         cache: gradle
         cache-dependency-path: |
           app/build.gradle
+          app/build.gradle.kts
           build.gradle
+          settings.gradle
+          settings.gradle.kts
           gradle/wrapper/gradle-wrapper.properties
 
     - name: Install Android SDK and NDK
