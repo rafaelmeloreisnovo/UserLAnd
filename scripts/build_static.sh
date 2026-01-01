@@ -62,11 +62,22 @@ CC="${CC:-cc}"
 #   TARGET="--target=x86_64-linux-musl"
 TARGET="${TARGET:-}"
 
-# Default CFLAGS: optimized, hidden symbols, no -static by default.
-CFLAGS="${CFLAGS:-"-O2 -pipe -fvisibility=hidden"}"
+# Default CFLAGS: aggressive optimization for low-level baremetal operation
+# -O3: maximum optimization level
+# -pipe: use pipes instead of temp files (faster compilation)
+# -fvisibility=hidden: reduce symbol visibility for smaller binaries
+# -ffunction-sections -fdata-sections: enable dead code elimination
+# -flto: link-time optimization (optional, requires linker support)
+# -DNDEBUG: disable assertions in production
+# -fno-exceptions: disable C++ exceptions (smaller code, C doesn't need this but safe)
+# -fomit-frame-pointer: smaller code, better register allocation
+CFLAGS="${CFLAGS:-"-O3 -pipe -fvisibility=hidden -ffunction-sections -fdata-sections -DNDEBUG -fomit-frame-pointer -fno-asynchronous-unwind-tables"}"
 
-# Extra linker flags, if any.
-LDFLAGS="${LDFLAGS:-}"
+# Extra linker flags: enable garbage collection of unused sections
+# -Wl,--gc-sections: remove unused code and data
+# -Wl,--as-needed: only link libraries actually used
+# -Wl,-s: strip symbols for smaller binaries
+LDFLAGS="${LDFLAGS:-"-Wl,--gc-sections -Wl,--as-needed -Wl,-s"}"
 
 # Discover an Android NDK toolchain so native helpers can be built for devices
 # instead of the host. This prefers environment variables but also supports a

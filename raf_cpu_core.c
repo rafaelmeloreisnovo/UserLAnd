@@ -1,9 +1,10 @@
+// Optimized low-level CPU core parser - minimal dependencies
+// Removed: ctype.h (replaced with inline checks), stdlib.h (replaced strtoull with inline parser)
+// Benefits: Reduced binary size, faster parsing, fewer function calls
 #define _POSIX_C_SOURCE 199309L
 
-#include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -50,7 +51,8 @@ static int parse_cpu_line(const char *line, cpu_sample *out) {
   }
 
   const char *cursor = line;
-  while (*cursor && !isspace((unsigned char)*cursor)) {
+  // Fast-path: skip to whitespace without ctype.h dependency
+  while (*cursor && *cursor != ' ' && *cursor != '\t') {
     cursor++;
   }
   size_t id_len = (size_t)(cursor - line);
@@ -62,19 +64,24 @@ static int parse_cpu_line(const char *line, cpu_sample *out) {
 
   size_t idx = 0;
   while (*cursor != '\0' && idx < FIELD_COUNT) {
+    // Skip whitespace without ctype.h
     while (*cursor == ' ' || *cursor == '\t') {
       cursor++;
     }
     if (*cursor == '\0' || *cursor == '\n') {
       break;
     }
-    char *endptr = NULL;
-    unsigned long long value = strtoull(cursor, &endptr, 10);
-    if (endptr == cursor) {
-      break;  // no more numbers
+    // Parse number inline without strtoull for better performance
+    uint64_t value = 0;
+    const char *start = cursor;
+    while (*cursor >= '0' && *cursor <= '9') {
+      value = value * 10 + (*cursor - '0');
+      cursor++;
     }
-    out->fields[idx++] = (uint64_t)value;
-    cursor = endptr;
+    if (cursor == start) {
+      break;  // no number found
+    }
+    out->fields[idx++] = value;
   }
 
   out->field_count = idx;
