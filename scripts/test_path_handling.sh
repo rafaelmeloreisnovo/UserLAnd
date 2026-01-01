@@ -112,6 +112,17 @@ else
 fi
 echo ""
 
+# Test 8b: Common directory names should NOT be normalized
+echo "Test 8b: Common directory names should be preserved during normalization"
+result=$($VALIDATOR normalize "/usr/lib/lib/module.so")
+expected="/usr/lib/lib/module.so"
+if [[ "$result" == "$expected" ]]; then
+    test_pass "Common directory names preserved: $result"
+else
+    test_fail "Common directory names incorrectly normalized: expected '$expected', got '$result'"
+fi
+echo ""
+
 # Test 9: Tripled path normalization
 echo "Test 9: Normalize tripled path"
 result=$($VALIDATOR normalize "/path/to/UserLAnd/UserLAnd/UserLAnd/file")

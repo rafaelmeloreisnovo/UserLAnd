@@ -49,6 +49,10 @@ normalize_path() {
             if [[ $is_github_actions -eq 1 ]] && [[ $idx -eq 5 ]]; then
                 # This is the repo name following org name, preserve it even if duplicate
                 normalized+=("$comp")
+            # Check if this is a common directory name that might legitimately repeat
+            elif [[ "$comp" =~ ^(bin|lib|usr|opt|etc|var|tmp|home|root|src|build|test|tests|dist|out|node_modules|vendor)$ ]]; then
+                # Common directory names can appear at multiple levels, preserve them
+                normalized+=("$comp")
             fi
             # Otherwise skip the duplicate (implicit - no else needed)
         else
