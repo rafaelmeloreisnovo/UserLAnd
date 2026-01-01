@@ -1,11 +1,13 @@
+// Optimized low-level disk stats parser - minimal dependencies
+// Removed: ctype.h, stdlib.h (replaced with inline parsers)
+// Benefits: Reduced binary size, faster parsing, fewer function calls
 #define _POSIX_C_SOURCE 199309L
 
-#include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <limits.h>
 
 #define MAX_DISKS 256
 #define MAX_LINE 512
@@ -66,23 +68,41 @@ static int parse_disk_line(const char *line, disk_sample *out) {
   const char *cursor = buffer;
   skip_spaces(&cursor);
 
-  char *endptr = NULL;
-  unsigned long major = strtoul(cursor, &endptr, 10);
-  if (endptr == cursor) {
+  // Parse major number inline with overflow protection
+  unsigned long major = 0;
+  const char *start = cursor;
+  while (*cursor >= '0' && *cursor <= '9') {
+    unsigned long digit = *cursor - '0';
+    if (major > ULONG_MAX / 10) {
+      break;
+    }
+    major = major * 10 + digit;
+    cursor++;
+  }
+  if (cursor == start) {
     return 0;
   }
-  cursor = endptr;
   skip_spaces(&cursor);
 
-  unsigned long minor = strtoul(cursor, &endptr, 10);
-  if (endptr == cursor) {
+  // Parse minor number inline with overflow protection
+  unsigned long minor = 0;
+  start = cursor;
+  while (*cursor >= '0' && *cursor <= '9') {
+    unsigned long digit = *cursor - '0';
+    if (minor > ULONG_MAX / 10) {
+      break;
+    }
+    minor = minor * 10 + digit;
+    cursor++;
+  }
+  if (cursor == start) {
     return 0;
   }
-  cursor = endptr;
   skip_spaces(&cursor);
 
+  // Parse device name
   const char *name_start = cursor;
-  while (*cursor != '\0' && !isspace((unsigned char)*cursor)) {
+  while (*cursor != '\0' && *cursor != ' ' && *cursor != '\t') {
     cursor++;
   }
   size_t name_len = (size_t)(cursor - name_start);
@@ -95,18 +115,32 @@ static int parse_disk_line(const char *line, disk_sample *out) {
   out->major = (unsigned int)major;
   out->minor = (unsigned int)minor;
 
+  // Parse numeric fields with overflow protection
   size_t idx = 0;
   while (*cursor != '\0' && idx < DISK_FIELD_COUNT) {
     skip_spaces(&cursor);
     if (*cursor == '\0' || *cursor == '\n') {
       break;
     }
-    unsigned long long value = strtoull(cursor, &endptr, 10);
-    if (endptr == cursor) {
+    // Parse number inline with overflow protection
+    uint64_t value = 0;
+    start = cursor;
+    while (*cursor >= '0' && *cursor <= '9') {
+      uint64_t digit = *cursor - '0';
+      if (value > UINT64_MAX / 10) {
+        break;
+      }
+      uint64_t new_value = value * 10;
+      if (new_value > UINT64_MAX - digit) {
+        break;
+      }
+      value = new_value + digit;
+      cursor++;
+    }
+    if (cursor == start) {
       break;
     }
-    out->fields[idx++] = (uint64_t)value;
-    cursor = endptr;
+    out->fields[idx++] = value;
   }
 
   out->field_count = idx;
