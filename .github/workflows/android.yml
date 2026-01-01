@@ -56,8 +56,8 @@ jobs:
           sdkmanager --licenses || true
           sdkmanager --install \
             "platform-tools" \
-            "platforms;android-34" \
-            "build-tools;34.0.0" \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
             "ndk;${{ env.NDK_VERSION }}"
           echo "✓ SDK components installed"
 
@@ -137,8 +137,8 @@ jobs:
           sdkmanager --licenses || true
           sdkmanager --install \
             "platform-tools" \
-            "platforms;android-34" \
-            "build-tools;34.0.0" \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
             "ndk;${{ env.NDK_VERSION }}"
 
       - name: Configure NDK path for Gradle

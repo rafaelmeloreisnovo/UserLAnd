@@ -3,6 +3,13 @@ name: Android Release APK
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   JAVA_VERSION: "17"
   ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
@@ -23,8 +30,8 @@ jobs:
         uses: ./.github/actions/setup-android-env
         with:
           java-version: ${{ env.JAVA_VERSION }}
-          build-tools-version: "34.0.0"
-          platform-version: "34"
+          build-tools-version: "35.0.0"
+          platform-version: "35"
           ndk-version: ${{ env.NDK_VERSION }}
 
       - name: Restore keystore file
