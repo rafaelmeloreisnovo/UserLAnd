@@ -3,6 +3,16 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Check if Android SDK is configured via ANDROID_HOME or local.properties
+has_android_sdk() {
+  [[ -n "${ANDROID_HOME:-}" ]] || ([[ -f "$ROOT_DIR/local.properties" ]] && grep -q '^sdk.dir=' "$ROOT_DIR/local.properties")
+}
+
+# Build the Android APK
+build_apk() {
+  (cd "$ROOT_DIR" && ./gradlew assembleDebug)
+}
+
 echo "[build] add2 (RAFAELIA multi-arch)"
 (cd "$ROOT_DIR/add2" && ./build_multiarch.sh)
 
@@ -12,18 +22,16 @@ echo "[build] add (BLAKE3 example)"
 want_apk="${1:-}"
 if [[ "$want_apk" == "--apk" ]]; then
   echo "[build] UserLAnd APK"
-  if [[ -n "${ANDROID_HOME:-}" ]]; then
-    (cd "$ROOT_DIR" && ./gradlew assembleDebug)
-  elif [[ -f "$ROOT_DIR/local.properties" ]] && rg -q '^sdk.dir=' "$ROOT_DIR/local.properties"; then
-    (cd "$ROOT_DIR" && ./gradlew assembleDebug)
+  if has_android_sdk; then
+    build_apk
   else
     echo "[error] Android SDK not configured. Set ANDROID_HOME or add sdk.dir=... to local.properties." >&2
     exit 1
   fi
 else
-  if [[ -n "${ANDROID_HOME:-}" ]] || ([[ -f "$ROOT_DIR/local.properties" ]] && rg -q '^sdk.dir=' "$ROOT_DIR/local.properties"); then
+  if has_android_sdk; then
     echo "[build] UserLAnd APK (auto)"
-    (cd "$ROOT_DIR" && ./gradlew assembleDebug)
+    build_apk
   else
     echo "[warn] Android SDK not configured; skipping APK build. Use --apk to require it." >&2
   fi
