@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package tech.ula
 
 /*
@@ -28,16 +30,15 @@ import android.content.Intent
 import android.net.Uri
 import android.os.IBinder
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import kotlinx.coroutines.* // ktlint-disable no-wildcard-imports
+import kotlinx.coroutines.*
 import tech.ula.model.entities.App
 import tech.ula.model.entities.ServiceType
 import tech.ula.model.entities.Session
 import tech.ula.model.repositories.UlaDatabase
-import tech.ula.utils.* // ktlint-disable no-wildcard-imports
+import tech.ula.utils.*
 import java.util.concurrent.ConcurrentHashMap
 
 class ServerService : Service() {
-
     companion object {
         const val SERVER_SERVICE_RESULT: String = "tech.ula.ServerService.RESULT"
 
@@ -82,11 +83,13 @@ class ServerService : Service() {
         broadcaster = LocalBroadcastManager.getInstance(this)
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
-    }
+    override fun onBind(intent: Intent?): IBinder? = null
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int {
         super.onStartCommand(intent, flags, startId)
 
         val type = intent?.getStringExtra("type")
@@ -187,13 +190,14 @@ class ServerService : Service() {
         stopServiceIfIdle()
     }
 
-    private fun updateSession(session: Session) = serviceScope.launch {
-        try {
-            UlaDatabase.getInstance(this@ServerService).sessionDao().updateSession(session)
-        } catch (e: Exception) {
-            busyboxExecutor.logError("Failed to update session ${session.name}: ${e.message}")
+    private fun updateSession(session: Session) =
+        serviceScope.launch {
+            try {
+                UlaDatabase.getInstance(this@ServerService).sessionDao().updateSession(session)
+            } catch (e: Exception) {
+                busyboxExecutor.logError("Failed to update session ${session.name}: ${e.message}")
+            }
         }
-    }
 
     private fun killSession(session: Session) {
         serviceScope.launch {
@@ -223,29 +227,33 @@ class ServerService : Service() {
      * - bounded polling with timeout
      * - client activation
      */
-    private suspend fun startSession(session: Session, isDevDebugEnabled: Boolean) {
+    private suspend fun startSession(
+        session: Session,
+        isDevDebugEnabled: Boolean,
+    ) {
         try {
             if (isDevDebugEnabled) {
                 busyboxExecutor.enableDebug()
             }
 
             startForeground(
-                NotificationConstructor.serviceNotificationId,
-                notificationManager.buildPersistentServiceNotification()
+                NotificationConstructor.SERVICE_NOTIFICATION_ID,
+                notificationManager.buildPersistentServiceNotification(),
             )
 
-            val pid = try {
-                localServerManager.startServer(session)
-            } catch (e: Exception) {
-                busyboxExecutor.logCritical("startServer failed for ${session.name}: ${e.message}")
-                sendDialogBroadcast("sessionStartFailed")
-                stopServiceIfIdle()
-                return
-            }
+            val pid =
+                try {
+                    localServerManager.startServer(session)
+                } catch (e: Exception) {
+                    busyboxExecutor.logCritical("startServer failed for ${session.name}: ${e.message}")
+                    sendDialogBroadcast("sessionStartFailed")
+                    stopServiceIfIdle()
+                    return
+                }
 
             if (pid <= 0L) {
                 busyboxExecutor.logCritical(
-                    "startServer returned non-positive pid $pid for ${session.name}"
+                    "startServer returned non-positive pid $pid for ${session.name}",
                 )
                 sendDialogBroadcast("sessionStartFailed")
                 stopServiceIfIdle()
@@ -254,16 +262,17 @@ class ServerService : Service() {
 
             session.pid = pid
 
-            val executionResult = withTimeoutOrNull(SESSION_START_TIMEOUT_MILLIS) {
-                while (!localServerManager.isServerRunning(session)) {
-                    delay(POLLING_INTERVAL_MILLIS)
+            val executionResult =
+                withTimeoutOrNull(SESSION_START_TIMEOUT_MILLIS) {
+                    while (!localServerManager.isServerRunning(session)) {
+                        delay(POLLING_INTERVAL_MILLIS)
+                    }
+                    true
                 }
-                true
-            }
 
             if (executionResult == null) {
                 busyboxExecutor.logError(
-                    "Session startup timed out after $SESSION_START_TIMEOUT_MILLIS ms for ${session.name}"
+                    "Session startup timed out after $SESSION_START_TIMEOUT_MILLIS ms for ${session.name}",
                 )
                 stopSessionInternal(session)
                 sendDialogBroadcast("sessionTimeoutError")
@@ -287,9 +296,10 @@ class ServerService : Service() {
     }
 
     private fun stopApp(app: App) {
-        val appSessions = activeSessions.filter { (_, session) ->
-            session.name == app.name
-        }
+        val appSessions =
+            activeSessions.filter { (_, session) ->
+                session.name == app.name
+            }
         appSessions.forEach { (_, session) ->
             killSession(session)
         }
@@ -306,11 +316,12 @@ class ServerService : Service() {
     }
 
     private fun startSshClient(session: Session) {
-        val connectBotIntent = Intent().apply {
-            action = Intent.ACTION_VIEW
-            data = Uri.parse("ssh://${session.username}@localhost:2022/#userland")
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
+        val connectBotIntent =
+            Intent().apply {
+                action = Intent.ACTION_VIEW
+                data = Uri.parse("ssh://${session.username}@localhost:2022/#userland")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
 
         try {
             startActivity(connectBotIntent)
@@ -323,17 +334,20 @@ class ServerService : Service() {
     }
 
     private fun startVncClient(session: Session) {
-        val packageName = this.defaultSharedPreferences
-            .getString("pref_vnc_package", DEFAULT_VNC_PACKAGE)!!
+        val packageName =
+            this.defaultSharedPreferences
+                .getString("pref_vnc_package", DEFAULT_VNC_PACKAGE)!!
 
-        val bVncIntent = Intent().apply {
-            action = Intent.ACTION_VIEW
-            type = "application/vnd.vnc"
-            data = Uri.parse(
-                "vnc://127.0.0.1:5951/?VncUsername=${session.username}&VncPassword=${session.vncPassword}"
-            )
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
+        val bVncIntent =
+            Intent().apply {
+                action = Intent.ACTION_VIEW
+                type = "application/vnd.vnc"
+                data =
+                    Uri.parse(
+                        "vnc://127.0.0.1:5951/?VncUsername=${session.username}&VncPassword=${session.vncPassword}",
+                    )
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
 
         try {
             if (clientIsPresent(bVncIntent)) {
@@ -350,13 +364,15 @@ class ServerService : Service() {
     }
 
     private fun startXsdlClient(session: Session) {
-        val packageName = this.defaultSharedPreferences
-            .getString("pref_xsdl_package", DEFAULT_XSDL_PACKAGE)!!
+        val packageName =
+            this.defaultSharedPreferences
+                .getString("pref_xsdl_package", DEFAULT_XSDL_PACKAGE)!!
 
-        val xsdlIntent = Intent().apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            data = Uri.parse("x11://give.me.display:4721")
-        }
+        val xsdlIntent =
+            Intent().apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                data = Uri.parse("x11://give.me.display:4721")
+            }
 
         try {
             if (clientIsPresent(xsdlIntent)) {
@@ -378,9 +394,10 @@ class ServerService : Service() {
     }
 
     private fun getClient(packageName: String) {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName")).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
+        val intent =
+            Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
         try {
             startActivity(intent)
         } catch (err: ActivityNotFoundException) {
@@ -397,15 +414,17 @@ class ServerService : Service() {
     }
 
     private fun sendSessionActivatedBroadcast() {
-        val intent = Intent(SERVER_SERVICE_RESULT)
-            .putExtra("type", "sessionActivated")
+        val intent =
+            Intent(SERVER_SERVICE_RESULT)
+                .putExtra("type", "sessionActivated")
         broadcaster.sendBroadcast(intent)
     }
 
     private fun sendDialogBroadcast(type: String) {
-        val intent = Intent(SERVER_SERVICE_RESULT)
-            .putExtra("type", "dialog")
-            .putExtra("dialogType", type)
+        val intent =
+            Intent(SERVER_SERVICE_RESULT)
+                .putExtra("type", "dialog")
+                .putExtra("dialogType", type)
         broadcaster.sendBroadcast(intent)
     }
 }

@@ -6,7 +6,10 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.InputStream
 
-class ProotDebugLogger(defaultSharedPreferences: SharedPreferences, private val ulaFiles: UlaFiles) {
+class ProotDebugLogger(
+    defaultSharedPreferences: SharedPreferences,
+    private val ulaFiles: UlaFiles,
+) {
     private val prefs = defaultSharedPreferences
 
     val isEnabled: Boolean
@@ -20,7 +23,7 @@ class ProotDebugLogger(defaultSharedPreferences: SharedPreferences, private val 
 
     fun logStream(
         inputStream: InputStream,
-        coroutineScope: CoroutineScope
+        coroutineScope: CoroutineScope,
     ) = coroutineScope.launch {
         val prootLogFile = File(logLocation)
         if (prootLogFile.exists()) {

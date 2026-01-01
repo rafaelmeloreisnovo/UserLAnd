@@ -13,9 +13,9 @@ import tech.ula.model.repositories.RefreshStatus
 import kotlin.coroutines.CoroutineContext
 
 class AppsListViewModel(
-    private val appsRepository: AppsRepository
-) : ViewModel(), CoroutineScope {
-
+    private val appsRepository: AppsRepository,
+) : ViewModel(),
+    CoroutineScope {
     private val job = Job()
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Default + job
@@ -28,24 +28,20 @@ class AppsListViewModel(
         appsRepository.getActiveApps()
     }
 
-    fun getAppsList(): LiveData<List<App>> {
-        return apps
-    }
+    fun getAppsList(): LiveData<List<App>> = apps
 
-    fun getActiveApps(): LiveData<List<App>> {
-        return activeAppsLiveData
-    }
+    fun getActiveApps(): LiveData<List<App>> = activeAppsLiveData
 
     fun refreshAppsList() {
         this.launch { appsRepository.refreshData(this) }
     }
 
-    fun getRefreshStatus(): LiveData<RefreshStatus> {
-        return appsRepository.getRefreshStatus()
-    }
+    fun getRefreshStatus(): LiveData<RefreshStatus> = appsRepository.getRefreshStatus()
 }
 
-class AppsListViewModelFactory(private val appsRepository: AppsRepository) : ViewModelProvider.NewInstanceFactory() {
+class AppsListViewModelFactory(
+    private val appsRepository: AppsRepository,
+) : ViewModelProvider.NewInstanceFactory() {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         @Suppress("UNCHECKED_CAST")
         return AppsListViewModel(appsRepository) as T

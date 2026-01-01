@@ -9,9 +9,8 @@ import java.lang.NullPointerException
 class UlaFiles(
     context: Context,
     libDirPath: String,
-    private val symlinker: Symlinker = Symlinker()
+    private val symlinker: Symlinker = Symlinker(),
 ) {
-
     val filesDir: File = context.filesDir
     val libDir: File = File(libDirPath)
     val supportDir: File = File(filesDir, "support")
@@ -19,9 +18,12 @@ class UlaFiles(
     val emulatedUserDir = File(emulatedScopedDir, "storage")
 
     val sdCardScopedDir: File? = resolveSdCardScopedStorage(context)
-    val sdCardUserDir: File? = if (sdCardScopedDir != null) {
-        File(sdCardScopedDir, "storage")
-    } else null
+    val sdCardUserDir: File? =
+        if (sdCardScopedDir != null) {
+            File(sdCardScopedDir, "storage")
+        } else {
+            null
+        }
 
     val busybox = File(supportDir, "busybox")
     val proot = File(supportDir, "proot")
@@ -33,7 +35,10 @@ class UlaFiles(
         setupLinks()
     }
 
-    fun makePermissionsUsable(containingDirectoryPath: String, filename: String) {
+    fun makePermissionsUsable(
+        containingDirectoryPath: String,
+        filename: String,
+    ) {
         val commandToRun = arrayListOf("chmod", "0777", filename)
 
         val containingDirectory = File(containingDirectoryPath)
@@ -53,13 +58,13 @@ class UlaFiles(
         val externals = context.getExternalFilesDirs(null)
         return if (externals.size > 1) {
             externals[1]
-        } else null
+        } else {
+            null
+        }
     }
 
     // Lib files must start with 'lib' and end with '.so.'
-    private fun String.toSupportName(): String {
-        return this.substringAfter("lib_").substringBeforeLast(".so")
-    }
+    private fun String.toSupportName(): String = this.substringAfter("lib_").substringBeforeLast(".so")
 
     @Throws(NullPointerException::class, NoSuchFileException::class, Exception::class)
     private fun setupLinks() {
@@ -68,8 +73,9 @@ class UlaFiles(
         libDir.listFiles()!!.forEach { libFile ->
             var libFileName = libFile.name
             if (libFileName.startsWith("lib_proot.") ||
-                    libFileName.startsWith("lib_libtalloc") ||
-                    libFileName.startsWith("lib_loader")) {
+                libFileName.startsWith("lib_libtalloc") ||
+                libFileName.startsWith("lib_loader")
+            ) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     if (libFileName.endsWith(".a10.so")) {
                         libFileName = libFileName.replace(".a10.so", ".so")
@@ -94,19 +100,21 @@ class UlaFiles(
         return translateABI(usedABI)
     }
 
-    private fun translateABI(abi: String): String {
-        return when (abi) {
+    private fun translateABI(abi: String): String =
+        when (abi) {
             "arm64-v8a" -> "arm64"
             "armeabi-v7a" -> "arm"
             "x86_64" -> "x86_64"
             "x86" -> "x86"
             else -> ""
         }
-    }
 }
 
 class Symlinker {
-    fun createSymlink(targetPath: String, linkPath: String) {
+    fun createSymlink(
+        targetPath: String,
+        linkPath: String,
+    ) {
         Os.symlink(targetPath, linkPath)
     }
 }

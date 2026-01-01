@@ -1,13 +1,15 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package tech.ula.ui
 
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProvider
 import android.content.Intent
 import android.os.Bundle
-import androidx.fragment.app.Fragment
-import android.view.* // ktlint-disable no-wildcard-imports
+import android.view.*
 import android.widget.AdapterView
 import androidx.core.os.bundleOf
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import tech.ula.MainActivity
 import tech.ula.R
@@ -20,11 +22,11 @@ import tech.ula.viewmodel.SessionListViewModel
 import tech.ula.viewmodel.SessionListViewModelFactory
 
 class SessionListFragment : Fragment() {
-
     interface SessionSelection {
         fun sessionHasBeenSelected(session: Session)
     }
 
+    @Suppress("ktlint:standard:backing-property-naming")
     private var _binding: FragSessionListBinding? = null
     private val binding get() = _binding!!
 
@@ -42,32 +44,42 @@ class SessionListFragment : Fragment() {
         ViewModelProvider(this, SessionListViewModelFactory(ulaDatabase)).get(SessionListViewModel::class.java)
     }
 
-    private val sessionsAndFilesystemsChangeObserver = Observer<Pair<List<Session>, List<Filesystem>>> {
-        it?.let { pair ->
-            sessionList = pair.first
-            filesystemList = pair.second
+    private val sessionsAndFilesystemsChangeObserver =
+        Observer<Pair<List<Session>, List<Filesystem>>> {
+            it?.let { pair ->
+                sessionList = pair.first
+                filesystemList = pair.second
 
-            sessionAdapter = SessionListAdapter(activityContext, sessionList, filesystemList)
-            binding.listSessions.adapter = sessionAdapter
+                sessionAdapter = SessionListAdapter(activityContext, sessionList, filesystemList)
+                binding.listSessions.adapter = sessionAdapter
+            }
         }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setHasOptionsMenu(true)
     }
 
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+    override fun onCreateOptionsMenu(
+        menu: Menu,
+        inflater: MenuInflater,
+    ) {
         super.onCreateOptionsMenu(menu, inflater)
         inflater.inflate(R.menu.menu_create, menu)
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return if (item.itemId == R.id.menu_item_add) editSession(Session(0, filesystemId = 0))
-        else super.onOptionsItemSelected(item)
-    }
+    override fun onOptionsItemSelected(item: MenuItem): Boolean =
+        if (item.itemId == R.id.menu_item_add) {
+            editSession(Session(0, filesystemId = 0))
+        } else {
+            super.onOptionsItemSelected(item)
+        }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
+    ): View {
         _binding = FragSessionListBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -80,16 +92,16 @@ class SessionListFragment : Fragment() {
         sessionListViewModel.getSessionsAndFilesystems().observe(viewLifecycleOwner, sessionsAndFilesystemsChangeObserver)
 
         registerForContextMenu(binding.listSessions)
-        binding.listSessions.onItemClickListener = AdapterView.OnItemClickListener {
-            parent, _, position, _ ->
-            when (val selectedItem = parent.getItemAtPosition(position) as SessionListItem) {
-                is SessionSeparatorItem -> return@OnItemClickListener
-                is SessionItem -> {
-                    val session = selectedItem.session
-                    doSessionItemClicked(session)
+        binding.listSessions.onItemClickListener =
+            AdapterView.OnItemClickListener { parent, _, position, _ ->
+                when (val selectedItem = parent.getItemAtPosition(position) as SessionListItem) {
+                    is SessionSeparatorItem -> return@OnItemClickListener
+                    is SessionItem -> {
+                        val session = selectedItem.session
+                        doSessionItemClicked(session)
+                    }
                 }
             }
-        }
     }
 
     override fun onDestroyView() {
@@ -101,7 +113,11 @@ class SessionListFragment : Fragment() {
         doOnSessionSelection.sessionHasBeenSelected(session)
     }
 
-    override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo?) {
+    override fun onCreateContextMenu(
+        menu: ContextMenu,
+        v: View,
+        menuInfo: ContextMenu.ContextMenuInfo?,
+    ) {
         super.onCreateContextMenu(menu, v, menuInfo)
         val info = menuInfo as AdapterView.AdapterContextMenuInfo
         val position = info.position
@@ -114,7 +130,10 @@ class SessionListFragment : Fragment() {
         }
     }
 
-    private fun doCreateSessionContextMenu(session: Session, menu: ContextMenu) {
+    private fun doCreateSessionContextMenu(
+        session: Session,
+        menu: ContextMenu,
+    ) {
         when {
             session.active ->
                 activityContext.menuInflater.inflate(R.menu.context_menu_active_sessions, menu)
@@ -135,14 +154,16 @@ class SessionListFragment : Fragment() {
         }
     }
 
-    private fun doSessionContextItemSelected(session: Session, item: MenuItem): Boolean {
-        return when (item.itemId) {
+    private fun doSessionContextItemSelected(
+        session: Session,
+        item: MenuItem,
+    ): Boolean =
+        when (item.itemId) {
             R.id.menu_item_session_stop_session -> stopService(session)
             R.id.menu_item_session_edit -> editSession(session)
             R.id.menu_item_session_delete -> deleteSession(session)
             else -> super.onContextItemSelected(item)
         }
-    }
 
     private fun stopService(session: Session): Boolean {
         if (session.active) {

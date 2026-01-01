@@ -12,12 +12,13 @@ import tech.ula.MainActivity
 import tech.ula.R
 import tech.ula.ServerService
 
-class NotificationConstructor(val context: Context) {
-
+class NotificationConstructor(
+    val context: Context,
+) {
     companion object {
-        const val serviceNotificationId = 1000
+        const val SERVICE_NOTIFICATION_ID = 1000
         const val GROUP_KEY_USERLAND = "tech.ula.userland"
-        const val serviceNotificationChannelId = "UserLAnd"
+        const val SERVICE_NOTIFICATION_CHANNEL_ID = "UserLAnd"
     }
 
     private val serviceNotificationTitle = context.getString(R.string.service_notification_title)
@@ -33,7 +34,7 @@ class NotificationConstructor(val context: Context) {
             val description = context.getString(R.string.services_notification_channel_description)
             val importance = NotificationManager.IMPORTANCE_LOW
 
-            val channel = NotificationChannel(serviceNotificationChannelId, name, importance)
+            val channel = NotificationChannel(SERVICE_NOTIFICATION_CHANNEL_ID, name, importance)
             channel.description = description
             notificationManager.createNotificationChannel(channel)
         }
@@ -42,29 +43,36 @@ class NotificationConstructor(val context: Context) {
     fun buildPersistentServiceNotification(): Notification {
         val sessionListIntent = Intent(context, MainActivity::class.java)
         sessionListIntent.type = "sessionList"
-        val pendingFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            PendingIntent.FLAG_IMMUTABLE
-        } else {
-            0
-        }
-        val pendingSessionListIntent = PendingIntent
+        val pendingFlags =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_IMMUTABLE
+            } else {
+                0
+            }
+        val pendingSessionListIntent =
+            PendingIntent
                 .getActivity(context, 0, sessionListIntent, pendingFlags)
 
         val stopSessionsIntent = Intent(context, ServerService::class.java).putExtra("type", "stopAll")
-        val stopFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        } else {
-            PendingIntent.FLAG_UPDATE_CURRENT
-        }
-        val stopSessionsPendingIntent = PendingIntent
+        val stopFlags =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+        val stopSessionsPendingIntent =
+            PendingIntent
                 .getService(context, 0, stopSessionsIntent, stopFlags)
 
         val settingsIntent = Intent(context, MainActivity::class.java)
         settingsIntent.type = "settings"
-        val settingsPendingIntent = PendingIntent
+        val settingsPendingIntent =
+            PendingIntent
                 .getActivity(context, 0, settingsIntent, pendingFlags)
 
-        val builder = NotificationCompat.Builder(context, serviceNotificationChannelId)
+        val builder =
+            NotificationCompat
+                .Builder(context, SERVICE_NOTIFICATION_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_icon)
                 .setContentTitle(serviceNotificationTitle)
                 .setContentText(serviceNotificationDescription)

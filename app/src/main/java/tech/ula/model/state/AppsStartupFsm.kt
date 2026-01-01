@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package tech.ula.model.state
 
 import androidx.lifecycle.LiveData
@@ -11,15 +13,14 @@ import tech.ula.model.entities.Filesystem
 import tech.ula.model.entities.ServiceType
 import tech.ula.model.entities.Session
 import tech.ula.model.repositories.UlaDatabase
-import tech.ula.utils.* // ktlint-disable no-wildcard-imports
+import tech.ula.utils.*
 
 class AppsStartupFsm(
     ulaDatabase: UlaDatabase,
     private val filesystemManager: FilesystemManager,
     private val ulaFiles: UlaFiles,
-    private val logger: Logger = SentryLogger()
+    private val logger: Logger = SentryLogger(),
 ) {
-
     private val className = "AppsFSM"
 
     private val sessionDao = ulaDatabase.sessionDao()
@@ -27,9 +28,7 @@ class AppsStartupFsm(
 
     private val state = MutableLiveData<AppsStartupState>().apply { postValue(WaitingForAppSelection) }
 
-    fun getState(): LiveData<AppsStartupState> {
-        return state
-    }
+    fun getState(): LiveData<AppsStartupState> = state
 
     internal fun setState(newState: AppsStartupState) {
         state.postValue(newState)
@@ -49,7 +48,10 @@ class AppsStartupFsm(
         }
     }
 
-    fun submitEvent(event: AppsStartupEvent, coroutineScope: CoroutineScope) = coroutineScope.launch {
+    fun submitEvent(
+        event: AppsStartupEvent,
+        coroutineScope: CoroutineScope,
+    ) = coroutineScope.launch {
         val eventBreadcrumb = UlaBreadcrumb(className, BreadcrumbType.ReceivedEvent, "Event: $event State: ${state.value}")
         logger.addBreadcrumb(eventBreadcrumb)
         if (!transitionIsAcceptable(event)) {
@@ -82,7 +84,8 @@ class AppsStartupFsm(
     }
 
     private fun checkAppsFilesystemCredentials(appsFilesystem: Filesystem) {
-        val credentialsAreSet = appsFilesystem.defaultUsername.isNotEmpty() &&
+        val credentialsAreSet =
+            appsFilesystem.defaultUsername.isNotEmpty() &&
                 appsFilesystem.defaultPassword.isNotEmpty() &&
                 appsFilesystem.defaultVncPassword.isNotEmpty()
         if (credentialsAreSet) {
@@ -100,7 +103,10 @@ class AppsStartupFsm(
         state.postValue(AppHasServiceTypeSet)
     }
 
-    private suspend fun copyAppScriptToFilesystem(app: App, filesystem: Filesystem) {
+    private suspend fun copyAppScriptToFilesystem(
+        app: App,
+        filesystem: Filesystem,
+    ) {
         state.postValue(CopyingAppScript)
         try {
             withContext(Dispatchers.IO) {
@@ -112,39 +118,55 @@ class AppsStartupFsm(
         }
     }
 
-    private suspend fun setServiceType(appSession: Session, serviceType: ServiceType) = withContext(Dispatchers.IO) {
+    private suspend fun setServiceType(
+        appSession: Session,
+        serviceType: ServiceType,
+    ) = withContext(Dispatchers.IO) {
         appSession.serviceType = serviceType
         sessionDao.updateSession(appSession)
         state.postValue(AppHasServiceTypeSet)
     }
 
     @Throws(NoSuchElementException::class) // If second database call fails
-    private suspend fun findAppsFilesystem(app: App): Filesystem = withContext(Dispatchers.IO) {
-        val potentialAppFilesystem = filesystemDao.findAppsFilesystemByType(app.filesystemRequired)
+    private suspend fun findAppsFilesystem(app: App): Filesystem =
+        withContext(Dispatchers.IO) {
+            val potentialAppFilesystem = filesystemDao.findAppsFilesystemByType(app.filesystemRequired)
 
-        if (potentialAppFilesystem.isEmpty()) {
-            val deviceArchitecture = ulaFiles.getArchType()
-            val fsToInsert = Filesystem(0, name = "apps", archType = deviceArchitecture,
-                    distributionType = app.filesystemRequired, isAppsFilesystem = true)
-            filesystemDao.insertFilesystem(fsToInsert)
+            if (potentialAppFilesystem.isEmpty()) {
+                val deviceArchitecture = ulaFiles.getArchType()
+                val fsToInsert =
+                    Filesystem(
+                        0,
+                        name = "apps",
+                        archType = deviceArchitecture,
+                        distributionType = app.filesystemRequired,
+                        isAppsFilesystem = true,
+                    )
+                filesystemDao.insertFilesystem(fsToInsert)
+            }
+
+            return@withContext filesystemDao.findAppsFilesystemByType(app.filesystemRequired).first()
         }
-
-        return@withContext filesystemDao.findAppsFilesystemByType(app.filesystemRequired).first()
-    }
 
     @Throws(NoSuchElementException::class) // If second database call fails
-    private suspend fun findAppSession(app: App, filesystemId: Long): Session = withContext(Dispatchers.IO) {
-        val potentialAppSession = sessionDao.findAppsSession(app.name)
+    private suspend fun findAppSession(app: App, filesystemId: Long): Session =
+        withContext(Dispatchers.IO) {
+            val potentialAppSession = sessionDao.findAppsSession(app.name)
 
-        if (potentialAppSession.isEmpty()) {
-            val sessionToInsert = Session(id = 0, name = app.name, filesystemId = filesystemId, isAppsSession = true)
-            sessionDao.insertSession(sessionToInsert)
+            if (potentialAppSession.isEmpty()) {
+                val sessionToInsert = Session(id = 0, name = app.name, filesystemId = filesystemId, isAppsSession = true)
+                sessionDao.insertSession(sessionToInsert)
+            }
+
+            return@withContext sessionDao.findAppsSession(app.name).first()
         }
 
-        return@withContext sessionDao.findAppsSession(app.name).first()
-    }
-
-    private suspend fun setAppsFilesystemCredentials(filesystem: Filesystem, username: String, password: String, vncPassword: String) {
+    private suspend fun setAppsFilesystemCredentials(
+        filesystem: Filesystem,
+        username: String,
+        password: String,
+        vncPassword: String,
+    ) {
         filesystem.defaultUsername = username
         filesystem.defaultPassword = password
         filesystem.defaultVncPassword = vncPassword
@@ -152,7 +174,11 @@ class AppsStartupFsm(
         state.postValue(AppsFilesystemHasCredentials)
     }
 
-    private suspend fun updateAppSession(app: App, appSession: Session, appsFilesystem: Filesystem) {
+    private suspend fun updateAppSession(
+        app: App,
+        appSession: Session,
+        appsFilesystem: Filesystem,
+    ) {
         state.postValue(SyncingDatabaseEntries)
         appSession.filesystemId = appsFilesystem.id
         appSession.filesystemName = appsFilesystem.name
@@ -165,27 +191,82 @@ class AppsStartupFsm(
 }
 
 sealed class AppsStartupState
-data class IncorrectAppTransition(val event: AppsStartupEvent, val state: AppsStartupState) : AppsStartupState()
+
+data class IncorrectAppTransition(
+    val event: AppsStartupEvent,
+    val state: AppsStartupState,
+) : AppsStartupState()
+
 object WaitingForAppSelection : AppsStartupState()
+
 object FetchingDatabaseEntries : AppsStartupState()
-data class DatabaseEntriesFetched(val appsFilesystem: Filesystem, val appSession: Session) : AppsStartupState()
+
+data class DatabaseEntriesFetched(
+    val appsFilesystem: Filesystem,
+    val appSession: Session,
+) : AppsStartupState()
+
 object DatabaseEntriesFetchFailed : AppsStartupState()
+
 object AppsFilesystemHasCredentials : AppsStartupState()
-data class AppsFilesystemRequiresCredentials(val appsFilesystem: Filesystem) : AppsStartupState()
+
+data class AppsFilesystemRequiresCredentials(
+    val appsFilesystem: Filesystem,
+) : AppsStartupState()
+
 object AppHasServiceTypeSet : AppsStartupState()
+
 object AppRequiresServiceType : AppsStartupState()
+
 object CopyingAppScript : AppsStartupState()
+
 object AppScriptCopySucceeded : AppsStartupState()
+
 object AppScriptCopyFailed : AppsStartupState()
+
 object SyncingDatabaseEntries : AppsStartupState()
-data class AppDatabaseEntriesSynced(val app: App, val session: Session, val filesystem: Filesystem) : AppsStartupState()
+
+data class AppDatabaseEntriesSynced(
+    val app: App,
+    val session: Session,
+    val filesystem: Filesystem,
+) : AppsStartupState()
 
 sealed class AppsStartupEvent
-data class AppSelected(val app: App) : AppsStartupEvent()
-data class CheckAppsFilesystemCredentials(val appsFilesystem: Filesystem) : AppsStartupEvent()
-data class SubmitAppsFilesystemCredentials(val filesystem: Filesystem, val username: String, val password: String, val vncPassword: String) : AppsStartupEvent()
-data class CheckAppSessionServiceType(val appSession: Session) : AppsStartupEvent()
-data class SubmitAppSessionServiceType(val appSession: Session, val serviceType: ServiceType) : AppsStartupEvent()
-data class CopyAppScriptToFilesystem(val app: App, val filesystem: Filesystem) : AppsStartupEvent()
-data class SyncDatabaseEntries(val app: App, val session: Session, val filesystem: Filesystem) : AppsStartupEvent()
+
+data class AppSelected(
+    val app: App,
+) : AppsStartupEvent()
+
+data class CheckAppsFilesystemCredentials(
+    val appsFilesystem: Filesystem,
+) : AppsStartupEvent()
+
+data class SubmitAppsFilesystemCredentials(
+    val filesystem: Filesystem,
+    val username: String,
+    val password: String,
+    val vncPassword: String,
+) : AppsStartupEvent()
+
+data class CheckAppSessionServiceType(
+    val appSession: Session,
+) : AppsStartupEvent()
+
+data class SubmitAppSessionServiceType(
+    val appSession: Session,
+    val serviceType: ServiceType,
+) : AppsStartupEvent()
+
+data class CopyAppScriptToFilesystem(
+    val app: App,
+    val filesystem: Filesystem,
+) : AppsStartupEvent()
+
+data class SyncDatabaseEntries(
+    val app: App,
+    val session: Session,
+    val filesystem: Filesystem,
+) : AppsStartupEvent()
+
 object ResetAppState : AppsStartupEvent()

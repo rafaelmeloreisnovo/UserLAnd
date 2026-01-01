@@ -10,17 +10,26 @@ import java.io.InputStream
 import java.util.concurrent.TimeUnit
 
 sealed class ExecutionResult
-data class MissingExecutionAsset(val asset: String) : ExecutionResult()
+
+data class MissingExecutionAsset(
+    val asset: String,
+) : ExecutionResult()
+
 object SuccessfulExecution : ExecutionResult()
-data class FailedExecution(val reason: String) : ExecutionResult()
-data class OngoingExecution(val process: Process) : ExecutionResult()
+
+data class FailedExecution(
+    val reason: String,
+) : ExecutionResult()
+
+data class OngoingExecution(
+    val process: Process,
+) : ExecutionResult()
 
 class BusyboxExecutor(
     private val ulaFiles: UlaFiles,
     private val prootDebugLogger: ProotDebugLogger,
-    private val busyboxWrapper: BusyboxWrapper = BusyboxWrapper(ulaFiles)
+    private val busyboxWrapper: BusyboxWrapper = BusyboxWrapper(ulaFiles),
 ) {
-
     companion object {
         private const val TAG = "BusyboxExecutor"
 
@@ -33,7 +42,7 @@ class BusyboxExecutor(
 
     fun executeScript(
         scriptCall: String,
-        listener: (String) -> Any = discardOutput
+        listener: (String) -> Any = discardOutput,
     ): ExecutionResult {
         val updatedCommand = busyboxWrapper.wrapScript(scriptCall)
         return runCommand(updatedCommand, listener)
@@ -41,7 +50,7 @@ class BusyboxExecutor(
 
     fun executeCommand(
         command: String,
-        listener: (String) -> Any = discardOutput
+        listener: (String) -> Any = discardOutput,
     ): ExecutionResult {
         val updatedCommand = busyboxWrapper.wrapCommand(command)
         return runCommand(updatedCommand, listener)
@@ -53,7 +62,7 @@ class BusyboxExecutor(
      */
     private fun runCommand(
         command: List<String>,
-        listener: (String) -> Any
+        listener: (String) -> Any,
     ): ExecutionResult {
         if (!busyboxWrapper.busyboxIsPresent()) {
             Log.e(TAG, "busybox binary missing; cannot run command: $command")
@@ -61,9 +70,10 @@ class BusyboxExecutor(
         }
 
         val env = busyboxWrapper.getBusyboxEnv()
-        val processBuilder = ProcessBuilder(command)
-            .directory(ulaFiles.filesDir)
-            .redirectErrorStream(true)
+        val processBuilder =
+            ProcessBuilder(command)
+                .directory(ulaFiles.filesDir)
+                .redirectErrorStream(true)
 
         processBuilder.environment().putAll(env)
 
@@ -92,7 +102,7 @@ class BusyboxExecutor(
         commandShouldTerminate: Boolean,
         env: HashMap<String, String> = hashMapOf(),
         listener: (String) -> Any = discardOutput,
-        coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
+        coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
     ): ExecutionResult {
         when {
             !busyboxWrapper.busyboxIsPresent() ->
@@ -112,20 +122,22 @@ class BusyboxExecutor(
         // Merge de ambiente:
         // 1) base PROOT env
         // 2) env fornecido pelo chamador (sobrescreve se necessário)
-        val mergedEnv = busyboxWrapper.getProotEnv(filesystemDir, prootDebugLevel).apply {
-            putAll(env)
-        }
+        val mergedEnv =
+            busyboxWrapper.getProotEnv(filesystemDir, prootDebugLevel).apply {
+                putAll(env)
+            }
 
-        val processBuilder = ProcessBuilder(updatedCommand)
-            .directory(ulaFiles.filesDir)
-            .redirectErrorStream(true)
+        val processBuilder =
+            ProcessBuilder(updatedCommand)
+                .directory(ulaFiles.filesDir)
+                .redirectErrorStream(true)
 
         processBuilder.environment().putAll(mergedEnv)
 
         return try {
             Log.d(
                 TAG,
-                "executeProotCommand(): cmd=$updatedCommand, fs=$filesystemDirName, env=$mergedEnv, terminate=$commandShouldTerminate"
+                "executeProotCommand(): cmd=$updatedCommand, fs=$filesystemDirName, env=$mergedEnv, terminate=$commandShouldTerminate",
             )
             val process = processBuilder.start()
 
@@ -173,10 +185,10 @@ class BusyboxExecutor(
                 if (!target.path.startsWith(root.path)) {
                     Log.w(
                         TAG,
-                        "recursivelyDelete() refusing to delete outside app dir: $target"
+                        "recursivelyDelete() refusing to delete outside app dir: $target",
                     )
                     return@withContext FailedExecution(
-                        "Refusing to delete path outside app directory: ${target.path}"
+                        "Refusing to delete path outside app directory: ${target.path}",
                     )
                 }
 
@@ -194,7 +206,7 @@ class BusyboxExecutor(
             } catch (e: Exception) {
                 Log.e(TAG, "recursivelyDelete() failed: $e")
                 return@withContext FailedExecution(
-                    "recursivelyDelete failed: ${e.message ?: e.toString()}"
+                    "recursivelyDelete failed: ${e.message ?: e.toString()}",
                 )
             }
         }
@@ -203,7 +215,10 @@ class BusyboxExecutor(
      * Consome a saída do processo linha a linha, notificando o listener.
      * Fecha o InputStream ao final.
      */
-    private fun collectOutput(inputStream: InputStream, listener: (String) -> Any) {
+    private fun collectOutput(
+        inputStream: InputStream,
+        listener: (String) -> Any,
+    ) {
         inputStream.bufferedReader(Charsets.UTF_8).use { buf ->
             buf.forEachLine { line ->
                 try {
@@ -222,19 +237,20 @@ class BusyboxExecutor(
      */
     private fun waitForProcessWithTimeout(
         process: Process,
-        timeoutMillis: Long
-    ): ExecutionResult {
-        return try {
-            val finished: Boolean = if (timeoutMillis > 0 && Build.VERSION.SDK_INT >= 26) {
-                process.waitFor(timeoutMillis, TimeUnit.MILLISECONDS)
-            } else {
-                // Fallback para APIs mais antigas: espera bloqueante.
-                process.waitFor()
-                true
-            }
+        timeoutMillis: Long,
+    ): ExecutionResult =
+        try {
+            val finished: Boolean =
+                if (timeoutMillis > 0 && Build.VERSION.SDK_INT >= 26) {
+                    process.waitFor(timeoutMillis, TimeUnit.MILLISECONDS)
+                } else {
+                    // Fallback para APIs mais antigas: espera bloqueante.
+                    process.waitFor()
+                    true
+                }
 
             if (!finished) {
-                Log.w(TAG, "Process timeout after ${timeoutMillis} ms, destroying...")
+                Log.w(TAG, "Process timeout after $timeoutMillis ms, destroying...")
                 process.destroy()
                 if (Build.VERSION.SDK_INT >= 26) {
                     // Dar uma chance para terminar graciosamente
@@ -245,7 +261,7 @@ class BusyboxExecutor(
                     // Em APIs antigas, forçar destruição na sequência.
                     process.destroy()
                 }
-                FailedExecution("Command timeout after ${timeoutMillis} ms")
+                FailedExecution("Command timeout after $timeoutMillis ms")
             } else {
                 val exitCode = process.exitValue()
                 if (exitCode == 0) {
@@ -258,21 +274,22 @@ class BusyboxExecutor(
             Log.e(TAG, "waitForProcessWithTimeout() failed: $e")
             FailedExecution("waitForProcessWithTimeout failed: ${e.message ?: e.toString()}")
         }
-    }
 
     /**
      * Versão simples (sem timeout) usada para comandos básicos.
      */
-    private fun getProcessResult(process: Process): ExecutionResult {
-        return try {
+    private fun getProcessResult(process: Process): ExecutionResult =
+        try {
             val exitCode = process.waitFor()
-            if (exitCode == 0) SuccessfulExecution
-            else FailedExecution("Command failed with exit code: $exitCode")
+            if (exitCode == 0) {
+                SuccessfulExecution
+            } else {
+                FailedExecution("Command failed with exit code: $exitCode")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "getProcessResult() failed: $e")
             FailedExecution("getProcessResult failed: ${e.message ?: e.toString()}")
         }
-    }
 
     // Logging helper methods for ServerService compatibility
     fun logDebug(message: String) {
@@ -297,62 +314,64 @@ class BusyboxExecutor(
 }
 
 // This class is intended to allow stubbing of elements that are unavailable during unit tests.
-class BusyboxWrapper(private val ulaFiles: UlaFiles) {
-
+class BusyboxWrapper(
+    private val ulaFiles: UlaFiles,
+) {
     /**
      * For basic commands, CWD should be applicationFilesDir.
      * Uses "sh -c" for flexibility, so caller MUST sanitize/quote args.
      */
-    fun wrapCommand(command: String): List<String> {
-        return listOf(ulaFiles.busybox.path, "sh", "-c", command)
-    }
+    fun wrapCommand(command: String): List<String> = listOf(ulaFiles.busybox.path, "sh", "-c", command)
 
     /**
      * For script calls, split on whitespace and preserve arguments.
      */
     fun wrapScript(command: String): List<String> {
-        val args = command
-            .trim()
-            .split(Regex("\\s+"))
-            .filter { it.isNotEmpty() }
+        val args =
+            command
+                .trim()
+                .split(Regex("\\s+"))
+                .filter { it.isNotEmpty() }
 
         return listOf(ulaFiles.busybox.path, "sh") + args
     }
 
-    fun getBusyboxEnv(): HashMap<String, String> {
-        return hashMapOf(
+    fun getBusyboxEnv(): HashMap<String, String> =
+        hashMapOf(
             "LIB_PATH" to ulaFiles.supportDir.absolutePath,
-            "ROOT_PATH" to ulaFiles.filesDir.absolutePath
+            "ROOT_PATH" to ulaFiles.filesDir.absolutePath,
         )
-    }
 
-    fun busyboxIsPresent(): Boolean {
-        return ulaFiles.busybox.exists()
-    }
+    fun busyboxIsPresent(): Boolean = ulaFiles.busybox.exists()
 
     // Proot scripts expect CWD to be applicationFilesDir/<filesystem>
     fun addBusyboxAndProot(command: String): List<String> {
-        val args = command
-            .trim()
-            .split(Regex("\\s+"))
-            .filter { it.isNotEmpty() }
+        val args =
+            command
+                .trim()
+                .split(Regex("\\s+"))
+                .filter { it.isNotEmpty() }
 
         return listOf(
             ulaFiles.busybox.absolutePath,
             "sh",
-            "support/execInProot.sh"
+            "support/execInProot.sh",
         ) + args
     }
 
-    fun getProotEnv(filesystemDir: File, prootDebugLevel: String): HashMap<String, String> {
+    fun getProotEnv(
+        filesystemDir: File,
+        prootDebugLevel: String,
+    ): HashMap<String, String> {
         // TODO This hack should be removed once there are no users on releases 2.5.14 - 2.6.1
         handleHangingBindingDirectories(filesystemDir)
 
         val emulatedStorageBinding =
             "-b ${ulaFiles.emulatedUserDir.absolutePath}:/storage/internal"
-        val externalStorageBinding = ulaFiles.sdCardUserDir?.run {
-            "-b ${this.absolutePath}:/storage/sdcard"
-        } ?: ""
+        val externalStorageBinding =
+            ulaFiles.sdCardUserDir?.run {
+                "-b ${this.absolutePath}:/storage/sdcard"
+            } ?: ""
 
         val bindings = "$emulatedStorageBinding $externalStorageBinding"
         val osVersion = System.getProperty("os.version") ?: "unknown"
@@ -364,13 +383,11 @@ class BusyboxWrapper(private val ulaFiles: UlaFiles) {
             "ROOTFS_PATH" to filesystemDir.absolutePath,
             "PROOT_DEBUG_LEVEL" to prootDebugLevel,
             "EXTRA_BINDINGS" to bindings,
-            "OS_VERSION" to osVersion
+            "OS_VERSION" to osVersion,
         )
     }
 
-    fun prootIsPresent(): Boolean {
-        return ulaFiles.proot.exists()
-    }
+    fun prootIsPresent(): Boolean = ulaFiles.proot.exists()
 
     fun executionScriptIsPresent(): Boolean {
         val execInProotFile = File(ulaFiles.supportDir, "execInProot.sh")

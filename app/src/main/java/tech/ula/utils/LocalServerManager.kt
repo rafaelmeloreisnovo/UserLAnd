@@ -19,9 +19,8 @@ import java.io.File
 class LocalServerManager(
     private val applicationFilesDirPath: String,
     private val busyboxExecutor: BusyboxExecutor,
-    private val logger: Logger = SentryLogger()
+    private val logger: Logger = SentryLogger(),
 ) {
-
     private val vncDisplayNumber = 51
 
     /**
@@ -47,7 +46,8 @@ class LocalServerManager(
 
         // Fallback: parse from toString(), which looks like "Process[pid=1234, hasExited=false]"
         return runCatching {
-            process.toString()
+            process
+                .toString()
                 .substringAfter("pid=", missingDelimiterValue = "")
                 .substringBefore(",", missingDelimiterValue = "")
                 .substringBefore("]", missingDelimiterValue = "")
@@ -57,7 +57,7 @@ class LocalServerManager(
         }.getOrElse {
             logRuntimeError(
                 function = "getProcessPid",
-                message = "Failed to obtain PID from Process; process.toString()='${process}'"
+                message = "Failed to obtain PID from Process; process.toString()='$process'",
             )
             -1L
         } ?: -1L
@@ -66,13 +66,17 @@ class LocalServerManager(
     /**
      * Centralized runtime error logging for this manager.
      */
-    private fun logRuntimeError(function: String, message: String) {
+    private fun logRuntimeError(
+        function: String,
+        message: String,
+    ) {
         val details = "func: $function err: $message"
-        val breadcrumb = UlaBreadcrumb(
-            "LocalServerManager",
-            BreadcrumbType.RuntimeError,
-            details
-        )
+        val breadcrumb =
+            UlaBreadcrumb(
+                "LocalServerManager",
+                BreadcrumbType.RuntimeError,
+                details,
+            )
         logger.addBreadcrumb(breadcrumb)
     }
 
@@ -108,7 +112,7 @@ class LocalServerManager(
         if (session.filesystemId <= 0L) {
             logRuntimeError(
                 function = "startServer",
-                message = "Invalid filesystemId '${session.filesystemId}' for session '${session.name}'"
+                message = "Invalid filesystemId '${session.filesystemId}' for session '${session.name}'",
             )
             return -1L
         }
@@ -120,7 +124,7 @@ class LocalServerManager(
             else -> {
                 logRuntimeError(
                     function = "startServer",
-                    message = "Unsupported serviceType '${session.serviceType}' for session '${session.name}'"
+                    message = "Unsupported serviceType '${session.serviceType}' for session '${session.name}'",
                 )
                 -1L
             }
@@ -139,7 +143,7 @@ class LocalServerManager(
         if (sessionPid <= 0L && serverPid <= 0L) {
             logRuntimeError(
                 function = "stopService",
-                message = "No valid PID found for session '${session.name}'. sessionPid=$sessionPid, serverPid=$serverPid"
+                message = "No valid PID found for session '${session.name}'. sessionPid=$sessionPid, serverPid=$serverPid",
             )
             deletePidFile(session)
             return
@@ -196,7 +200,7 @@ class LocalServerManager(
         if (pidFile.exists() && !pidFile.delete()) {
             logRuntimeError(
                 function = "deletePidFile",
-                message = "Failed to delete pidfile at '${pidFile.absolutePath}'"
+                message = "Failed to delete pidfile at '${pidFile.absolutePath}'",
             )
         }
     }
@@ -211,12 +215,13 @@ class LocalServerManager(
         val command = "/support/startSSHServer.sh"
         val env = buildBaseEnv(session)
 
-        val result = busyboxExecutor.executeProotCommand(
-            command = command,
-            filesystemDirName = filesystemDirName,
-            commandShouldTerminate = false,
-            env = env
-        )
+        val result =
+            busyboxExecutor.executeProotCommand(
+                command = command,
+                filesystemDirName = filesystemDirName,
+                commandShouldTerminate = false,
+                env = env,
+            )
 
         return when (result) {
             is OngoingExecution -> {
@@ -224,7 +229,7 @@ class LocalServerManager(
                 if (pid <= 0L) {
                     logRuntimeError(
                         function = "startSSHServer",
-                        message = "Obtained invalid PID ($pid) for session '${session.name}'"
+                        message = "Obtained invalid PID ($pid) for session '${session.name}'",
                     )
                     -1L
                 } else {
@@ -249,18 +254,20 @@ class LocalServerManager(
         deletePidFile(session)
 
         val command = "/support/startVNCServer.sh"
-        val env = buildBaseEnv(session).apply {
-            this["INITIAL_USERNAME"] = session.username
-            this["INITIAL_VNC_PASSWORD"] = session.vncPassword
-            this["DIMENSIONS"] = session.geometry
-        }
+        val env =
+            buildBaseEnv(session).apply {
+                this["INITIAL_USERNAME"] = session.username
+                this["INITIAL_VNC_PASSWORD"] = session.vncPassword
+                this["DIMENSIONS"] = session.geometry
+            }
 
-        val result = busyboxExecutor.executeProotCommand(
-            command = command,
-            filesystemDirName = filesystemDirName,
-            commandShouldTerminate = false,
-            env = env
-        )
+        val result =
+            busyboxExecutor.executeProotCommand(
+                command = command,
+                filesystemDirName = filesystemDirName,
+                commandShouldTerminate = false,
+                env = env,
+            )
 
         return when (result) {
             is OngoingExecution -> {
@@ -268,7 +275,7 @@ class LocalServerManager(
                 if (pid <= 0L) {
                     logRuntimeError(
                         function = "startVNCServer",
-                        message = "Obtained invalid PID ($pid) for session '${session.name}'"
+                        message = "Obtained invalid PID ($pid) for session '${session.name}'",
                     )
                     -1L
                 } else {
@@ -293,18 +300,20 @@ class LocalServerManager(
         deletePidFile(session)
 
         val command = "/support/startXSDLServer.sh"
-        val env = buildBaseEnv(session).apply {
-            this["INITIAL_USERNAME"] = session.username
-            this["DISPLAY"] = ":4721"
-            this["PULSE_SERVER"] = "127.0.0.1:4721"
-        }
+        val env =
+            buildBaseEnv(session).apply {
+                this["INITIAL_USERNAME"] = session.username
+                this["DISPLAY"] = ":4721"
+                this["PULSE_SERVER"] = "127.0.0.1:4721"
+            }
 
-        val result = busyboxExecutor.executeProotCommand(
-            command = command,
-            filesystemDirName = filesystemDirName,
-            commandShouldTerminate = false,
-            env = env
-        )
+        val result =
+            busyboxExecutor.executeProotCommand(
+                command = command,
+                filesystemDirName = filesystemDirName,
+                commandShouldTerminate = false,
+                env = env,
+            )
 
         return when (result) {
             is OngoingExecution -> {
@@ -312,7 +321,7 @@ class LocalServerManager(
                 if (pid <= 0L) {
                     logRuntimeError(
                         function = "setDisplayNumberAndStartTwm",
-                        message = "Obtained invalid PID ($pid) for session '${session.name}'"
+                        message = "Obtained invalid PID ($pid) for session '${session.name}'",
                     )
                     -1L
                 } else {
@@ -331,18 +340,15 @@ class LocalServerManager(
 
     // ---- PID utilities bound to Session ----
 
-    private fun Session.pidRelativeFilePath(): String {
-        return when (this.serviceType) {
+    private fun Session.pidRelativeFilePath(): String =
+        when (this.serviceType) {
             ServiceType.Ssh -> "/run/dropbear.pid"
             ServiceType.Vnc -> "/home/${this.username}/.vnc/localhost:$vncDisplayNumber.pid"
             ServiceType.Xsdl -> "/tmp/xsdl.pidfile"
             else -> "error"
         }
-    }
 
-    private fun Session.pidFilePath(): String {
-        return "$applicationFilesDirPath/${this.filesystemId}${this.pidRelativeFilePath()}"
-    }
+    private fun Session.pidFilePath(): String = "$applicationFilesDirPath/${this.filesystemId}${this.pidRelativeFilePath()}"
 
     /**
      * Read the server PID from the pidfile, if present and parseable.
@@ -358,14 +364,14 @@ class LocalServerManager(
             text.toLong().takeIf { it > 0L } ?: run {
                 logRuntimeError(
                     function = "serverPid",
-                    message = "Non-positive PID '$text' in pidfile '$pidFilePath'"
+                    message = "Non-positive PID '$text' in pidfile '$pidFilePath'",
                 )
                 -1L
             }
         } catch (e: Exception) {
             logRuntimeError(
                 function = "serverPid",
-                message = "Failed to parse PID from pidfile '$pidFilePath': ${e.message}"
+                message = "Failed to parse PID from pidfile '$pidFilePath': ${e.message}",
             )
             -1L
         }

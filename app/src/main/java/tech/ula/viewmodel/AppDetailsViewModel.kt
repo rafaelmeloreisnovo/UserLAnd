@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package tech.ula.viewmodel
 
 import android.content.SharedPreferences
@@ -9,7 +11,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.google.gson.Gson
-import kotlinx.coroutines.* // ktlint-disable no-wildcard-imports
+import kotlinx.coroutines.*
 import tech.ula.R
 import tech.ula.model.daos.SessionDao
 import tech.ula.model.entities.App
@@ -28,23 +30,42 @@ data class AppDetailsViewState(
     val describeStateHintEnabled: Boolean,
     @StringRes val describeStateText: Int?,
     @IdRes val selectedServiceTypeButton: Int?,
-    val autoStartEnabled: Boolean
+    val autoStartEnabled: Boolean,
 )
 
 sealed class AppDetailsEvent {
-    data class SubmitApp(val app: App) : AppDetailsEvent()
-    data class ServiceTypeChanged(@IdRes val selectedButton: Int, val app: App) : AppDetailsEvent()
-    data class AutoStartChanged(val autoStartEnabled: Boolean, val app: App) : AppDetailsEvent()
+    data class SubmitApp(
+        val app: App,
+    ) : AppDetailsEvent()
+
+    data class ServiceTypeChanged(
+        @IdRes val selectedButton: Int,
+        val app: App,
+    ) : AppDetailsEvent()
+
+    data class AutoStartChanged(
+        val autoStartEnabled: Boolean,
+        val app: App,
+    ) : AppDetailsEvent()
 }
 
-class AppDetailsViewModel(private val sessionDao: SessionDao, private val appDetails: AppDetails, private val buildVersion: Int, private val prefs: SharedPreferences) : ViewModel(), CoroutineScope {
+class AppDetailsViewModel(
+    private val sessionDao: SessionDao,
+    private val appDetails: AppDetails,
+    private val buildVersion: Int,
+    private val prefs: SharedPreferences,
+) : ViewModel(),
+    CoroutineScope {
     private val job = Job()
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Main + job
 
     val viewState = MutableLiveData<AppDetailsViewState>()
 
-    fun submitEvent(event: AppDetailsEvent, coroutineScope: CoroutineScope = this) = coroutineScope.launch {
+    fun submitEvent(
+        event: AppDetailsEvent,
+        coroutineScope: CoroutineScope = this,
+    ) = coroutineScope.launch {
         return@launch when (event) {
             is AppDetailsEvent.SubmitApp -> constructView(event.app)
             is AppDetailsEvent.ServiceTypeChanged -> handleServiceTypeChanged(event)
@@ -57,13 +78,20 @@ class AppDetailsViewModel(private val sessionDao: SessionDao, private val appDet
         viewState.postValue(buildViewState(app, appSession))
     }
 
-    private suspend fun getAppSession(app: App): Session? = withContext(Dispatchers.IO) {
-        val listOfPotentialSessions = sessionDao.findAppsSession(app.name)
-        return@withContext if (listOfPotentialSessions.isEmpty()) null
-        else listOfPotentialSessions.first()
-    }
+    private suspend fun getAppSession(app: App): Session? =
+        withContext(Dispatchers.IO) {
+            val listOfPotentialSessions = sessionDao.findAppsSession(app.name)
+            return@withContext if (listOfPotentialSessions.isEmpty()) {
+                null
+            } else {
+                listOfPotentialSessions.first()
+            }
+        }
 
-    private fun buildViewState(app: App, appSession: Session?): AppDetailsViewState {
+    private fun buildViewState(
+        app: App,
+        appSession: Session?,
+    ): AppDetailsViewState {
         val enableRadioButtons = radioButtonsShouldBeEnabled(appSession)
 
         val appIconUri = appDetails.findIconUri(app.name)
@@ -77,46 +105,50 @@ class AppDetailsViewModel(private val sessionDao: SessionDao, private val appDet
         val describeStateHintEnabled = getStateHintEnabled(appSession)
         val describeStateText = getStateDescription(appSession)
 
-        val selectedServiceTypeButton = when (appSession?.serviceType) {
-            ServiceType.Ssh -> R.id.apps_ssh_preference
-            ServiceType.Vnc -> R.id.apps_vnc_preference
-            ServiceType.Xsdl -> R.id.apps_xsdl_preference
-            else -> null
-        }
+        val selectedServiceTypeButton =
+            when (appSession?.serviceType) {
+                ServiceType.Ssh -> R.id.apps_ssh_preference
+                ServiceType.Vnc -> R.id.apps_vnc_preference
+                ServiceType.Xsdl -> R.id.apps_xsdl_preference
+                else -> null
+            }
 
         var autoAppEnabled = false
         val gson = Gson()
         val json = prefs.getString("AutoApp", " ")
-        if (json != null)
+        if (json != null) {
             if (json.compareTo(" ") != 0) {
                 val autoApp = gson.fromJson(json, App::class.java)
-                if (autoApp.name.compareTo(appTitle) == 0)
+                if (autoApp.name.compareTo(appTitle) == 0) {
                     autoAppEnabled = true
+                }
             }
+        }
 
         return AppDetailsViewState(
-                appIconUri,
-                appTitle,
-                appDescription,
-                sshEnabled,
-                vncEnabled,
-                xsdlEnabled,
-                describeStateHintEnabled,
-                describeStateText,
-                selectedServiceTypeButton,
-                autoAppEnabled
+            appIconUri,
+            appTitle,
+            appDescription,
+            sshEnabled,
+            vncEnabled,
+            xsdlEnabled,
+            describeStateHintEnabled,
+            describeStateText,
+            selectedServiceTypeButton,
+            autoAppEnabled,
         )
     }
 
     private fun handleServiceTypeChanged(event: AppDetailsEvent.ServiceTypeChanged) {
         this.launch {
             val appSession = getAppSession(event.app)
-            val selectedServiceType = when (event.selectedButton) {
-                R.id.apps_ssh_preference -> ServiceType.Ssh
-                R.id.apps_vnc_preference -> ServiceType.Vnc
-                R.id.apps_xsdl_preference -> ServiceType.Xsdl
-                else -> ServiceType.Unselected
-            }
+            val selectedServiceType =
+                when (event.selectedButton) {
+                    R.id.apps_ssh_preference -> ServiceType.Ssh
+                    R.id.apps_vnc_preference -> ServiceType.Vnc
+                    R.id.apps_xsdl_preference -> ServiceType.Xsdl
+                    else -> ServiceType.Unselected
+                }
 
             if (appSession == null) return@launch
 
@@ -131,28 +163,27 @@ class AppDetailsViewModel(private val sessionDao: SessionDao, private val appDet
 
     private fun handleAutoStartChanged(event: AppDetailsEvent.AutoStartChanged) {
         this.launch {
-            if (event.autoStartEnabled)
+            if (event.autoStartEnabled) {
                 with(prefs.edit()) {
                     val gson = Gson()
                     val json = gson.toJson(event.app)
                     putString("AutoApp", json)
                     apply()
                 }
-            else
+            } else {
                 with(prefs.edit()) {
                     remove("AutoApp")
                     apply()
                 }
+            }
         }
     }
 
-    private fun getStateHintEnabled(appSession: Session?): Boolean {
-        return !radioButtonsShouldBeEnabled(appSession)
-    }
+    private fun getStateHintEnabled(appSession: Session?): Boolean = !radioButtonsShouldBeEnabled(appSession)
 
     @StringRes
-    private fun getStateDescription(appSession: Session?): Int? {
-        return when {
+    private fun getStateDescription(appSession: Session?): Int? =
+        when {
             appSession == null || appSession.serviceType == ServiceType.Unselected -> {
                 R.string.info_finish_app_setup
             }
@@ -163,20 +194,22 @@ class AppDetailsViewModel(private val sessionDao: SessionDao, private val appDet
                 null
             }
         }
-    }
 
     private fun radioButtonsShouldBeEnabled(appSession: Session?): Boolean {
         val serviceType = appSession?.serviceType ?: ServiceType.Unselected
         val isNotActive = appSession?.active == false
         return appSession != null &&
-                isNotActive &&
-                serviceType != ServiceType.Unselected
+            isNotActive &&
+            serviceType != ServiceType.Unselected
     }
 }
 
-class AppDetailsViewmodelFactory(private val sessionDao: SessionDao, private val appDetails: AppDetails, private val buildVersion: Int, private val prefs: SharedPreferences) : ViewModelProvider.NewInstanceFactory() {
+class AppDetailsViewmodelFactory(
+    private val sessionDao: SessionDao,
+    private val appDetails: AppDetails,
+    private val buildVersion: Int,
+    private val prefs: SharedPreferences,
+) : ViewModelProvider.NewInstanceFactory() {
     @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return AppDetailsViewModel(sessionDao, appDetails, buildVersion, prefs) as T
-    }
+    override fun <T : ViewModel> create(modelClass: Class<T>): T = AppDetailsViewModel(sessionDao, appDetails, buildVersion, prefs) as T
 }

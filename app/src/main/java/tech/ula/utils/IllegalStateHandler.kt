@@ -1,12 +1,13 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package tech.ula.utils
 
 import tech.ula.R
-import tech.ula.viewmodel.* // ktlint-disable no-wildcard-imports
+import tech.ula.viewmodel.*
 
 object IllegalStateHandler {
-
-    fun getLocalizationData(state: IllegalState): Localization {
-        return when (state) {
+    fun getLocalizationData(state: IllegalState): Localization =
+        when (state) {
             is IllegalStateTransition ->
                 LocalizationData(R.string.illegal_state_transition, listOf(state.transition))
             is TooManySelectionsMadeWhenPermissionsGranted ->
@@ -48,5 +49,4 @@ object IllegalStateHandler {
             is BusyboxMissing ->
                 LocalizationData(R.string.illegal_state_busybox_missing)
         }
-    }
 }

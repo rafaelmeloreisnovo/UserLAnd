@@ -12,13 +12,22 @@ import tech.ula.R
 import tech.ula.model.entities.Filesystem
 import tech.ula.utils.AppDetails
 
-class FilesystemListAdapter(private var activity: Activity, private var items: List<Filesystem>) : BaseAdapter() {
-    private class ViewHolder(row: View) {
+class FilesystemListAdapter(
+    private var activity: Activity,
+    private var items: List<Filesystem>,
+) : BaseAdapter() {
+    private class ViewHolder(
+        row: View,
+    ) {
         var imageViewType: ImageView = row.findViewById(R.id.image_list_item_filesystem_type)
         var textViewName: TextView = row.findViewById(R.id.text_filesystem_name)
     }
 
-    override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+    override fun getView(
+        position: Int,
+        convertView: View?,
+        parent: ViewGroup?,
+    ): View {
         val view: View?
         val viewHolder: ViewHolder
         if (convertView == null) {
@@ -40,15 +49,9 @@ class FilesystemListAdapter(private var activity: Activity, private var items: L
         return view as View
     }
 
-    override fun getItem(position: Int): Filesystem {
-        return items[position]
-    }
+    override fun getItem(position: Int): Filesystem = items[position]
 
-    override fun getItemId(position: Int): Long {
-        return position.toLong()
-    }
+    override fun getItemId(position: Int): Long = position.toLong()
 
-    override fun getCount(): Int {
-        return items.size
-    }
+    override fun getCount(): Int = items.size
 }

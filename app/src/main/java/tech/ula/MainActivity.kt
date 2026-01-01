@@ -15,8 +15,10 @@ import tech.ula.ui.SessionListFragment
  * TODO: Full ViewBinding migration required - the original code references
  * kotlin-android-extensions synthetics which are no longer supported in Kotlin 1.8+.
  */
-class MainActivity : AppCompatActivity(), SessionListFragment.SessionSelection, AppsListFragment.AppSelection {
-
+class MainActivity :
+    AppCompatActivity(),
+    SessionListFragment.SessionSelection,
+    AppsListFragment.AppSelection {
     private lateinit var binding: ActivityMainBinding
     private var progressDialog: ProgressDialog? = null
 
@@ -30,13 +32,14 @@ class MainActivity : AppCompatActivity(), SessionListFragment.SessionSelection, 
     @Suppress("DEPRECATION")
     fun updateFilesystemExportProgress(details: String) {
         if (progressDialog == null) {
-            progressDialog = ProgressDialog(this).apply {
-                setMessage(getString(R.string.progress_exporting_filesystem))
-                setCancelable(false)
-                setProgressStyle(ProgressDialog.STYLE_HORIZONTAL)
-                setProgress(0)
-                show()
-            }
+            progressDialog =
+                ProgressDialog(this).apply {
+                    setMessage(getString(R.string.progress_exporting_filesystem))
+                    setCancelable(false)
+                    setProgressStyle(ProgressDialog.STYLE_HORIZONTAL)
+                    setProgress(0)
+                    show()
+                }
         }
         progressDialog?.setMessage(details)
     }
@@ -49,17 +52,22 @@ class MainActivity : AppCompatActivity(), SessionListFragment.SessionSelection, 
     @Suppress("DEPRECATION")
     fun updateFilesystemDeleteProgress() {
         if (progressDialog == null) {
-            progressDialog = ProgressDialog(this).apply {
-                setMessage(getString(R.string.progress_deleting_filesystem))
-                setCancelable(false)
-                setProgressStyle(ProgressDialog.STYLE_SPINNER)
-                show()
-            }
+            progressDialog =
+                ProgressDialog(this).apply {
+                    setMessage(getString(R.string.progress_deleting_filesystem))
+                    setCancelable(false)
+                    setProgressStyle(ProgressDialog.STYLE_SPINNER)
+                    show()
+                }
         }
     }
 
-    fun displayGenericErrorDialog(titleResId: Int, messageResId: Int) {
-        AlertDialog.Builder(this)
+    fun displayGenericErrorDialog(
+        titleResId: Int,
+        messageResId: Int,
+    ) {
+        AlertDialog
+            .Builder(this)
             .setTitle(titleResId)
             .setMessage(messageResId)
             .setPositiveButton(R.string.button_ok) { dialog, _ -> dialog.dismiss() }
@@ -71,7 +79,10 @@ class MainActivity : AppCompatActivity(), SessionListFragment.SessionSelection, 
         // TODO: Implement session selection handling
     }
 
-    override fun appHasBeenSelected(app: App, autoStart: Boolean) {
+    override fun appHasBeenSelected(
+        app: App,
+        autoStart: Boolean,
+    ) {
         // TODO: Implement app selection handling
     }
 }

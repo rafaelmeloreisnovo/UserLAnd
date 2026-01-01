@@ -1,14 +1,16 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package tech.ula.viewmodel
 
+import android.content.ContentResolver
+import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import android.content.ContentResolver
-import android.net.Uri
-import kotlinx.coroutines.* // ktlint-disable no-wildcard-imports
-import tech.ula.model.repositories.UlaDatabase
+import kotlinx.coroutines.*
 import tech.ula.model.entities.Filesystem
+import tech.ula.model.repositories.UlaDatabase
 import java.io.File
 import java.io.FileOutputStream
 import java.lang.Exception
@@ -16,15 +18,25 @@ import java.util.Locale
 import kotlin.coroutines.CoroutineContext
 
 sealed class FilesystemImportStatus
+
 object ImportSuccess : FilesystemImportStatus()
+
 object UriUnselected : FilesystemImportStatus()
-data class ImportFailure(val reason: String) : FilesystemImportStatus()
+
+data class ImportFailure(
+    val reason: String,
+) : FilesystemImportStatus()
 
 sealed class FilesystemEditViewState
+
 object Success : FilesystemEditViewState()
+
 object ImportSuccessState : FilesystemEditViewState()
 
-class FilesystemEditViewModel(private val ulaDatabase: UlaDatabase) : ViewModel(), CoroutineScope {
+class FilesystemEditViewModel(
+    private val ulaDatabase: UlaDatabase,
+) : ViewModel(),
+    CoroutineScope {
     private val job = Job()
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Main + job
@@ -39,15 +51,14 @@ class FilesystemEditViewModel(private val ulaDatabase: UlaDatabase) : ViewModel(
 
     var backupUri: Uri? = null
 
-    fun getImportStatusLiveData(): LiveData<FilesystemImportStatus> {
-        return importStatusLiveData
-    }
+    fun getImportStatusLiveData(): LiveData<FilesystemImportStatus> = importStatusLiveData
 
-    fun getViewState(): LiveData<FilesystemEditViewState> {
-        return viewStateLiveData
-    }
+    fun getViewState(): LiveData<FilesystemEditViewState> = viewStateLiveData
 
-    fun insertFilesystem(filesystem: Filesystem, coroutineScope: CoroutineScope = this) = coroutineScope.launch {
+    fun insertFilesystem(
+        filesystem: Filesystem,
+        coroutineScope: CoroutineScope = this,
+    ) = coroutineScope.launch {
         withContext(Dispatchers.IO) {
             ulaDatabase.filesystemDao().insertFilesystem(filesystem)
         }
@@ -58,7 +69,7 @@ class FilesystemEditViewModel(private val ulaDatabase: UlaDatabase) : ViewModel(
         contentResolver: ContentResolver,
         filesystem: Filesystem,
         filesDir: File,
-        coroutineScope: CoroutineScope = this
+        coroutineScope: CoroutineScope = this,
     ) = coroutineScope.launch {
         withContext(Dispatchers.IO) {
             if (backupUri == null) {
@@ -99,7 +110,10 @@ class FilesystemEditViewModel(private val ulaDatabase: UlaDatabase) : ViewModel(
         }
     }
 
-    fun updateFilesystem(filesystem: Filesystem, coroutineScope: CoroutineScope = this) = coroutineScope.launch {
+    fun updateFilesystem(
+        filesystem: Filesystem,
+        coroutineScope: CoroutineScope = this,
+    ) = coroutineScope.launch {
         withContext(Dispatchers.IO) {
             ulaDatabase.filesystemDao().updateFilesystem(filesystem)
             ulaDatabase.sessionDao().updateFilesystemNamesForAllSessions()
@@ -108,9 +122,9 @@ class FilesystemEditViewModel(private val ulaDatabase: UlaDatabase) : ViewModel(
     }
 }
 
-class FilesystemEditViewmodelFactory(private val ulaDatabase: UlaDatabase) : ViewModelProvider.NewInstanceFactory() {
+class FilesystemEditViewmodelFactory(
+    private val ulaDatabase: UlaDatabase,
+) : ViewModelProvider.NewInstanceFactory() {
     @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return FilesystemEditViewModel(ulaDatabase) as T
-    }
+    override fun <T : ViewModel> create(modelClass: Class<T>): T = FilesystemEditViewModel(ulaDatabase) as T
 }

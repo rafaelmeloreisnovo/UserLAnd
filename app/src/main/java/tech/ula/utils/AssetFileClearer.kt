@@ -8,7 +8,7 @@ class AssetFileClearer(
     private val ulaFiles: UlaFiles,
     private val assetDirectoryNames: Set<String>,
     private val busyboxExecutor: BusyboxExecutor,
-    private val logger: Logger = SentryLogger()
+    private val logger: Logger = SentryLogger(),
 ) {
     @Throws(FileNotFoundException::class, IllegalStateException::class)
     suspend fun clearAllSupportAssets() {

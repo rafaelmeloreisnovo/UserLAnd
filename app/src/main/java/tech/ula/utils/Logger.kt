@@ -15,36 +15,30 @@ sealed class BreadcrumbType {
     // These types should override toString with return values of < 15 characters so that they
     // are easily identified in the Sentry UI.
     object ReceivedIntent : BreadcrumbType() {
-        override fun toString(): String {
-            return "Intent received"
-        }
+        override fun toString(): String = "Intent received"
     }
+
     object SubmittedEvent : BreadcrumbType() {
-        override fun toString(): String {
-            return "Event submitted"
-        }
+        override fun toString(): String = "Event submitted"
     }
+
     object ReceivedEvent : BreadcrumbType() {
-        override fun toString(): String {
-            return "Event received"
-        }
+        override fun toString(): String = "Event received"
     }
+
     object ObservedState : BreadcrumbType() {
-        override fun toString(): String {
-            return "State observed"
-        }
+        override fun toString(): String = "State observed"
     }
+
     object RuntimeError : BreadcrumbType() {
-        override fun toString(): String {
-            return "Runtime error"
-        }
+        override fun toString(): String = "Runtime error"
     }
 }
 
 data class UlaBreadcrumb(
     val originatingClass: String,
     val type: BreadcrumbType,
-    val details: String
+    val details: String,
 )
 
 interface Logger {
