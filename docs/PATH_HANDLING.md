@@ -57,7 +57,7 @@ joined="$base/$component"
 
 The `scripts/path_validator.sh` utility provides functions for:
 
-- **Normalizing paths**: Remove duplicate consecutive segments
+- **Normalizing paths**: Remove duplicate consecutive segments, excluding common repeated names (like `src`, `build`, `node_modules`)
 - **Detecting doubled paths**: Identify problematic path patterns
 - **Safe joining**: Combine path components without duplication
 
@@ -82,7 +82,7 @@ The `scripts/build_static.sh` script implements several safeguards:
 1. **Explicit path construction**: Source paths are explicitly constructed as `$SRC_DIR/$src`
 2. **File existence validation**: Checks that source files exist before compilation
 3. **Clear error messages**: Provides helpful diagnostics when files are not found
-4. **Normalization with warnings**: `SRC_DIR` and `OUT_DIR` are normalized (when the helper is available) and emit warnings if a doubled segment is detected, without requiring the target directories to already exist.
+4. **Normalization with warnings**: `SRC_DIR` and `OUT_DIR` are only rewritten when `has_doubled_path` flags a problematic consecutive duplicate. Otherwise, the original paths are kept and warnings may still be emitted, without requiring the target directories to already exist.
 
 ```bash
 build() {
@@ -144,9 +144,11 @@ FILE="$SRC_DIR/UserLAnd/file.c"  # WRONG if SRC_DIR already has it
 
 **Solution:**
 ```bash
-# Validate and normalize external inputs
+# Validate and normalize external inputs (only rewrite when a problematic duplicate is detected)
 if [[ -n "${SRC_DIR:-}" ]]; then
-  SRC_DIR="$(normalize_path "$SRC_DIR")"
+  if has_doubled_path "$SRC_DIR"; then
+    SRC_DIR="$(normalize_path "$SRC_DIR")"
+  fi
 fi
 ```
 
@@ -165,7 +167,7 @@ Test path construction with various inputs:
 ./scripts/path_validator.sh check "/home/user/user/file.c"
 # Expected: WARNING
 
-# Test 3: Normalize doubled path
+# Test 3: Normalize doubled path (non-allowlisted)
 ./scripts/path_validator.sh normalize "/path/to/dir/dir/file"
 # Expected: /path/to/dir/file
 ```
@@ -181,8 +183,8 @@ Verify build system with different path configurations:
 # Test with custom SRC_DIR
 SRC_DIR="/custom/path" ./scripts/build_static.sh
 
-# Test with doubled SRC_DIR (should be normalized)
-SRC_DIR="/path/UserLAnd/UserLAnd" ./scripts/build_static.sh
+# Test with doubled SRC_DIR (problematic duplicates should be normalized)
+SRC_DIR="/path/to/dir/dir" ./scripts/build_static.sh
 ```
 
 ## Rafaelia Module Integration
@@ -210,7 +212,7 @@ Path handling follows these standards:
 
 1. **Defensive Programming**: Always validate paths before use
 2. **Explicit Construction**: Build paths explicitly rather than relying on implicit behavior
-3. **Normalization**: Remove redundant path components
+3. **Normalization**: Remove redundant path components only when a problematic duplicate is detected
 4. **Documentation**: Clear comments explaining path construction logic
 5. **Testing**: Comprehensive tests for edge cases
 

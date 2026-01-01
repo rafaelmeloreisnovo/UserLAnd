@@ -3,7 +3,25 @@
 # Prevents path doubling issues in build scripts
 set -euo pipefail
 
-# Function to normalize a path by removing duplicate path segments
+# Common directory names that might legitimately repeat at multiple levels
+COMMON_REPEAT_SEGMENTS=(
+    bin lib usr opt etc var tmp home root
+    src build test tests dist out
+    node_modules vendor
+)
+
+is_common_repeat_segment() {
+    local segment="$1"
+    local candidate
+    for candidate in "${COMMON_REPEAT_SEGMENTS[@]}"; do
+        if [[ "$segment" == "$candidate" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Function to normalize a path by removing duplicate non-common path segments
 # Usage: normalize_path "/path/to/UserLAnd/UserLAnd/file"
 # Output: "/path/to/UserLAnd/file"
 #
@@ -21,6 +39,7 @@ normalize_path() {
     local -a components
     IFS='/' read -ra components <<< "$input_path"
     
+    # Remove duplicate consecutive segments (except common repeated names)
     # Check if this looks like a GitHub Actions workspace path
     # Pattern: /home/runner/work/{org}/{repo}
     local is_github_actions=0
@@ -57,6 +76,8 @@ normalize_path() {
             # Otherwise skip the duplicate (implicit - no else needed)
         else
             # Not a duplicate, always add it
+            normalized+=("$comp")
+        elif is_common_repeat_segment "$comp"; then
             normalized+=("$comp")
         fi
         prev="$comp"
