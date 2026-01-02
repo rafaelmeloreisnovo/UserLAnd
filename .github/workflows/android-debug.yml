@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -41,7 +41,7 @@ jobs:
           # ./gradlew test --stacktrace
 
       - name: Upload APK
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: android-debug-manual-apk
           path: app/build/outputs/apk/debug/*.apk
