@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -74,14 +74,14 @@ jobs:
           find app/build/outputs/apk -name "*.apk" -exec ls -lh {} \;
 
       - name: Upload Debug APK
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: UserLAnd-Debug-Unsigned
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
 
       - name: Upload Release APK
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: UserLAnd-Release-Unsigned
           path: app/build/outputs/apk/release/*.apk
