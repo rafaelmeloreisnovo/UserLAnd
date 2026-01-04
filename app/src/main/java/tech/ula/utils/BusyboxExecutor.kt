@@ -40,6 +40,21 @@ class BusyboxExecutor(
 
     private val discardOutput: (String) -> Any = { Log.d(TAG, it) }
 
+    private fun ensureExecPermissions() {
+        try {
+            val busyboxFile = ulaFiles.busybox
+            val prootFile = ulaFiles.proot
+            if (busyboxFile.exists() && !busyboxFile.canExecute()) {
+                busyboxFile.setExecutable(true, false)
+            }
+            if (prootFile.exists() && !prootFile.canExecute()) {
+                prootFile.setExecutable(true, false)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "ensureExecPermissions failed: ${e.message}")
+        }
+    }
+
     fun executeScript(
         scriptCall: String,
         listener: (String) -> Any = discardOutput,
@@ -64,6 +79,9 @@ class BusyboxExecutor(
         command: List<String>,
         listener: (String) -> Any,
     ): ExecutionResult {
+        // Garante permissões executáveis antes de checar presença
+        ensureExecPermissions()
+
         if (!busyboxWrapper.busyboxIsPresent()) {
             Log.e(TAG, "busybox binary missing; cannot run command: $command")
             return MissingExecutionAsset("busybox")
@@ -104,6 +122,9 @@ class BusyboxExecutor(
         listener: (String) -> Any = discardOutput,
         coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
     ): ExecutionResult {
+        // Garante permissões executáveis antes de checar presença
+        ensureExecPermissions()
+
         when {
             !busyboxWrapper.busyboxIsPresent() ->
                 return MissingExecutionAsset("busybox")
