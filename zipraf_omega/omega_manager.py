@@ -26,7 +26,7 @@ import base64
 try:
     from cryptography.fernet import Fernet
     from cryptography.hazmat.primitives import hashes
-    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
     CRYPTO_AVAILABLE = True
 except ImportError:
     CRYPTO_AVAILABLE = False
@@ -126,7 +126,7 @@ class ZipRafOmegaManager:
             
         # Deriva uma chave da senha usando PBKDF2
         salt = b'zipraf_omega_salt_v1'  # Em produção, use salt aleatório
-        kdf = PBKDF2(
+        kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
             salt=salt,
