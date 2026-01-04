@@ -46,7 +46,6 @@ jobs:
       - name: 🔍 Run workflow validator
         id: validate
         run: |
-          chmod +x tools/check_workflows.py
           python tools/check_workflows.py || true
           
       - name: 📊 Display findings
@@ -61,7 +60,7 @@ jobs:
           import json
           import sys
           
-          with open('workflow_findings.json', 'r') as f:
+          with open('workflow_findings.json', 'r', encoding='utf-8') as f:
               findings = json.load(f)
           
           if not findings:

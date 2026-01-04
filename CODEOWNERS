@@ -20,7 +20,6 @@
 /SECURITY.md @rafaelmeloreisnovo
 
 # CI/CD and build configuration
-/.github/workflows/*.yml @rafaelmeloreisnovo
 /.circleci/ @rafaelmeloreisnovo
 /build.gradle @rafaelmeloreisnovo
 /gradle/ @rafaelmeloreisnovo

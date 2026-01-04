@@ -155,15 +155,10 @@ class EthicaEngine:
     
     def _has_apparent_base_case(self, node: ast.FunctionDef) -> bool:
         """Check if function has an apparent base case for recursion"""
-        # Look for early returns or if statements that might be base cases
-        for stmt in node.body:
+        # Look for early returns anywhere in the function body
+        for stmt in ast.walk(node):
             if isinstance(stmt, ast.Return):
                 return True
-            if isinstance(stmt, ast.If):
-                # If has a return statement, might be a base case
-                for if_stmt in ast.walk(stmt):
-                    if isinstance(if_stmt, ast.Return):
-                        return True
         return False
 
 

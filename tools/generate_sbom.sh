@@ -47,7 +47,10 @@ check_dependencies() {
         # Try to install syft
         if command -v curl &> /dev/null; then
             log_info "Installing Syft via curl..."
-            curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+            local INSTALL_BIN_DIR="${HOME}/.local/bin"
+            mkdir -p "${INSTALL_BIN_DIR}"
+            curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b "${INSTALL_BIN_DIR}"
+            export PATH="${INSTALL_BIN_DIR}:${PATH}"
         else
             log_error "curl not found. Please install syft manually:"
             log_error "  https://github.com/anchore/syft#installation"

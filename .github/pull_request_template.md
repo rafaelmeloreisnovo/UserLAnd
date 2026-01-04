@@ -1,7 +1,6 @@
 ## Pull Request Checklist
 
-**Author:** @rafaelmeloreisnovo  
-**RAFCODE-Φ Seal:** ⟨Φ⟩-PR-TEMPLATE-v1.0
+<!-- This template provides a comprehensive checklist for pull requests -->
 
 ### 📋 Description
 

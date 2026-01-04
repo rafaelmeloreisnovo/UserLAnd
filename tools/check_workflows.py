@@ -9,7 +9,6 @@ This script analyzes GitHub Actions workflow files line-by-line to detect
 potential issues, security concerns, and best practices violations.
 """
 
-import os
 import sys
 import json
 import yaml
@@ -66,7 +65,7 @@ class WorkflowValidator:
                 self.findings.append({
                     "severity": "error",
                     "file": str(workflow_path.name),
-                    "line": getattr(e, 'problem_mark', {}).get('line', 0) if hasattr(e, 'problem_mark') else 0,
+                    "line": e.problem_mark.line if hasattr(e, "problem_mark") and e.problem_mark is not None else 0,
                     "message": f"YAML parsing error: {str(e)}"
                 })
                 return
@@ -194,7 +193,7 @@ def main():
     
     # Exit with error if critical or error findings
     if any(f.get('severity') in ['critical', 'error'] for f in findings):
-        sys.exit(1)
+        return 1
     
     return 0
 

@@ -81,12 +81,12 @@ jobs:
       - name: 🔨 Build with Gradle
         run: |
           echo "🔨 Building Android project..."
-          ./gradlew assembleDebug --no-daemon --warning-mode=all || echo "⚠️ Build completed with warnings"
+          ./gradlew assembleDebug --no-daemon --warning-mode=all
           
       - name: 🧪 Run Kotlin/Java tests
         run: |
           echo "🧪 Running unit tests..."
-          ./gradlew testDebugUnitTest --no-daemon || echo "⚠️ Some tests failed"
+          ./gradlew testDebugUnitTest --no-daemon
 
   # Python Tests
   python-test:
@@ -128,7 +128,9 @@ jobs:
           fi
           
           echo "🔍 Running flake8..."
-          flake8 $PYTHON_FILES --max-line-length=120 --ignore=E501,W503 || echo "⚠️ Linting found issues"
+          # E501 (line too long) is ignored because max-line-length is already set to 120
+          # W503 (line break before binary operator) is ignored per PEP 8 recommendation
+          flake8 $PYTHON_FILES --max-line-length=120 --ignore=W503 || echo "⚠️ Linting found issues"
           
       - name: 🧪 Run Python tests (if available)
         run: |
@@ -165,6 +167,8 @@ jobs:
           fi
           
           echo "🔍 Running shellcheck..."
+          # SC2086: Double quote to prevent globbing and word splitting (tolerated for compatibility)
+          # SC2181: Check exit code directly with e.g. 'if mycmd;', not indirectly with $? (style preference)
           ERROR_COUNT=0
           for script in $SHELL_SCRIPTS; do
             echo "  - Checking $script"

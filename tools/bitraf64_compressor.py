@@ -84,12 +84,13 @@ class BitRAF64Compressor:
         # Print statistics
         original_size = len(data)
         compressed_size = len(compressed)
-        ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
+        ratio = ((original_size - compressed_size) / original_size) * 100 if original_size > 0 else 0
+        label = "Compression" if ratio >= 0 else "Expansion"
         
         print(f"✓ Compressed: {input_path.name}")
         print(f"  Original size:   {original_size:,} bytes")
         print(f"  Compressed size: {compressed_size:,} bytes")
-        print(f"  Compression:     {ratio:.1f}%")
+        print(f"  {label}:         {abs(ratio):.1f}%")
         
         return output_path
 
