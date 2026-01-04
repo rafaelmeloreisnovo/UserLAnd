@@ -103,6 +103,7 @@ jobs:
     name: Build Release APK
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    needs: build-debug
 
     # Release só manual OU em tag v*
     if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}

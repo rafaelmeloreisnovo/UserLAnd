@@ -15,8 +15,60 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  setup-and-fetch:
+    name: Setup Environment and Fetch Assets
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Prepare Android SDK and NDK
+        uses: ./.github/actions/setup-android-env
+        with:
+          java-version: "17"
+          build-tools-version: "35.0.0"
+          platform-version: "35"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Fetch Assets (with retry)
+        run: |
+          set +e
+          RETRY_COUNT=0
+          MAX_RETRIES=3
+          
+          until [ $RETRY_COUNT -ge $MAX_RETRIES ]; do
+            echo "Attempt $((RETRY_COUNT+1)) of $MAX_RETRIES: Fetching assets..."
+            ./gradlew --no-daemon :app:fetchAssets && break
+            RETRY_COUNT=$((RETRY_COUNT+1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "Fetch failed, retrying in 5 seconds..."
+              sleep 5
+            fi
+          done
+          
+          if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+            echo "❌ Failed to fetch assets after $MAX_RETRIES attempts"
+            exit 1
+          fi
+          
+          echo "✅ Assets fetched successfully"
+
+  build-debug:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: setup-and-fetch
 
     steps:
       - name: Checkout code
@@ -65,13 +117,10 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew --no-daemon :app:assembleDebug -PuserlandUnsignedApk=true
 
-      - name: Build Release APK (Unsigned)
-        run: ./gradlew --no-daemon :app:assembleRelease -PuserlandUnsignedApk=true
-
-      - name: Display APK Paths
+      - name: Display Debug APK
         run: |
-          echo "📦 Generated APKs:"
-          find app/build/outputs/apk -name "*.apk" -exec ls -lh {} \;
+          echo "📦 Generated Debug APK:"
+          find app/build/outputs/apk/debug -name "*.apk" -exec ls -lh {} \;
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
@@ -79,6 +128,64 @@ jobs:
           name: UserLAnd-Debug-Unsigned
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
+
+  build-release:
+    name: Build Release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: build-debug
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Prepare Android SDK and NDK
+        uses: ./.github/actions/setup-android-env
+        with:
+          java-version: "17"
+          build-tools-version: "35.0.0"
+          platform-version: "35"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Fetch Assets (with retry)
+        run: |
+          set +e
+          RETRY_COUNT=0
+          MAX_RETRIES=3
+          
+          until [ $RETRY_COUNT -ge $MAX_RETRIES ]; do
+            echo "Attempt $((RETRY_COUNT+1)) of $MAX_RETRIES: Fetching assets..."
+            ./gradlew --no-daemon :app:fetchAssets && break
+            RETRY_COUNT=$((RETRY_COUNT+1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "Fetch failed, retrying in 5 seconds..."
+              sleep 5
+            fi
+          done
+          
+          if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+            echo "❌ Failed to fetch assets after $MAX_RETRIES attempts"
+            exit 1
+          fi
+          
+          echo "✅ Assets fetched successfully"
+
+      - name: Build Release APK (Unsigned)
+        run: ./gradlew --no-daemon :app:assembleRelease -PuserlandUnsignedApk=true
+
+      - name: Display Release APK
+        run: |
+          echo "📦 Generated Release APK:"
+          find app/build/outputs/apk/release -name "*.apk" -exec ls -lh {} \;
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
