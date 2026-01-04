@@ -51,7 +51,8 @@ def validate_workflow_file(workflow_path: Path) -> Tuple[bool, List[str]]:
     if 'name' not in workflow:
         errors.append("Missing 'name' field")
     
-    if 'on' not in workflow:
+    # YAML parses 'on' as boolean True, so check for True or 'on'
+    if 'on' not in workflow and True not in workflow:
         errors.append("Missing 'on' (trigger) field")
     
     if 'jobs' not in workflow:
@@ -72,9 +73,9 @@ def validate_workflow_file(workflow_path: Path) -> Tuple[bool, List[str]]:
                             f"using github.event context"
                         )
                     
-                    # Check for actions without version pinning
+                    # Check for actions without version pinning (skip local actions)
                     uses = step.get('uses', '')
-                    if uses and '@' not in uses:
+                    if uses and '@' not in uses and not uses.startswith('./'):
                         errors.append(
                             f"Job '{job_name}' step {idx}: Action '{uses}' not pinned to version"
                         )
