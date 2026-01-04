@@ -16,6 +16,7 @@ import tech.ula.model.entities.App
 import tech.ula.model.entities.Session
 import tech.ula.ui.AppsListFragment
 import tech.ula.ui.SessionListFragment
+import tech.ula.utils.MemoryMonitor
 
 /**
  * Minimal stub MainActivity for CI builds.
@@ -75,6 +76,13 @@ class MainActivity :
     override fun onResume() {
         super.onResume()
         Log.i(TAG, "MainActivity.onResume()")
+        
+        // Log memory status to help diagnose issues
+        try {
+            MemoryMonitor.logMemoryStatus(this, TAG)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to log memory status", e)
+        }
     }
     
     override fun onPause() {
@@ -139,13 +147,49 @@ class MainActivity :
         titleResId: Int,
         messageResId: Int,
     ) {
-        AlertDialog
-            .Builder(this)
-            .setTitle(titleResId)
-            .setMessage(messageResId)
-            .setPositiveButton(R.string.button_ok) { dialog, _ -> dialog.dismiss() }
-            .create()
-            .show()
+        try {
+            // Check if activity is still valid
+            if (isFinishing || isDestroyed) {
+                Log.w(TAG, "Cannot show dialog - activity is finishing or destroyed")
+                return
+            }
+            
+            AlertDialog
+                .Builder(this)
+                .setTitle(titleResId)
+                .setMessage(messageResId)
+                .setPositiveButton(R.string.button_ok) { dialog, _ -> dialog.dismiss() }
+                .create()
+                .show()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to display error dialog", e)
+        }
+    }
+    
+    /**
+     * Display error with fallback text if resources fail.
+     */
+    fun displayGenericErrorDialogSafe(
+        title: String,
+        message: String,
+    ) {
+        try {
+            // Check if activity is still valid
+            if (isFinishing || isDestroyed) {
+                Log.w(TAG, "Cannot show dialog - activity is finishing or destroyed")
+                return
+            }
+            
+            AlertDialog
+                .Builder(this)
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
+                .create()
+                .show()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to display error dialog", e)
+        }
     }
 
     override fun sessionHasBeenSelected(session: Session) {
