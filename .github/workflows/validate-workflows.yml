@@ -1,0 +1,112 @@
+name: 🔍 Validate Workflows
+
+# Author: @rafaelmeloreisnovo
+# RAFCODE-Φ Seal: ⟨Φ⟩-WORKFLOW-VALIDATOR-ACTION-v1.0
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - 'tools/check_workflows.py'
+  push:
+    branches:
+      - main
+      - master
+      - 'rafaelia/**'
+    paths:
+      - '.github/workflows/**'
+      - 'tools/check_workflows.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate-workflows:
+    name: Validate GitHub Actions Workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml
+          
+      - name: 🔍 Run workflow validator
+        id: validate
+        run: |
+          chmod +x tools/check_workflows.py
+          python tools/check_workflows.py || true
+          
+      - name: 📊 Display findings
+        if: always()
+        run: |
+          if [ -f workflow_findings.json ]; then
+            echo "## 🔍 Workflow Validation Findings" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            # Parse and display findings
+            python -c "
+          import json
+          import sys
+          
+          with open('workflow_findings.json', 'r') as f:
+              findings = json.load(f)
+          
+          if not findings:
+              print('✅ No issues found!')
+              sys.exit(0)
+          
+          # Group by severity
+          by_severity = {}
+          for finding in findings:
+              severity = finding.get('severity', 'unknown')
+              by_severity.setdefault(severity, []).append(finding)
+          
+          # Display by severity
+          severity_order = ['critical', 'error', 'warning', 'info']
+          emoji_map = {
+              'critical': '🔴',
+              'error': '❌',
+              'warning': '⚠️',
+              'info': 'ℹ️'
+          }
+          
+          for severity in severity_order:
+              if severity in by_severity:
+                  items = by_severity[severity]
+                  print(f'\n### {emoji_map.get(severity, \"❓\")} {severity.upper()} ({len(items)})')
+                  for item in items[:10]:  # Limit to first 10 per severity
+                      file = item.get('file', 'unknown')
+                      line = item.get('line', 0)
+                      msg = item.get('message', 'No message')
+                      if line > 0:
+                          print(f'- **{file}:{line}** - {msg}')
+                      else:
+                          print(f'- **{file}** - {msg}')
+                  if len(items) > 10:
+                      print(f'- ... and {len(items) - 10} more')
+          " >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ No findings file generated" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+      - name: 📤 Upload findings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workflow-findings
+          path: workflow_findings.json
+          if-no-files-found: warn
+          retention-days: 30

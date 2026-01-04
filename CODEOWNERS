@@ -1,0 +1,50 @@
+# CODEOWNERS - Define code ownership and review requirements
+# Author: @rafaelmeloreisnovo
+# RAFCODE-Φ Seal: ⟨Φ⟩-CODEOWNERS-v1.0
+#
+# These owners will be requested for review when someone opens a pull request
+# that modifies files in the specified paths.
+# More info: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repo
+* @rafaelmeloreisnovo
+
+# GitHub Actions workflows - require approval for security
+/.github/workflows/ @rafaelmeloreisnovo
+/.github/actions/ @rafaelmeloreisnovo
+
+# Security and governance files
+/.github/SECURITY.md @rafaelmeloreisnovo
+/.github/CONTRIBUTING.md @rafaelmeloreisnovo
+/CODEOWNERS @rafaelmeloreisnovo
+/SECURITY.md @rafaelmeloreisnovo
+
+# CI/CD and build configuration
+/.github/workflows/*.yml @rafaelmeloreisnovo
+/.circleci/ @rafaelmeloreisnovo
+/build.gradle @rafaelmeloreisnovo
+/gradle/ @rafaelmeloreisnovo
+/gradle.properties @rafaelmeloreisnovo
+
+# Code signing configuration
+/signing.properties* @rafaelmeloreisnovo
+/*.jks @rafaelmeloreisnovo
+/*.keystore @rafaelmeloreisnovo
+
+# RAFAELIA core components
+/tools/ @rafaelmeloreisnovo
+/rafaelia/ @rafaelmeloreisnovo
+/tools/check_workflows.py @rafaelmeloreisnovo
+/tools/rafaelia_ethica_engine.py @rafaelmeloreisnovo
+/tools/generate_sbom.sh @rafaelmeloreisnovo
+
+# Documentation requiring review
+/docs/README_checks.md @rafaelmeloreisnovo
+/docs/SECURITY*.md @rafaelmeloreisnovo
+
+# Dependency management
+/Gemfile @rafaelmeloreisnovo
+/Gemfile.lock @rafaelmeloreisnovo
+/requirements.txt @rafaelmeloreisnovo
+/package.json @rafaelmeloreisnovo
+/package-lock.json @rafaelmeloreisnovo
