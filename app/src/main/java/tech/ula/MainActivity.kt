@@ -4,11 +4,14 @@ import android.app.ProgressDialog
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.Menu
+import android.view.MenuItem
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import tech.ula.consent.ConsentLedger
 import tech.ula.consent.ConsentReviewActivity
 import tech.ula.databinding.ActivityMainBinding
+import tech.ula.debug.DebugPanelActivity
 import tech.ula.model.entities.App
 import tech.ula.model.entities.Session
 import tech.ula.ui.AppsListFragment
@@ -52,6 +55,21 @@ class MainActivity :
             Log.e(TAG, "Error during MainActivity initialization", e)
             // Re-throw to let global exception handler catch it
             throw e
+        }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.menu_options, menu)
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.debug_panel -> {
+                startActivity(Intent(this, DebugPanelActivity::class.java))
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
     }
 
