@@ -35,7 +35,9 @@ class FilesystemEditFragment : Fragment() {
 
     private lateinit var activityContext: Activity
     private val args: FilesystemEditFragmentArgs by navArgs()
-    private val filesystem: Filesystem by lazy { args.filesystem!! }
+    private val filesystem: Filesystem by lazy { 
+        args.filesystem ?: Filesystem(0)
+    }
     private val editExisting by lazy { args.editExisting }
 
     private val filesystemEditViewModel: FilesystemEditViewModel by lazy {

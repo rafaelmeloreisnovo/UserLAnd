@@ -118,11 +118,20 @@ class FilesystemListFragment : Fragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
-        activityContext = activity!! as MainActivity
-        filesystemListViewModel.getAllFilesystems().observe(viewLifecycleOwner, filesystemChangeObserver)
-        filesystemListViewModel.getViewState().observe(viewLifecycleOwner, viewStateObserver)
-        filesystemListViewModel.getAllActiveSessions().observe(viewLifecycleOwner, activeSessionObserver)
-        registerForContextMenu(binding.listFilesystems)
+        try {
+            // Safe cast with fallback
+            activityContext = (activity as? MainActivity) ?: run {
+                android.util.Log.e("FilesystemListFragment", "Activity is not MainActivity")
+                return
+            }
+            
+            filesystemListViewModel.getAllFilesystems().observe(viewLifecycleOwner, filesystemChangeObserver)
+            filesystemListViewModel.getViewState().observe(viewLifecycleOwner, viewStateObserver)
+            filesystemListViewModel.getAllActiveSessions().observe(viewLifecycleOwner, activeSessionObserver)
+            registerForContextMenu(binding.listFilesystems)
+        } catch (e: Exception) {
+            android.util.Log.e("FilesystemListFragment", "Error in onActivityCreated", e)
+        }
     }
 
     override fun onDestroyView() {
@@ -168,9 +177,24 @@ class FilesystemListFragment : Fragment() {
     }
 
     private fun editFilesystem(filesystem: Filesystem) {
-        val editExisting = filesystem.name != ""
-        val bundle = bundleOf("filesystem" to filesystem, "editExisting" to editExisting)
-        this.findNavController().navigate(R.id.filesystem_edit_fragment, bundle)
+        try {
+            // Check if fragment is still attached and view is available
+            if (!isAdded || view == null) {
+                return
+            }
+            
+            val editExisting = filesystem.name != ""
+            val bundle = bundleOf("filesystem" to filesystem, "editExisting" to editExisting)
+            
+            // Safe navigation with lifecycle check
+            try {
+                this.findNavController().navigate(R.id.filesystem_edit_fragment, bundle)
+            } catch (e: IllegalStateException) {
+                android.util.Log.e("FilesystemListFragment", "Navigation failed - fragment not attached", e)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("FilesystemListFragment", "Error editing filesystem", e)
+        }
     }
 
     private fun deleteFilesystem(filesystem: Filesystem) {

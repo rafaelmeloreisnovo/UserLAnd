@@ -178,9 +178,26 @@ class AppsListFragment :
     }
 
     private fun showAppDetails(app: App): Boolean {
-        val bundle = bundleOf("app" to app)
-        this.findNavController().navigate(R.id.action_app_list_to_app_details, bundle)
-        return true
+        try {
+            // Check if fragment is still attached and view is available
+            if (!isAdded || view == null) {
+                return false
+            }
+            
+            val bundle = bundleOf("app" to app)
+            
+            // Safe navigation with lifecycle check
+            try {
+                this.findNavController().navigate(R.id.action_app_list_to_app_details, bundle)
+            } catch (e: IllegalStateException) {
+                android.util.Log.e("AppsListFragment", "Navigation failed - fragment not attached", e)
+                return false
+            }
+            return true
+        } catch (e: Exception) {
+            android.util.Log.e("AppsListFragment", "Error showing app details", e)
+            return false
+        }
     }
 
     private fun stopAppSession(app: App): Boolean {

@@ -40,19 +40,54 @@ class GlobalExceptionHandler(
             Log.e(TAG, "Uncaught exception on thread ${thread.name}", throwable)
             
             // Save crash report
-            saveCrashReport(thread, throwable)
+            try {
+                saveCrashReport(thread, throwable)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to save crash report", e)
+            }
             
             // Save device report
-            saveDeviceReport(throwable)
+            try {
+                saveDeviceReport(throwable)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to save device report", e)
+            }
             
-            // Launch crash report activity
-            launchCrashReportActivity(throwable)
+            // Launch crash report activity with multiple fallback attempts
+            try {
+                launchCrashReportActivity(throwable)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to launch crash report activity", e)
+                // Try alternative approach - direct launch without extras
+                try {
+                    val intent = Intent(context, CrashReportActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    context.startActivity(intent)
+                } catch (e2: Exception) {
+                    Log.e(TAG, "Alternative crash activity launch also failed", e2)
+                }
+            }
+            
+            // Small delay to let crash activity start
+            try {
+                Thread.sleep(200)
+            } catch (e: InterruptedException) {
+                // Ignore
+            }
             
         } catch (e: Exception) {
-            Log.e(TAG, "Error in exception handler", e)
+            Log.e(TAG, "Critical error in exception handler", e)
         } finally {
             // Let default handler finish (this will terminate the process)
-            defaultHandler?.uncaughtException(thread, throwable)
+            // Note: This will call System.exit() or similar, but it's the proper way
+            // to let the system handle the crash after we've saved our diagnostics
+            try {
+                defaultHandler?.uncaughtException(thread, throwable)
+            } catch (e: Exception) {
+                // If default handler also fails, log but let process terminate naturally
+                Log.e(TAG, "Default exception handler also failed", e)
+            }
         }
     }
 
