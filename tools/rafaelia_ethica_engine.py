@@ -14,7 +14,6 @@ IMPORTANT: This is a prototype/draft implementation.
 
 import sys
 import ast
-import re
 from typing import List, Tuple
 
 
