@@ -119,7 +119,12 @@ class FilesystemListFragment : Fragment() {
         super.onActivityCreated(savedInstanceState)
 
         try {
-            activityContext = activity!! as MainActivity
+            // Safe cast with fallback
+            activityContext = (activity as? MainActivity) ?: run {
+                android.util.Log.e("FilesystemListFragment", "Activity is not MainActivity")
+                return
+            }
+            
             filesystemListViewModel.getAllFilesystems().observe(viewLifecycleOwner, filesystemChangeObserver)
             filesystemListViewModel.getViewState().observe(viewLifecycleOwner, viewStateObserver)
             filesystemListViewModel.getAllActiveSessions().observe(viewLifecycleOwner, activeSessionObserver)

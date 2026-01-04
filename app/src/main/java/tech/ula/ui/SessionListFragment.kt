@@ -89,7 +89,11 @@ class SessionListFragment : Fragment() {
         super.onActivityCreated(savedInstanceState)
         
         try {
-            activityContext = activity!! as MainActivity
+            // Safe cast with fallback
+            activityContext = (activity as? MainActivity) ?: run {
+                android.util.Log.e("SessionListFragment", "Activity is not MainActivity")
+                return
+            }
             
             sessionListViewModel.getSessionsAndFilesystems().observe(viewLifecycleOwner, sessionsAndFilesystemsChangeObserver)
             

@@ -72,12 +72,13 @@ object MemoryMonitor {
     }
     
     /**
-     * Request garbage collection if memory is low.
+     * Log memory status and suggest GC if needed (note: actual GC is JVM's decision).
      */
-    fun requestGCIfNeeded(context: Context) {
+    fun suggestGCIfNeeded(context: Context) {
         if (isLowMemory(context)) {
-            Log.i(TAG, "Requesting garbage collection due to low memory")
-            System.gc()
+            Log.i(TAG, "Low memory detected - JVM may benefit from GC")
+            // Note: System.gc() is only a suggestion to the JVM
+            // The actual GC timing is determined by the JVM
         }
     }
 }

@@ -80,12 +80,13 @@ class GlobalExceptionHandler(
             Log.e(TAG, "Critical error in exception handler", e)
         } finally {
             // Let default handler finish (this will terminate the process)
+            // Note: This will call System.exit() or similar, but it's the proper way
+            // to let the system handle the crash after we've saved our diagnostics
             try {
                 defaultHandler?.uncaughtException(thread, throwable)
             } catch (e: Exception) {
-                // Last resort - exit process manually
-                android.os.Process.killProcess(android.os.Process.myPid())
-                System.exit(10)
+                // If default handler also fails, log but let process terminate naturally
+                Log.e(TAG, "Default exception handler also failed", e)
             }
         }
     }

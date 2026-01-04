@@ -61,7 +61,12 @@ class AppDetailsFragment : Fragment() {
         super.onActivityCreated(savedInstanceState)
 
         try {
-            activityContext = activity!!
+            // Safe cast with fallback
+            activityContext = activity ?: run {
+                android.util.Log.e("AppDetailsFragment", "Activity is null")
+                return
+            }
+            
             viewModel.viewState.observe(
                 viewLifecycleOwner,
                 Observer<AppDetailsViewState> { viewState ->
