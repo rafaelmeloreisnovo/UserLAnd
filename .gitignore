@@ -80,3 +80,12 @@ add2/RAFAELIA_CORE_MATRIX_cpp
 add2/RAFAELIA_CORE_MATRIX_multiarch
 add2/arch_detect.h
 app/.cxx/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Tools output
+workflow-validation-report.json

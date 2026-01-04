@@ -1,0 +1,65 @@
+# CODEOWNERS
+# Author: @rafaelmeloreisnovo
+# RAFCODE-Φ: CODEOWNERS-v1.0
+#
+# This file defines code ownership and review requirements.
+# Protected files require approval from specific maintainers.
+#
+# Format: path/pattern @username @team
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything (fallback)
+* @rafaelmeloreisnovo
+
+# CI/CD and Workflow Files (Nuclear Assets)
+/.github/workflows/ @rafaelmeloreisnovo
+/.github/actions/ @rafaelmeloreisnovo
+/.github/workflows/*.yml @rafaelmeloreisnovo
+/.github/workflows/*.yaml @rafaelmeloreisnovo
+
+# Governance and Security Documentation
+/.github/CONTRIBUTING.md @rafaelmeloreisnovo
+/.github/SECURITY.md @rafaelmeloreisnovo
+/.github/pull_request_template.md @rafaelmeloreisnovo
+/CODEOWNERS @rafaelmeloreisnovo
+/SECURITY.md @rafaelmeloreisnovo
+/CONTRIBUTING.md @rafaelmeloreisnovo
+
+# Validation and Security Tools
+/tools/check_workflows.py @rafaelmeloreisnovo
+/tools/rafaelia_ethica_engine.py @rafaelmeloreisnovo
+/tools/rafacode_encoder.py @rafaelmeloreisnovo
+/tools/bitraf64_*.py @rafaelmeloreisnovo
+/tools/generate_sbom.sh @rafaelmeloreisnovo
+
+# Build and Release Configuration
+/build.gradle @rafaelmeloreisnovo
+/settings.gradle @rafaelmeloreisnovo
+/gradle.properties @rafaelmeloreisnovo
+/app/build.gradle @rafaelmeloreisnovo
+/scripts/sign_apk.sh @rafaelmeloreisnovo
+/scripts/build_apk.sh @rafaelmeloreisnovo
+
+# Signing and Security Configuration
+/signing.properties* @rafaelmeloreisnovo
+*.jks @rafaelmeloreisnovo
+*.keystore @rafaelmeloreisnovo
+
+# Core Application Code
+/app/src/main/java/tech/ula/ @rafaelmeloreisnovo
+
+# Native Code and Core Binaries
+*.c @rafaelmeloreisnovo
+*.h @rafaelmeloreisnovo
+/rafaelia/ @rafaelmeloreisnovo
+
+# Documentation
+/docs/ @rafaelmeloreisnovo
+/README.md @rafaelmeloreisnovo
+
+# Android Manifest
+/app/src/main/AndroidManifest.xml @rafaelmeloreisnovo
+
+# Dependency Configuration
+/Gemfile @rafaelmeloreisnovo
+/Gemfile.lock @rafaelmeloreisnovo

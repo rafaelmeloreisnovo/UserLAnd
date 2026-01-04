@@ -1,0 +1,89 @@
+name: Validate Workflows
+# Author: @rafaelmeloreisnovo
+# RAFCODE-Φ: WORKFLOW-VALIDATOR-ACTION-v1.0
+#
+# This workflow validates all GitHub Actions workflow files
+# using line-by-line analysis to detect security issues,
+# best practice violations, and potential problems.
+
+on:
+  push:
+    paths:
+      - '.github/workflows/**'
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate Workflow Files
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+    
+    steps:
+      - name: 🔄 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml
+      
+      - name: 🔍 Run workflow validator
+        id: validate
+        run: |
+          echo "🔨 Running workflow validation..."
+          python tools/check_workflows.py \
+            --workflows-dir .github/workflows \
+            --output workflow-validation-report.json
+          
+          echo "✓ Validation completed"
+          
+          # Check if report exists and has content
+          if [ -f workflow-validation-report.json ]; then
+            echo "report_generated=true" >> $GITHUB_OUTPUT
+          else
+            echo "report_generated=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: 📊 Display validation summary
+        if: steps.validate.outputs.report_generated == 'true'
+        run: |
+          echo "## Workflow Validation Summary"
+          if command -v jq &> /dev/null; then
+            jq -r '
+              "Total files: \(.total_files)",
+              "Errors: \(.summary.total_errors)",
+              "Warnings: \(.summary.total_warnings)",
+              "Info: \(.summary.total_info)"
+            ' workflow-validation-report.json
+          else
+            cat workflow-validation-report.json
+          fi
+      
+      - name: 📤 Upload validation report
+        if: always() && steps.validate.outputs.report_generated == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: workflow-validation-report
+          path: workflow-validation-report.json
+          retention-days: 30
+          if-no-files-found: warn
+      
+      - name: ❌ Fail on critical errors
+        if: failure()
+        run: |
+          echo "::error::Workflow validation failed with critical errors"
+          echo "Please review the validation report artifact for details"
+          exit 1
