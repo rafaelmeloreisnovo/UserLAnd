@@ -23,10 +23,8 @@ class DiagnosticChecker(
     /**
      * Perform all diagnostic checks and return a comprehensive report.
      */
-    fun performDiagnostics(): DiagnosticInfo {
-        val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-
-        return DiagnosticInfo(
+    fun performDiagnostics(): DiagnosticInfo =
+        DiagnosticInfo(
             timestamp = System.currentTimeMillis(),
             appVersionName = BuildConfig.VERSION_NAME,
             appVersionCode = BuildConfig.VERSION_CODE,
@@ -40,7 +38,6 @@ class DiagnosticChecker(
             filesystemChecks = checkFilesystem(),
             nativeLibraryStatus = checkNativeLibraries(),
         )
-    }
 
     /**
      * Get list of supported ABIs for this device.
