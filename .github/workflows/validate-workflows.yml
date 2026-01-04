@@ -1,0 +1,96 @@
+name: Validate Workflows
+
+# RAFAELIA Workflow Validator - Prototype/Draft
+# Author: @rafaelmeloreisnovo
+# RAFCODE-Φ seal: PROTOTYPE-DRAFT-v0.1.0
+#
+# Validates GitHub Actions workflow files for security and correctness.
+# IMPORTANT: This is a prototype/draft. No automatic execution of infinite loops.
+# Ethica[8] blocks prohibited executions.
+
+on:
+  push:
+    branches:
+      - master
+      - 'rafaelia/**'
+    paths:
+      - '.github/workflows/**'
+      - 'tools/check_workflows.py'
+      - 'tools/rafaelia_ethica_engine.py'
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - 'tools/check_workflows.py'
+      - 'tools/rafaelia_ethica_engine.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-workflows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate workflow files
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 🔍 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install pyyaml
+
+      - name: 🔐 Run Ethica[8] validation on tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "🔍 Checking Python tools for Ethica[8] violations..."
+          python tools/rafaelia_ethica_engine.py tools/check_workflows.py
+          python tools/rafaelia_ethica_engine.py tools/rafaelia_ethica_engine.py
+          echo "✅ Ethica[8] validation passed"
+
+      - name: ✅ Validate workflow files
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "🔍 Validating workflow YAML files..."
+          python tools/check_workflows.py
+          echo "✅ Workflow validation completed"
+
+      - name: 📋 Generate SBOM (optional)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "📦 Generating SBOM..."
+          chmod +x tools/generate_sbom.sh
+          ./tools/generate_sbom.sh sbom-workflows.json
+          echo "✅ SBOM generated"
+
+      - name: 📤 Upload SBOM artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-workflows
+          path: sbom-workflows.json
+          if-no-files-found: warn
+          retention-days: 30
+
+# RAFCODE-Φ seal: @rafaelmeloreisnovo
+# Status: PROTOTYPE-DRAFT - Requires maintainer approval before merge
+# DO NOT MERGE without explicit maintainer approval

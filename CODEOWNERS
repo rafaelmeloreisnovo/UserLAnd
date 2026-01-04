@@ -1,0 +1,85 @@
+# CODEOWNERS
+#
+# RAFAELIA CODEOWNERS - Prototype/Draft
+# Author: @rafaelmeloreisnovo
+# RAFCODE-Φ seal: PROTOTYPE-DRAFT-v0.1.0
+# Status: Draft - requires maintainer approval
+#
+# This file defines code ownership for automated review assignment.
+# Lines starting with '#' are comments.
+# Each line is a file pattern followed by one or more owners.
+#
+# IMPORTANT: This is a PROTOTYPE/DRAFT. Review assignments will not be
+# enforced until approved by the repository maintainer.
+#
+# More info: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+# These owners will be requested for review when someone opens a PR
+# @rafaelmeloreisnovo is the author of RAFAELIA artifacts
+
+# Global fallback - repository maintainer(s)
+* @maintainer-username
+
+# RAFAELIA artifacts and tools (author ownership)
+/tools/ @rafaelmeloreisnovo
+/tools/check_workflows.py @rafaelmeloreisnovo
+/tools/rafaelia_ethica_engine.py @rafaelmeloreisnovo
+/tools/bitraf64_compressor.py @rafaelmeloreisnovo
+/tools/bitraf64_decompressor.py @rafaelmeloreisnovo
+/tools/rafacode_encoder.py @rafaelmeloreisnovo
+/tools/generate_sbom.sh @rafaelmeloreisnovo
+
+# GitHub workflows (require maintainer + RAFAELIA author approval)
+/.github/workflows/ @maintainer-username @rafaelmeloreisnovo
+/.github/workflows/validate-workflows.yml @rafaelmeloreisnovo
+/.github/workflows/ci.yml @rafaelmeloreisnovo
+
+# GitHub governance documents (require maintainer approval)
+/.github/CONTRIBUTING.md @maintainer-username @rafaelmeloreisnovo
+/.github/SECURITY.md @maintainer-username @rafaelmeloreisnovo
+/.github/pull_request_template.md @maintainer-username @rafaelmeloreisnovo
+/CODEOWNERS @maintainer-username @rafaelmeloreisnovo
+
+# Documentation
+/docs/ @maintainer-username
+/docs/README_checks.md @rafaelmeloreisnovo
+/README.md @maintainer-username
+/CONTRIBUTING.md @maintainer-username
+/SECURITY.md @maintainer-username
+
+# Android application code
+/app/ @maintainer-username
+/app/src/ @maintainer-username
+/app/build.gradle @maintainer-username
+
+# Build and configuration files
+*.gradle @maintainer-username
+/gradle/ @maintainer-username
+/gradlew @maintainer-username
+/gradlew.bat @maintainer-username
+/gradle.properties @maintainer-username
+/settings.gradle @maintainer-username
+
+# CI/CD and build scripts
+/.github/actions/ @maintainer-username
+/.github/workflows/*.yml @maintainer-username
+/scripts/ @maintainer-username
+
+# RAFAELIA C tools and core files (if applicable)
+/rafaelia/ @rafaelmeloreisnovo
+raf_*.c @rafaelmeloreisnovo
+raf_*.h @rafaelmeloreisnovo
+rafael*.c @rafaelmeloreisnovo
+rafael*.sh @rafaelmeloreisnovo
+
+# Security-sensitive files (require security review)
+/signing.properties.template @maintainer-username
+/.gitignore @maintainer-username
+
+# NOTE: Replace @maintainer-username with actual maintainer GitHub username(s)
+# Multiple owners can be specified: @user1 @user2 @org/team-name
+
+# RAFCODE-Φ seal: @rafaelmeloreisnovo
+# Status: PROTOTYPE-DRAFT
+# DO NOT ENFORCE without explicit maintainer approval
