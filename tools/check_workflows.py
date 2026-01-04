@@ -16,7 +16,6 @@ Ethica[8] blocks prohibited executions.
 import os
 import sys
 import yaml
-import re
 from pathlib import Path
 from typing import Dict, List, Tuple
 
