@@ -94,3 +94,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
+
+# Kotlin compiler cache
+.kotlin/
