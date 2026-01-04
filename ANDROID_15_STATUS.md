@@ -42,8 +42,8 @@ All necessary changes for Android 15 compatibility have been implemented in the 
 
 ### Target Device (from issue)
 - **Device**: RMX3834 (Realme device)
-- **Kernel**: 5.15.178-android13-8-gabf75819a85e-ab569
-  - Note: The kernel version "android13" indicates the AOSP kernel base version, while the device runs Android 15 OS
+- **Kernel**: `5.15.178-android13-8-gabf75819a85e-ab569`
+  - Note: The "android13" in the kernel version indicates the AOSP kernel base, separate from the Android OS version
 - **Android Version**: Android 15
 
 ### Supported Architectures
@@ -61,17 +61,24 @@ The application builds successfully and generates APK:
 - **Build System**: Gradle 8.7 with AGP 8.6.0
 
 ### Known CI Environment Issue
-The CI environment had an incomplete NDK 26.1.10909125 installation (missing source.properties file). This caused the build system to select the wrong NDK version instead of the configured NDK 27.3.13750724 (specified in gradle.properties).
+The CI environment had an incomplete NDK 26.1.10909125 installation (missing source.properties file). This caused the build system to select the wrong NDK version instead of the configured NDK 27.3.13750724 (specified in gradle.properties). The Android Gradle Plugin requires source.properties to validate NDK installations and determine the correct version to use.
 
 **This is an infrastructure issue, not a code problem.**
 
 **Solution for CI**:
 ```bash
-# Remove the broken NDK installation
+# WARNING: Verify the path before deletion to avoid removing the wrong directory
+# First, check the directory exists and is the problematic version:
+ls -la /usr/local/lib/android/sdk/ndk/26.1.10909125
+
+# Safer alternative: Rename instead of delete
+sudo mv /usr/local/lib/android/sdk/ndk/26.1.10909125 /usr/local/lib/android/sdk/ndk/26.1.10909125.broken
+
+# Or remove after verification:
 sudo rm -rf /usr/local/lib/android/sdk/ndk/26.1.10909125
 ```
 
-After removal, the build system correctly uses NDK 27.3.13750724 as configured in gradle.properties.
+After removal or renaming, the build system correctly uses NDK 27.3.13750724 as configured in gradle.properties.
 
 ## Testing Recommendations
 
