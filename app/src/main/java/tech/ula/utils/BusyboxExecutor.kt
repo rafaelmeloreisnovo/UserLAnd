@@ -137,7 +137,9 @@ class BusyboxExecutor(
         return try {
             Log.d(
                 TAG,
-                "executeProotCommand(): cmd=$updatedCommand, fs=$filesystemDirName, env=${sanitizeEnvForLogging(mergedEnv)}, terminate=$commandShouldTerminate",
+                "executeProotCommand(): cmd=$updatedCommand, fs=$filesystemDirName, env=${sanitizeEnvForLogging(
+                    mergedEnv,
+                )}, terminate=$commandShouldTerminate",
             )
             val process = processBuilder.start()
 
@@ -299,23 +301,24 @@ class BusyboxExecutor(
     fun logError(message: String) {
         Log.e(TAG, message)
     }
-    
+
     /**
      * Sanitize environment variables for logging.
      * Masks sensitive fields like passwords to prevent credential leaks.
      */
     private fun sanitizeEnvForLogging(env: Map<String, String>): Map<String, String> {
-        val sensitiveKeys = setOf(
-            "INITIAL_PASSWORD",
-            "INITIAL_VNC_PASSWORD",
-            "PASSWORD",
-            "VNC_PASSWORD",
-            "PASS",
-            "SECRET",
-            "TOKEN",
-            "KEY"
-        )
-        
+        val sensitiveKeys =
+            setOf(
+                "INITIAL_PASSWORD",
+                "INITIAL_VNC_PASSWORD",
+                "PASSWORD",
+                "VNC_PASSWORD",
+                "PASS",
+                "SECRET",
+                "TOKEN",
+                "KEY",
+            )
+
         return env.mapValues { (key, value) ->
             if (sensitiveKeys.any { key.contains(it, ignoreCase = true) }) {
                 "***REDACTED***"

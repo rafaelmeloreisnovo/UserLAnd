@@ -25,7 +25,7 @@ class PermissionHandler {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 return true
             }
-            
+
             return (
                 ContextCompat.checkSelfPermission(
                     context,
@@ -38,7 +38,7 @@ class PermissionHandler {
                     ) == PackageManager.PERMISSION_GRANTED
             )
         }
-        
+
         /**
          * Check if POST_NOTIFICATIONS permission is granted.
          * Required for Android 13+ (API 33+) to show notifications.
@@ -75,7 +75,7 @@ class PermissionHandler {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 return
             }
-            
+
             val builder = AlertDialog.Builder(activity)
             builder
                 .setMessage(R.string.alert_permissions_necessary_message)
@@ -94,7 +94,7 @@ class PermissionHandler {
                 }
             builder.create().show()
         }
-        
+
         /**
          * Request POST_NOTIFICATIONS permission for Android 13+.
          * This should be called when the user first starts a session or when notifications are needed.
@@ -108,7 +108,7 @@ class PermissionHandler {
                 )
             }
         }
-        
+
         /**
          * Check if notification permission was granted in the permission result.
          */

@@ -21,10 +21,10 @@ import tech.ula.databinding.FragFilesystemEditBinding
 import tech.ula.model.entities.Filesystem
 import tech.ula.model.repositories.UlaDatabase
 import tech.ula.viewmodel.FilesystemEditViewModel
-import tech.ula.viewmodel.FilesystemEditViewmodelFactory
 import tech.ula.viewmodel.FilesystemEditViewState
-import tech.ula.viewmodel.Success
+import tech.ula.viewmodel.FilesystemEditViewmodelFactory
 import tech.ula.viewmodel.ImportSuccessState
+import tech.ula.viewmodel.Success
 
 private const val FILESYSTEM_IMPORT_REQUEST_CODE = 6
 

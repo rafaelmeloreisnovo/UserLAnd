@@ -1,12 +1,11 @@
 package tech.ula.utils
 
-import android.os.Build
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 
 /**
  * DiagnosticInfo - Data class for runtime diagnostics
- * 
+ *
  * Contains system information for troubleshooting without exposing PII.
  * All fields are sanitized to avoid sensitive data exposure.
  */
@@ -28,38 +27,41 @@ data class DiagnosticInfo(
     /**
      * Export as a human-readable text report (no PII).
      */
-    fun toReport(): String = buildString {
-        appendLine("=== UserLAnd Diagnostic Report ===")
-        appendLine()
-        appendLine("Timestamp: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date(timestamp))}")
-        appendLine()
-        appendLine("-- Application --")
-        appendLine("Version: $appVersionName ($appVersionCode)")
-        appendLine()
-        appendLine("-- Device --")
-        appendLine("Android Version: $androidVersion (SDK $androidSdkInt)")
-        appendLine("Manufacturer: $deviceManufacturer")
-        appendLine("Model: $deviceModel")
-        appendLine("Supported ABIs: ${supportedAbis.joinToString(", ")}")
-        appendLine()
-        appendLine("-- Permissions --")
-        appendLine("Storage: $storagePermissionStatus")
-        appendLine("Notifications: $notificationPermissionStatus")
-        appendLine()
-        appendLine("-- Filesystem --")
-        appendLine("Internal Storage Available: ${filesystemChecks.internalStorageAvailable}")
-        appendLine("Internal Storage Writable: ${filesystemChecks.internalStorageWritable}")
-        appendLine("Files Dir Exists: ${filesystemChecks.filesDirExists}")
-        appendLine("Files Dir Writable: ${filesystemChecks.filesDirWritable}")
-        appendLine()
-        appendLine("-- Native Libraries --")
-        appendLine("Busybox Present: ${nativeLibraryStatus.busyboxPresent}")
-        appendLine("Proot Present: ${nativeLibraryStatus.prootPresent}")
-        appendLine("Native Lib Dir: ${nativeLibraryStatus.nativeLibraryDir}")
-        appendLine("Native Lib Dir Readable: ${nativeLibraryStatus.nativeLibDirReadable}")
-        appendLine()
-        appendLine("=== End of Report ===")
-    }
+    fun toReport(): String =
+        buildString {
+            appendLine("=== UserLAnd Diagnostic Report ===")
+            appendLine()
+            appendLine(
+                "Timestamp: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date(timestamp))}",
+            )
+            appendLine()
+            appendLine("-- Application --")
+            appendLine("Version: $appVersionName ($appVersionCode)")
+            appendLine()
+            appendLine("-- Device --")
+            appendLine("Android Version: $androidVersion (SDK $androidSdkInt)")
+            appendLine("Manufacturer: $deviceManufacturer")
+            appendLine("Model: $deviceModel")
+            appendLine("Supported ABIs: ${supportedAbis.joinToString(", ")}")
+            appendLine()
+            appendLine("-- Permissions --")
+            appendLine("Storage: $storagePermissionStatus")
+            appendLine("Notifications: $notificationPermissionStatus")
+            appendLine()
+            appendLine("-- Filesystem --")
+            appendLine("Internal Storage Available: ${filesystemChecks.internalStorageAvailable}")
+            appendLine("Internal Storage Writable: ${filesystemChecks.internalStorageWritable}")
+            appendLine("Files Dir Exists: ${filesystemChecks.filesDirExists}")
+            appendLine("Files Dir Writable: ${filesystemChecks.filesDirWritable}")
+            appendLine()
+            appendLine("-- Native Libraries --")
+            appendLine("Busybox Present: ${nativeLibraryStatus.busyboxPresent}")
+            appendLine("Proot Present: ${nativeLibraryStatus.prootPresent}")
+            appendLine("Native Lib Dir: ${nativeLibraryStatus.nativeLibraryDir}")
+            appendLine("Native Lib Dir Readable: ${nativeLibraryStatus.nativeLibDirReadable}")
+            appendLine()
+            appendLine("=== End of Report ===")
+        }
 }
 
 @Parcelize
