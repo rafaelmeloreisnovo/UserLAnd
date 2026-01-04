@@ -71,7 +71,7 @@ jobs:
           echo "- **OS**: $(uname -s) $(uname -m)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [[ -f /tmp/gradle_deps.log ]]; then
+          if [[ -f build/logs/gradle_deps.log ]]; then
             echo "### 📦 Dependencies" >> $GITHUB_STEP_SUMMARY
             echo "Dependencies resolved successfully" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
@@ -143,7 +143,7 @@ jobs:
             echo "- **APK Path**: $APK_PATH" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### 📝 Build Logs" >> $GITHUB_STEP_SUMMARY
-            if [[ -f /tmp/gradle_build.log ]]; then
+            if [[ -f build/logs/gradle_build.log ]]; then
               BUILD_MSG="Build completed successfully."
               BUILD_MSG="$BUILD_MSG Check workflow logs for details."
               echo "$BUILD_MSG" >> $GITHUB_STEP_SUMMARY

@@ -6,6 +6,10 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+# Log directory
+LOG_DIR="${LOG_DIR:-$ROOT_DIR/build/logs}"
+mkdir -p "$LOG_DIR"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -216,11 +220,12 @@ check_native_build() {
 check_dependencies() {
     log_info "Validating Gradle dependencies..."
     
-    if ./gradlew dependencies &> /tmp/gradle_deps.log; then
+    local log_file="$LOG_DIR/gradle_deps.log"
+    if ./gradlew dependencies &> "$log_file"; then
         log_success "Gradle dependencies resolved successfully"
     else
         log_error "Failed to resolve Gradle dependencies"
-        log_info "Check /tmp/gradle_deps.log for details"
+        log_info "Check $log_file for details"
         return 1
     fi
 }
@@ -232,7 +237,8 @@ test_compilation() {
     local start_time
     start_time=$(date +%s)
     
-    if ./gradlew assembleDebug --no-daemon --stacktrace &> /tmp/gradle_build.log; then
+    local log_file="$LOG_DIR/gradle_build.log"
+    if ./gradlew assembleDebug --no-daemon --stacktrace &> "$log_file"; then
         local end_time
         end_time=$(date +%s)
         local duration=$((end_time - start_time))
@@ -249,7 +255,7 @@ test_compilation() {
         fi
     else
         log_error "Compilation failed"
-        log_info "Check /tmp/gradle_build.log for details"
+        log_info "Check $log_file for details"
         return 1
     fi
 }
@@ -268,11 +274,12 @@ test_native_compilation() {
         return 0
     fi
     
-    if "$ROOT_DIR/scripts/compile_check.sh" &> /tmp/native_build.log; then
+    local log_file="$LOG_DIR/native_build.log"
+    if "$ROOT_DIR/scripts/compile_check.sh" &> "$log_file"; then
         log_success "Native binaries compiled successfully"
     else
         log_warning "Native compilation check failed (may not be critical)"
-        log_info "Check /tmp/native_build.log for details"
+        log_info "Check $log_file for details"
     fi
 }
 
