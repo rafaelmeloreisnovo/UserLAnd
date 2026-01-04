@@ -85,12 +85,37 @@ def compress_file(input_path: Path, output_path: Path) -> int:
         return 1
     
     original_size = len(data)
-    ratio = (1 - len(compressed.encode()) / original_size) * 100
+
+    # Extract actual compressed byte size from BITRAF64 package
+    compressed_size = None
+    try:
+        # Remove "BITRAF64:" prefix and decode JSON package
+        if compressed.startswith("BITRAF64:"):
+            payload_b64 = compressed[len("BITRAF64:"):]
+        else:
+            payload_b64 = compressed
+        package_json = base64.b64decode(payload_b64.encode("ascii"))
+        package = json.loads(package_json.decode("utf-8"))
+        compressed_size = int(package.get("compressed_size", 0))
+    except Exception:
+        # Fallback: use the encoded string length as a rough estimate
+        compressed_size = len(compressed.encode())
+
+    if original_size > 0:
+        if compressed_size <= original_size:
+            size_change = (1 - compressed_size / original_size) * 100
+            change_label = "reduction"
+        else:
+            size_change = (compressed_size / original_size - 1) * 100
+            change_label = "increase"
+    else:
+        size_change = 0.0
+        change_label = "no change"
     
     print(f"✅ Compressed {input_path.name}")
     print(f"   Original size: {original_size} bytes")
-    print(f"   Compressed: {len(compressed)} chars")
-    print(f"   Ratio: {ratio:.1f}%")
+    print(f"   Compressed (raw zlib data): {compressed_size} bytes")
+    print(f"   Size {change_label}: {size_change:.1f}%")
     
     return 0
 
