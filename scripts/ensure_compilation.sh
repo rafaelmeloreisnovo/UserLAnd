@@ -55,9 +55,17 @@ check_java_version() {
     fi
     
     local java_version
-    java_version=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}' | cut -d. -f1)
+    # Handle different Java version formats (e.g., "17.0.x", "1.8.0_xyz")
+    java_version=$(java -version 2>&1 | grep -i version | \
+        sed -E 's/.*version "?([0-9]+)\.?([0-9]+)?.*"?/\1/' | head -n1)
     
-    if [[ "$java_version" -ge 17 ]]; then
+    # For Java 8 and earlier (1.8.0 format), extract the minor version
+    if [[ "$java_version" == "1" ]]; then
+        java_version=$(java -version 2>&1 | grep -i version | \
+            sed -E 's/.*version "?1\.([0-9]+).*"?/\1/' | head -n1)
+    fi
+    
+    if [[ -n "$java_version" ]] && [[ "$java_version" -ge 17 ]]; then
         log_success "Java version $java_version detected (required: 17+)"
     else
         log_error "Java version $java_version is too old (required: 17+)"
@@ -250,15 +258,21 @@ test_compilation() {
 test_native_compilation() {
     log_info "Running native compilation check..."
     
-    if [[ -x "$ROOT_DIR/scripts/compile_check.sh" ]]; then
-        if "$ROOT_DIR/scripts/compile_check.sh" &> /tmp/native_build.log; then
-            log_success "Native binaries compiled successfully"
-        else
-            log_warning "Native compilation check failed (may not be critical)"
-            log_info "Check /tmp/native_build.log for details"
-        fi
+    if [[ ! -f "$ROOT_DIR/scripts/compile_check.sh" ]]; then
+        log_warning "Native compilation check script not found (optional)"
+        return 0
+    fi
+    
+    if [[ ! -x "$ROOT_DIR/scripts/compile_check.sh" ]]; then
+        log_warning "Native compilation check script not executable"
+        return 0
+    fi
+    
+    if "$ROOT_DIR/scripts/compile_check.sh" &> /tmp/native_build.log; then
+        log_success "Native binaries compiled successfully"
     else
-        log_warning "Native compilation check script not found"
+        log_warning "Native compilation check failed (may not be critical)"
+        log_info "Check /tmp/native_build.log for details"
     fi
 }
 
