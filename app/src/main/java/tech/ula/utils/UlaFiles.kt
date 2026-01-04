@@ -70,28 +70,63 @@ class UlaFiles(
     private fun setupLinks() {
         supportDir.mkdirs()
 
+        // Regex to remove versioned suffixes like ".a10.so", ".a11.so", ".a10a.so", etc.
+        val versionedSoRegex = Regex("""\\.a[0-9]+[a-zA-Z0-9\-]*\\.so$""")
+
         libDir.listFiles()!!.forEach { libFile ->
             var libFileName = libFile.name
+
+            // Normalize versioned suffixes (e.g., lib_proot.a10.so -> lib_proot.so)
+            if (libFileName.contains(".a") && libFileName.endsWith(".so")) {
+                libFileName = libFileName.replace(versionedSoRegex, ".so")
+            }
+
+            // Maintain compatibility with previous behavior for certain libs
             if (libFileName.startsWith("lib_proot.") ||
                 libFileName.startsWith("lib_libtalloc") ||
-                libFileName.startsWith("lib_loader")
-            ) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    if (libFileName.endsWith(".a10.so")) {
-                        libFileName = libFileName.replace(".a10.so", ".so")
-                    } else {
-                        return@forEach
-                    }
-                } else {
-                    if (libFileName.endsWith(".a10.so")) {
-                        return@forEach
-                    }
+                libFileName.startsWith("lib_loader") ) {
+                // Already normalized above; special case: if result doesn't end in .so, skip
+                if (!libFileName.endsWith(".so")) {
+                    libFileName = libFile.name
                 }
             }
+
             val name = libFileName.toSupportName()
             val linkFile = File(supportDir, name)
             linkFile.delete()
-            symlinker.createSymlink(libFile.path, linkFile.path)
+
+            try {
+                // Try to create symlink with the project's Symlinker
+                symlinker.createSymlink(libFile.path, linkFile.path)
+            } catch (symlinkErr: Exception) {
+                // Fallbacks: android.system.Os.symlink (API21+) or copy file
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        try {
+                            Os.symlink(libFile.path, linkFile.path)
+                        } catch (osErr: Exception) {
+                            // Last resort: copy the file
+                            libFile.copyTo(linkFile, overwrite = true)
+                        }
+                    } else {
+                        libFile.copyTo(linkFile, overwrite = true)
+                    }
+                } catch (fallbackErr: Exception) {
+                    // If all fails, log and continue (don't throw to avoid interrupting init)
+                    android.util.Log.w("UlaFiles", "setupLinks: fallback failed for ${libFile.path}: ${fallbackErr.message}")
+                }
+            }
+
+            // Try to set executable (important for busybox/proot)
+            try {
+                if (linkFile.exists()) {
+                    linkFile.setExecutable(true, false)
+                }
+                if (libFile.exists()) {
+                    libFile.setExecutable(true, false)
+                }
+            } catch (_: Exception) {
+            }
         }
     }
 
