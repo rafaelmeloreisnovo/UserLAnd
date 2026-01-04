@@ -15,6 +15,7 @@ Features:
 ## 📚 Documentation
 
 - **[Development Setup Guide](docs/DEVELOPMENT_SETUP.md)** - Complete guide to set up your development environment
+- **[Compilation Guarantee](docs/COMPILATION_GUARANTEE.md)** - How to ensure successful compilation in any environment
 - **[Build Troubleshooting](docs/BUILD_TROUBLESHOOTING.md)** - Solutions to common build issues
 - **[Best Practices](docs/BEST_PRACTICES.md)** - Coding standards and architectural patterns
 - **[Common Tasks](docs/COMMON_TASKS.md)** - Quick reference for everyday development tasks
