@@ -125,7 +125,24 @@ class ZipRafOmegaManager:
             return None
             
         # Deriva uma chave da senha usando PBKDF2
-        salt = b'zipraf_omega_salt_v1'  # Em produção, use salt aleatório
+        # Obtém ou gera um salt único para esta instalação
+        salt_config = self.get_config('encryption_salt')
+        if salt_config:
+            salt = base64.b64decode(salt_config.encode())
+        else:
+            # Gerar salt aleatório na primeira vez
+            import secrets
+            salt = secrets.token_bytes(32)
+            # Armazenar para uso futuro
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR REPLACE INTO config (key, value, encrypted, updated_at)
+                VALUES (?, ?, 0, CURRENT_TIMESTAMP)
+            ''', ('encryption_salt', base64.b64encode(salt).decode()))
+            conn.commit()
+            conn.close()
+            
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
@@ -244,7 +261,11 @@ class ZipRafOmegaManager:
             if master_password != master_password_confirm:
                 print(f"{Colors.FAIL}✗ Senhas não coincidem!{Colors.ENDC}")
                 return False
-                
+            
+            # Nota de segurança: SHA-256 é usado aqui apenas para verificação rápida
+            # da senha mestra, não para armazenamento de senha. A senha real nunca é
+            # armazenada - apenas seu hash para verificação. Para criptografia dos dados,
+            # usamos PBKDF2HMAC com salt aleatório.
             self.set_config('master_password_hash', hashlib.sha256(master_password.encode()).hexdigest())
             self.set_config('github_pat', github_pat, encrypt=True, password=master_password)
         else:
@@ -328,6 +349,11 @@ class ZipRafOmegaManager:
             return False
         
         # Configurar variáveis de ambiente
+        # NOTA DE SEGURANÇA: Passar credenciais via variáveis de ambiente tem riscos:
+        # - Podem ser visíveis em listagens de processos
+        # - Podem vazar em logs de sistema
+        # Esta é uma limitação do script sign_apk.sh subjacente.
+        # Em produção, considere usar arquivos temporários com permissões restritas.
         env = os.environ.copy()
         env['KEYSTORE_FILE'] = keystore_file
         env['KEY_ALIAS'] = key_alias
