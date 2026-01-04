@@ -12,7 +12,6 @@ Production implementation requires cryptographic signature verification.
 import base64
 import zlib
 import sys
-from typing import bytes as BytesType
 
 class Bitraf64Decompressor:
     """
