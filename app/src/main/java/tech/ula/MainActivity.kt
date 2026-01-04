@@ -36,26 +36,55 @@ class MainActivity :
     override fun onCreate(savedInstanceState: Bundle?) {
         try {
             super.onCreate(savedInstanceState)
+            Log.i(TAG, "MainActivity.onCreate() starting")
             
             // Check for pending consents first
             val consentLedger = ConsentLedger(this)
             if (consentLedger.hasPendingConsents() && !consentLedger.wasConsentReviewShown()) {
-                // Redirect to consent review
-                val intent = Intent(this, ConsentReviewActivity::class.java)
+                Log.i(TAG, "Redirecting to consent review")
+                // Redirect to consent review with safe intent flags
+                val intent = Intent(this, ConsentReviewActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                }
                 startActivity(intent)
                 finish()
                 return
             }
             
+            // Initialize binding safely
             binding = ActivityMainBinding.inflate(layoutInflater)
             setContentView(binding.root)
-            setSupportActionBar(binding.toolbar)
+            
+            // Set up toolbar safely
+            try {
+                setSupportActionBar(binding.toolbar)
+                supportActionBar?.setDisplayShowTitleEnabled(true)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error setting up toolbar", e)
+            }
+            
             Log.i(TAG, "MainActivity initialized successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error during MainActivity initialization", e)
             // Re-throw to let global exception handler catch it
             throw e
         }
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        Log.i(TAG, "MainActivity.onResume()")
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        Log.i(TAG, "MainActivity.onPause()")
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.i(TAG, "MainActivity.onDestroy()")
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {

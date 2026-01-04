@@ -29,7 +29,9 @@ class AppDetailsFragment : Fragment() {
     private lateinit var activityContext: Activity
 
     private val args: AppDetailsFragmentArgs by navArgs()
-    private val app by lazy { args.app!! }
+    private val app by lazy { 
+        args.app ?: throw IllegalArgumentException("App argument is required")
+    }
 
     private val viewModel by lazy {
         val sessionDao = UlaDatabase.getInstance(activityContext).sessionDao()
@@ -58,18 +60,22 @@ class AppDetailsFragment : Fragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
-        activityContext = activity!!
-        viewModel.viewState.observe(
-            viewLifecycleOwner,
-            Observer<AppDetailsViewState> { viewState ->
-                viewState?.let {
-                    handleViewStateChange(viewState)
-                }
-            },
-        )
-        viewModel.submitEvent(AppDetailsEvent.SubmitApp(app))
-        setupPreferredServiceTypeRadioGroup()
-        setupAutoStartCheckbox()
+        try {
+            activityContext = activity!!
+            viewModel.viewState.observe(
+                viewLifecycleOwner,
+                Observer<AppDetailsViewState> { viewState ->
+                    viewState?.let {
+                        handleViewStateChange(viewState)
+                    }
+                },
+            )
+            viewModel.submitEvent(AppDetailsEvent.SubmitApp(app))
+            setupPreferredServiceTypeRadioGroup()
+            setupAutoStartCheckbox()
+        } catch (e: Exception) {
+            android.util.Log.e("AppDetailsFragment", "Error in onActivityCreated", e)
+        }
     }
 
     override fun onDestroyView() {

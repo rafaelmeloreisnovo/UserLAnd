@@ -87,21 +87,31 @@ class SessionListFragment : Fragment() {
     @Suppress("DEPRECATION")
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-        activityContext = activity!! as MainActivity
-
-        sessionListViewModel.getSessionsAndFilesystems().observe(viewLifecycleOwner, sessionsAndFilesystemsChangeObserver)
-
-        registerForContextMenu(binding.listSessions)
-        binding.listSessions.onItemClickListener =
-            AdapterView.OnItemClickListener { parent, _, position, _ ->
-                when (val selectedItem = parent.getItemAtPosition(position) as SessionListItem) {
-                    is SessionSeparatorItem -> return@OnItemClickListener
-                    is SessionItem -> {
-                        val session = selectedItem.session
-                        doSessionItemClicked(session)
+        
+        try {
+            activityContext = activity!! as MainActivity
+            
+            sessionListViewModel.getSessionsAndFilesystems().observe(viewLifecycleOwner, sessionsAndFilesystemsChangeObserver)
+            
+            registerForContextMenu(binding.listSessions)
+            binding.listSessions.onItemClickListener =
+                AdapterView.OnItemClickListener { parent, _, position, _ ->
+                    try {
+                        when (val selectedItem = parent.getItemAtPosition(position) as SessionListItem) {
+                            is SessionSeparatorItem -> return@OnItemClickListener
+                            is SessionItem -> {
+                                val session = selectedItem.session
+                                doSessionItemClicked(session)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // Log but don't crash on item click errors
+                        android.util.Log.e("SessionListFragment", "Error handling session click", e)
                     }
                 }
-            }
+        } catch (e: Exception) {
+            android.util.Log.e("SessionListFragment", "Error in onActivityCreated", e)
+        }
     }
 
     override fun onDestroyView() {
@@ -176,10 +186,27 @@ class SessionListFragment : Fragment() {
     }
 
     private fun editSession(session: Session): Boolean {
-        val editExisting = session.name != ""
-        val bundle = bundleOf("session" to session, "editExisting" to editExisting)
-        this.findNavController().navigate(R.id.session_edit_fragment, bundle)
-        return true
+        try {
+            // Check if fragment is still attached and view is available
+            if (!isAdded || view == null) {
+                return false
+            }
+            
+            val editExisting = session.name != ""
+            val bundle = bundleOf("session" to session, "editExisting" to editExisting)
+            
+            // Safe navigation with lifecycle check
+            try {
+                this.findNavController().navigate(R.id.session_edit_fragment, bundle)
+            } catch (e: IllegalStateException) {
+                android.util.Log.e("SessionListFragment", "Navigation failed - fragment not attached", e)
+                return false
+            }
+            return true
+        } catch (e: Exception) {
+            android.util.Log.e("SessionListFragment", "Error editing session", e)
+            return false
+        }
     }
 
     private fun deleteSession(session: Session): Boolean {
