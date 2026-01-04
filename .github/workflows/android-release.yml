@@ -19,6 +19,7 @@ jobs:
   build-release:
     name: Build release APK
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
@@ -73,6 +74,7 @@ jobs:
   build-beta:
     name: Build beta APK
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: build-release
 
     steps:
