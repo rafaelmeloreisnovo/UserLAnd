@@ -179,7 +179,7 @@ Before merging, ensure:
 - **Issues**: [GitHub Issues](https://github.com/rafaelmeloreisnovo/UserLAnd/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/rafaelmeloreisnovo/UserLAnd/discussions)
 - **Documentation**: Check `docs/` directory
-- **Wiki**: [Project Wiki](https://github.com/CypherpunkArmory/UserLAnd/wiki)
+- **Wiki**: [Project Wiki](https://github.com/rafaelmeloreisnovo/UserLAnd/wiki)
 
 ## RAFAELIA Tools (Prototype)
 
