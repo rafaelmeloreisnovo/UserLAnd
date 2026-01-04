@@ -33,7 +33,7 @@ cat > "${OUTPUT_FILE}" << EOF
   "specVersion": "1.4",
   "version": 1,
   "metadata": {
-    "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+    "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
     "tools": [
       {
         "vendor": "RAFAELIA",
