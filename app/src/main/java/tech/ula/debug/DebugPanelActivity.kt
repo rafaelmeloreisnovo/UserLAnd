@@ -192,34 +192,16 @@ class DebugPanelActivity : AppCompatActivity() {
     
     private fun showDevOptionsGuide() {
         AlertDialog.Builder(this)
-            .setTitle("Enable Developer Options")
-            .setMessage("""
-                To enable Developer Options:
-                
-                1. Go to Settings → About Phone
-                2. Tap "Build Number" 7 times
-                3. You'll see "You are now a developer!"
-                4. Go back to Settings
-                5. Find "Developer Options" (usually in System or Advanced)
-                
-                For Wireless Debugging:
-                - Open Developer Options
-                - Enable "Wireless Debugging"
-                - Your device must be on the same network
-                
-                ⚠️ WARNING: Developer Options can affect system stability.
-                Only enable features you understand.
-                
-                Would you like to open Settings now?
-            """.trimIndent())
-            .setPositiveButton("Open Settings") { _, _ ->
+            .setTitle(getString(R.string.debug_panel_dev_options))
+            .setMessage(getString(R.string.debug_dev_options_guide_message))
+            .setPositiveButton(R.string.button_continue) { _, _ ->
                 try {
                     startActivity(Intent(Settings.ACTION_SETTINGS))
                 } catch (e: Exception) {
                     Toast.makeText(this, "Failed to open Settings", Toast.LENGTH_SHORT).show()
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
     

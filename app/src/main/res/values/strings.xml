@@ -326,6 +326,7 @@
     <string name="debug_panel_all_files">Request All Files Access</string>
     <string name="debug_panel_consent_required">Consent Required</string>
     <string name="debug_panel_export_title">Export Debug Report</string>
+    <string name="debug_dev_options_guide_message">To enable Developer Options:\n\n1. Go to Settings → About Phone\n2. Tap \"Build Number\" 7 times\n3. You\'ll see \"You are now a developer!\"\n4. Go back to Settings\n5. Find \"Developer Options\" (usually in System or Advanced)\n\nFor Wireless Debugging:\n- Open Developer Options\n- Enable \"Wireless Debugging\"\n- Your device must be on the same network\n\n⚠️ WARNING: Developer Options can affect system stability. Only enable features you understand.\n\nWould you like to open Settings now?</string>
     
     <!-- Consent -->
     <string name="consent_review_title">Review Permissions</string>

@@ -51,7 +51,8 @@
 
                     <HorizontalScrollView
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content">
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/debug_panel_device_info">
 
                         <TextView
                             android:id="@+id/device_info_text"
@@ -59,7 +60,8 @@
                             android:layout_height="wrap_content"
                             android:fontFamily="monospace"
                             android:textSize="12sp"
-                            android:textColor="?android:attr/textColorSecondary" />
+                            android:textColor="?android:attr/textColorSecondary"
+                            android:contentDescription="@string/debug_panel_device_info" />
 
                     </HorizontalScrollView>
 

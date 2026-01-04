@@ -256,11 +256,10 @@ class DeviceInfoCollector(private val context: Context) {
         return try {
             val file = File("/proc/cpuinfo")
             if (file.exists()) {
-                BufferedReader(FileReader(file)).use { reader ->
-                    reader.lineSequence()
-                        .take(50) // Limit to first 50 lines
-                        .joinToString("\n")
-                }
+                // Limit to first 50 lines and 8KB for safety
+                val maxSize = 8192
+                val content = file.readText(Charsets.UTF_8).take(maxSize)
+                content.lines().take(50).joinToString("\n")
             } else {
                 ""
             }
