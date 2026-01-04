@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # RAFAELIA SBOM Generator - Prototype/Draft
 # Author: @rafaelmeloreisnovo
 # RAFCODE-Φ seal: PROTOTYPE-DRAFT-v0.1.0
