@@ -87,3 +87,10 @@ workflow_findings.json
 sbom.json
 sbom.sha256
 *.br64
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
