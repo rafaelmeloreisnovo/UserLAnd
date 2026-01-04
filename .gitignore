@@ -97,9 +97,3 @@ __pycache__/
 
 # Kotlin compiler cache
 .kotlin/
-
-# Zipraf Omega - Banco de dados e configurações sensíveis
-zipraf_omega/db/omega.db
-zipraf_omega/db/*.db
-zipraf_omega/db/*.db-*
-zipraf_omega/__pycache__/
