@@ -1,9 +1,13 @@
 package tech.ula
 
 import android.app.ProgressDialog
+import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import tech.ula.consent.ConsentLedger
+import tech.ula.consent.ConsentReviewActivity
 import tech.ula.databinding.ActivityMainBinding
 import tech.ula.model.entities.App
 import tech.ula.model.entities.Session
@@ -22,11 +26,33 @@ class MainActivity :
     private lateinit var binding: ActivityMainBinding
     private var progressDialog: ProgressDialog? = null
 
+    companion object {
+        private const val TAG = "MainActivity"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-        setSupportActionBar(binding.toolbar)
+        try {
+            super.onCreate(savedInstanceState)
+            
+            // Check for pending consents first
+            val consentLedger = ConsentLedger(this)
+            if (consentLedger.hasPendingConsents() && !consentLedger.wasConsentReviewShown()) {
+                // Redirect to consent review
+                val intent = Intent(this, ConsentReviewActivity::class.java)
+                startActivity(intent)
+                finish()
+                return
+            }
+            
+            binding = ActivityMainBinding.inflate(layoutInflater)
+            setContentView(binding.root)
+            setSupportActionBar(binding.toolbar)
+            Log.i(TAG, "MainActivity initialized successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during MainActivity initialization", e)
+            // Re-throw to let global exception handler catch it
+            throw e
+        }
     }
 
     @Suppress("DEPRECATION")
