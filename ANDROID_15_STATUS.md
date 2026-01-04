@@ -43,6 +43,8 @@ All necessary changes for Android 15 compatibility have been implemented in the 
 ### Target Device (from issue)
 - **Device**: RMX3834 (Realme device)
 - **Kernel**: 5.15.178-android13-8-gabf75819a85e-ab569
+  - Note: "android13" refers to the kernel base version from AOSP, not the Android OS version
+  - The device runs Android 15 OS with a kernel based on Android 13 sources
 - **Android Version**: Android 15
 
 ### Supported Architectures
@@ -60,12 +62,17 @@ The application builds successfully and generates APK:
 - **Build System**: Gradle 8.7 with AGP 8.6.0
 
 ### Known CI Environment Issue
-The CI environment had an incomplete NDK 26.1.10909125 installation (missing source.properties file) which caused build failures. This is an infrastructure issue, not a code problem. The workaround is to remove the broken NDK directory.
+The CI environment had an incomplete NDK 26.1.10909125 installation (missing source.properties file) which caused build failures. This was causing the build system to select the wrong NDK version instead of the properly configured NDK 27.3.13750724 (specified in gradle.properties).
+
+**This is an infrastructure issue, not a code problem.**
 
 **Solution for CI**:
 ```bash
+# Remove the broken NDK installation
 sudo rm -rf /usr/local/lib/android/sdk/ndk/26.1.10909125
 ```
+
+After removal, the build system correctly uses NDK 27.3.13750724 as configured in gradle.properties.
 
 ## Testing Recommendations
 
