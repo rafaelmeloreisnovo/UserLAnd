@@ -70,54 +70,54 @@ class UlaFiles(
     private fun setupLinks() {
         supportDir.mkdirs()
 
-        // Regex para remover sufixos de versão tipo ".a10.so", ".a11.so", ".a10a.so", etc.
+        // Regex to remove versioned suffixes like ".a10.so", ".a11.so", ".a10a.so", etc.
         val versionedSoRegex = Regex("""\\.a[0-9]+[a-zA-Z0-9\-]*\\.so$""")
 
         libDir.listFiles()!!.forEach { libFile ->
             var libFileName = libFile.name
 
-            // Normaliza sufixos versionados (ex: lib_proot.a10.so -> lib_proot.so)
+            // Normalize versioned suffixes (e.g., lib_proot.a10.so -> lib_proot.so)
             if (libFileName.contains(".a") && libFileName.endsWith(".so")) {
                 libFileName = libFileName.replace(versionedSoRegex, ".so")
             }
 
-            // Mantem compatibilidade com o comportamento anterior para certas libs
+            // Maintain compatibility with previous behavior for certain libs
             if (libFileName.startsWith("lib_proot.") ||
                 libFileName.startsWith("lib_libtalloc") ||
                 libFileName.startsWith("lib_loader") ) {
-                // já normalizamos acima; caso especial: se o nome resultante não terminar em .so, pula
+                // Already normalized above; special case: if result doesn't end in .so, skip
                 if (!libFileName.endsWith(".so")) {
                     libFileName = libFile.name
                 }
             }
 
-            val name = libFileName.substringAfter("lib_").substringBeforeLast(".so")
+            val name = libFileName.toSupportName()
             val linkFile = File(supportDir, name)
             linkFile.delete()
 
             try {
-                // Tenta criar symlink com o Symlinker do projeto
+                // Try to create symlink with the project's Symlinker
                 symlinker.createSymlink(libFile.path, linkFile.path)
             } catch (symlinkErr: Exception) {
-                // Fallbacks: android.system.Os.symlink (API21+) ou copiar arquivo
+                // Fallbacks: android.system.Os.symlink (API21+) or copy file
                 try {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                         try {
                             Os.symlink(libFile.path, linkFile.path)
                         } catch (osErr: Exception) {
-                            // última tentativa: copiar o arquivo
+                            // Last resort: copy the file
                             libFile.copyTo(linkFile, overwrite = true)
                         }
                     } else {
                         libFile.copyTo(linkFile, overwrite = true)
                     }
                 } catch (fallbackErr: Exception) {
-                    // Se tudo falhar, log e continua (não lança para não interromper init)
-                    android.util.Log.w("UlaFiles", "setupLinks: fallback falhou para ${libFile.path}: ${fallbackErr.message}")
+                    // If all fails, log and continue (don't throw to avoid interrupting init)
+                    android.util.Log.w("UlaFiles", "setupLinks: fallback failed for ${libFile.path}: ${fallbackErr.message}")
                 }
             }
 
-            // Tenta setar executável (importante para busybox/proot)
+            // Try to set executable (important for busybox/proot)
             try {
                 if (linkFile.exists()) {
                     linkFile.setExecutable(true, false)
@@ -143,17 +143,6 @@ class UlaFiles(
             "x86" -> "x86"
             else -> ""
         }
-
-    // Helper para checar se File é symlink (compatibilidade Java antes do NIO direto)
-    private fun File.isSymbolicLink(): Boolean {
-        return try {
-            val canon = this.canonicalFile
-            val abs = this.absoluteFile
-            canon != abs
-        } catch (e: Exception) {
-            false
-        }
-    }
 }
 
 class Symlinker {

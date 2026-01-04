@@ -79,7 +79,7 @@ class BusyboxExecutor(
         command: List<String>,
         listener: (String) -> Any,
     ): ExecutionResult {
-        // Garante permissões executáveis antes de checar presença
+        // Ensure executable permissions before checking presence
         ensureExecPermissions()
 
         if (!busyboxWrapper.busyboxIsPresent()) {
@@ -122,7 +122,7 @@ class BusyboxExecutor(
         listener: (String) -> Any = discardOutput,
         coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
     ): ExecutionResult {
-        // Garante permissões executáveis antes de checar presença
+        // Ensure executable permissions before checking presence
         ensureExecPermissions()
 
         when {
