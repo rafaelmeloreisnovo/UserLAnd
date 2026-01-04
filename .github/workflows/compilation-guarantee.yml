@@ -1,8 +1,9 @@
+---
 name: Compilation Guarantee Check
 
-on:
+'on':
   push:
-    branches: [ "main", "master", "develop" ]
+    branches: ["main", "master", "develop"]
     paths:
       - "app/**"
       - "gradle/**"
@@ -63,17 +64,19 @@ jobs:
           echo "## 📋 Compilation Guarantee Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### ✅ Environment" >> $GITHUB_STEP_SUMMARY
-          echo "- **Java**: $(java -version 2>&1 | head -n 1)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Gradle**: $(./gradlew --version | grep "^Gradle" | head -n 1)" >> $GITHUB_STEP_SUMMARY
+          JAVA_VER=$(java -version 2>&1 | head -n 1)
+          echo "- **Java**: $JAVA_VER" >> $GITHUB_STEP_SUMMARY
+          GRADLE_VER=$(./gradlew --version | grep "^Gradle" | head -n 1)
+          echo "- **Gradle**: $GRADLE_VER" >> $GITHUB_STEP_SUMMARY
           echo "- **OS**: $(uname -s) $(uname -m)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [[ -f /tmp/gradle_deps.log ]]; then
             echo "### 📦 Dependencies" >> $GITHUB_STEP_SUMMARY
             echo "Dependencies resolved successfully" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "### 🎯 Status" >> $GITHUB_STEP_SUMMARY
           echo "All compilation requirements verified ✓" >> $GITHUB_STEP_SUMMARY
 
@@ -115,7 +118,9 @@ jobs:
             echo "✅ APK generated successfully"
             ls -lh app/build/outputs/apk/debug/app-debug.apk
             echo ""
-            echo "📊 APK Size: $(du -h app/build/outputs/apk/debug/app-debug.apk | cut -f1)"
+            APK_SIZE=$(du -h app/build/outputs/apk/debug/app-debug.apk \
+              | cut -f1)
+            echo "📊 APK Size: $APK_SIZE"
           else
             echo "❌ APK was not generated"
             exit 1
@@ -127,17 +132,21 @@ jobs:
         run: |
           echo "## 🏗️ Compilation Test Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [[ -f app/build/outputs/apk/debug/app-debug.apk ]]; then
-            APK_SIZE=$(du -h app/build/outputs/apk/debug/app-debug.apk | cut -f1)
+            APK_SIZE=$(du -h app/build/outputs/apk/debug/app-debug.apk \
+              | cut -f1)
             echo "### ✅ Compilation Successful" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "- **APK Size**: $APK_SIZE" >> $GITHUB_STEP_SUMMARY
-            echo "- **APK Path**: app/build/outputs/apk/debug/app-debug.apk" >> $GITHUB_STEP_SUMMARY
+            APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+            echo "- **APK Path**: $APK_PATH" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### 📝 Build Logs" >> $GITHUB_STEP_SUMMARY
             if [[ -f /tmp/gradle_build.log ]]; then
-              echo "Build completed successfully. Check workflow logs for details." >> $GITHUB_STEP_SUMMARY
+              BUILD_MSG="Build completed successfully."
+              BUILD_MSG="$BUILD_MSG Check workflow logs for details."
+              echo "$BUILD_MSG" >> $GITHUB_STEP_SUMMARY
             fi
           else
             echo "### ❌ Compilation Failed" >> $GITHUB_STEP_SUMMARY
