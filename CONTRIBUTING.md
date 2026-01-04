@@ -5,6 +5,10 @@ These are intended as just that: guidelines, so use your best judgement when sub
 
 All contributions must follow the UserLAnd [Code of Conduct](https://github.com/CypherpunkArmory/UserLAnd/blob/master/CODE_OF_CONDUCT.md).
 
+> **📚 Additional Documentation:**  
+> For governance policies, ethical compliance, and file protection rules, see [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).  
+> For security policies and vulnerability reporting, see [.github/SECURITY.md](.github/SECURITY.md).
+
 ## Connect with us
 Please talk with us here in the form of a PR or an issue.
  
