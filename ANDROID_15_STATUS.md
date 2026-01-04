@@ -43,7 +43,8 @@ All necessary changes for Android 15 compatibility have been implemented in the 
 ### Target Device (from issue)
 - **Device**: RMX3834 (Realme device)
 - **Kernel**: `5.15.178-android13-8-gabf75819a85e-ab569`
-  - Note: The "android13" in the kernel version indicates the AOSP kernel base, separate from the Android OS version
+  - Note: The "android13" follows AOSP kernel versioning, which differs from Android OS version numbering
+  - This device runs Android 15 OS with a kernel based on AOSP android13 sources
 - **Android Version**: Android 15
 
 ### Supported Architectures
@@ -65,20 +66,23 @@ The CI environment had an incomplete NDK 26.1.10909125 installation (missing sou
 
 **This is an infrastructure issue, not a code problem.**
 
-**Solution for CI**:
+**Solution for CI (RECOMMENDED APPROACH)**:
 ```bash
-# WARNING: Verify the path before deletion to avoid removing the wrong directory
-# First, check the directory exists and is the problematic version:
+# Step 1: Verify the problematic directory exists
 ls -la /usr/local/lib/android/sdk/ndk/26.1.10909125
 
-# Safer alternative: Rename instead of delete
+# Step 2: Verify it's missing source.properties
+ls -la /usr/local/lib/android/sdk/ndk/26.1.10909125/source.properties || echo "Missing source.properties - this is the broken NDK"
+
+# Step 3: SAFEST - Rename instead of delete (can be restored if needed)
 sudo mv /usr/local/lib/android/sdk/ndk/26.1.10909125 /usr/local/lib/android/sdk/ndk/26.1.10909125.broken
 
-# Or remove after verification:
-sudo rm -rf /usr/local/lib/android/sdk/ndk/26.1.10909125
+# Alternative (only after verification above): Remove the directory
+# WARNING: Double-check the path is correct before running!
+# sudo rm -rf /usr/local/lib/android/sdk/ndk/26.1.10909125
 ```
 
-After removal or renaming, the build system correctly uses NDK 27.3.13750724 as configured in gradle.properties.
+After renaming or removal, the build system correctly uses NDK 27.3.13750724 as configured in gradle.properties.
 
 ## Testing Recommendations
 
