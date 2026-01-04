@@ -55,11 +55,13 @@ EOF
 # Add Gradle dependencies if available
 if [ -f "app/build.gradle" ]; then
   echo "   📋 Scanning Gradle dependencies..."
-  echo '    {' >> "${OUTPUT_FILE}"
-  echo '      "type": "library",' >> "${OUTPUT_FILE}"
-  echo '      "name": "gradle-dependencies",' >> "${OUTPUT_FILE}"
-  echo '      "description": "Dependencies from app/build.gradle"' >> "${OUTPUT_FILE}"
-  echo '    }' >> "${OUTPUT_FILE}"
+  cat >> "${OUTPUT_FILE}" << 'COMPONENT_EOF'
+    {
+      "type": "library",
+      "name": "gradle-dependencies",
+      "description": "Dependencies from app/build.gradle"
+    }
+COMPONENT_EOF
 fi
 
 # Close components array

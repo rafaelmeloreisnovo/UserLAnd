@@ -16,7 +16,7 @@ Ethica[8] blocks prohibited executions.
 import sys
 import yaml
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 
 def validate_workflow_file(workflow_path: Path) -> Tuple[bool, List[str]]:

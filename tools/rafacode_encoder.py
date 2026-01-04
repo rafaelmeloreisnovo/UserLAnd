@@ -15,7 +15,7 @@ IMPORTANT: This is a prototype/draft implementation.
 import sys
 import json
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict
 
@@ -42,7 +42,7 @@ def generate_rafcode_seal(data: Dict) -> str:
         'type': 'RAFCODE-Φ',
         'version': '0.1.0',
         'author': '@rafaelmeloreisnovo',
-        'timestamp': datetime.utcnow().isoformat() + 'Z',
+        'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         'signature': signature,
         'status': 'PROTOTYPE-DRAFT'
     }
