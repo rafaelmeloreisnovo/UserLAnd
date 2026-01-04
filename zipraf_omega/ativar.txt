@@ -1,0 +1,121 @@
+========================================
+🪉 ZIPRAF OMEGA - ATIVAÇÃO DO SISTEMA 🪉
+========================================
+
+ESTRUTURA ZIPRAF OMEGA
+=====================
+Sistema automatizado de assinatura e gerenciamento de metodologia
+para o repositório UserLAnd com integração completa ao GitHub.
+
+ORQUESTRAÇÃO DO SISTEMA
+=======================
+
+1. INICIALIZAÇÃO
+   - Verificar ambiente Python (>= 3.8)
+   - Instalar dependências necessárias
+   - Criar banco de dados SQLite se não existir
+   - Validar estrutura de diretórios
+
+2. CONFIGURAÇÃO (Primeira vez)
+   - Solicitar GitHub Personal Access Token (PAT)
+   - Configurar credenciais de assinatura
+   - Criptografar e armazenar dados sensíveis
+   - Validar permissões do PAT
+
+3. GESTÃO DE ASSINATURA
+   - Gerenciar keystores (.jks)
+   - Armazenar aliases e senhas (criptografados)
+   - Integrar com scripts existentes (sign_apk.sh)
+   - Manter histórico de assinaturas
+
+4. AUTOMAÇÃO
+   - Assinar APKs automaticamente
+   - Publicar releases no GitHub
+   - Gerenciar workflows de CI/CD
+   - Manter logs de operações
+
+5. SEGURANÇA
+   - Criptografia AES-256 para dados sensíveis
+   - Validação de integridade usando CRC32 (zipraf)
+   - Timeout de sessão automático
+   - Auditoria de todas as operações
+
+ARQUIVOS DO SISTEMA
+==================
+zipraf_omega/
+  ├── ativar.txt              # Este arquivo - Orquestrador
+  ├── omega_manager.py        # Aplicação principal Python
+  ├── requirements.txt        # Dependências Python
+  ├── README.md               # Documentação completa
+  ├── db/                     # Banco de dados
+  │   └── omega.db            # SQLite database (auto-criado)
+  └── scripts/
+      ├── setup.sh            # Script de instalação
+      └── activate.sh         # Script de ativação rápida
+
+COMO ATIVAR
+===========
+
+# Método 1: Setup Completo
+cd zipraf_omega
+./scripts/setup.sh
+
+# Método 2: Usar diretamente o Python
+cd zipraf_omega
+python3 omega_manager.py --setup
+
+# Método 3: Ativação rápida (se já configurado)
+cd zipraf_omega
+./scripts/activate.sh
+
+REQUISITOS
+==========
+- Python 3.8 ou superior
+- pip (gerenciador de pacotes Python)
+- Git configurado
+- GitHub Personal Access Token com permissões:
+  * repo (acesso completo)
+  * workflow (gerenciar workflows)
+  * write:packages (publicar releases)
+
+FLUXO DE USO
+============
+1. Execute o setup inicial
+2. Forneça seu GitHub PAT quando solicitado
+3. Configure suas credenciais de assinatura
+4. Use os comandos disponíveis:
+   - sign: Assinar APKs
+   - release: Criar release no GitHub
+   - config: Gerenciar configurações
+   - status: Ver status do sistema
+   - logs: Visualizar logs de operações
+
+INTEGRAÇÃO ZIPRAF
+==================
+Este sistema utiliza a estrutura ZIPRAF (raf_zipraf.c) para:
+- Validação de integridade dos arquivos
+- Selo duplo de CRC (inner/outer)
+- Garantia de autenticidade dos APKs
+- Rastreabilidade completa
+
+SEGURANÇA E PRIVACIDADE
+=======================
+⚠️  IMPORTANTE:
+- NUNCA commite o arquivo omega.db
+- NUNCA compartilhe seu PAT
+- Use .gitignore para proteger dados sensíveis
+- Revogue PATs não utilizados
+- Mantenha backups criptografados
+
+SUPORTE E DOCUMENTAÇÃO
+=======================
+Para mais informações, consulte:
+- README.md (documentação completa)
+- BUILD_ON_GITHUB.md (integração CI/CD)
+- scripts/sign_apk.sh (assinatura manual)
+
+========================================
+Sistema desenvolvido com base na
+metodologia RAFAELIA OMEGA
+CRC-on-CRC | MMAP DB | RAW IO
+========================================
