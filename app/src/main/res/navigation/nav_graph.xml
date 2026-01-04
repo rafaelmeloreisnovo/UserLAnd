@@ -89,4 +89,10 @@
         android:label="@string/help"
         tools:layout="@layout/frag_help" />
 
+    <fragment
+        android:id="@+id/diagnostic_fragment"
+        android:name="tech.ula.ui.DiagnosticFragment"
+        android:label="@string/diagnostic"
+        tools:layout="@layout/frag_diagnostic" />
+
 </navigation>
