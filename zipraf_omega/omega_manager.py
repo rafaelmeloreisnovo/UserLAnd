@@ -18,6 +18,7 @@ import hashlib
 import getpass
 import argparse
 import subprocess
+import secrets
 from pathlib import Path
 from typing import Optional, Dict, List, Tuple
 from datetime import datetime
@@ -131,7 +132,9 @@ class ZipRafOmegaManager:
             salt = base64.b64decode(salt_config.encode())
         else:
             # Gerar salt aleatório na primeira vez
-            import secrets
+            # NOTA: Existe uma potencial race condition se múltiplas instâncias
+            # executarem simultaneamente. Para uso típico (single-user), isto é aceitável.
+            # Em ambientes multi-usuário, considere implementar locking apropriado.
             salt = secrets.token_bytes(32)
             # Armazenar para uso futuro
             conn = sqlite3.connect(self.db_path)
