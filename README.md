@@ -19,7 +19,9 @@ Features:
 - **[Best Practices](docs/BEST_PRACTICES.md)** - Coding standards and architectural patterns
 - **[Common Tasks](docs/COMMON_TASKS.md)** - Quick reference for everyday development tasks
 - **[Technical Documentation](docs/TECHNICAL_DOCUMENTATION.md)** - Architecture overview and component map
+- **[Workflow Checks & Validation](docs/README_checks.md)** - Documentation for running validation tools and checks locally
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to UserLAnd
+- **[Governance Policies](.github/CONTRIBUTING.md)** - Ethical compliance, sign-off requirements, and file protection
 - **[Security Policy](SECURITY.md)** - Reporting vulnerabilities and security guidelines
 - **[Changelog](CHANGELOG.md)** - Version history and release notes
 - **[Vantagens e Ganhos](docs/VANTAGENS_E_GANHOS.md)** - Advantages and estimated gains of RAFAELIA optimizations (PT-BR)
