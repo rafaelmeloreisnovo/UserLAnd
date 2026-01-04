@@ -288,5 +288,18 @@
     <!-- Advanced options -->
     <string name="desc_import_backups_should_use_same_settings">Fill out the same: \n\n\u2022 username \n\u2022 password \n\u2022 VNC password \n\u2022 distribution \n\n as the backup to ensure smooth functionality</string>
     <string name="auto_start_checkbox">Enable Auto Start</string>
+    
+    <!-- Diagnostic -->
+    <string name="diagnostic">Diagnostics</string>
+    <string name="diagnostic_title">System Diagnostics</string>
+    <string name="diagnostic_description">Run diagnostics to check system compatibility and troubleshoot issues. This report contains no personal information.</string>
+    <string name="diagnostic_run">Run Diagnostics</string>
+    <string name="diagnostic_copy">Copy to Clipboard</string>
+    <string name="diagnostic_share">Share Report</string>
+    <string name="diagnostic_share_title">Share Diagnostic Report</string>
+    <string name="diagnostic_copied">Diagnostic report copied to clipboard</string>
+    <string name="diagnostic_error">Error running diagnostics: %s</string>
+    <string name="diagnostic_share_error">Error sharing report: %s</string>
+    <string name="diagnostic_request_notification_permission">Enable Notifications</string>
   
 </resources>
