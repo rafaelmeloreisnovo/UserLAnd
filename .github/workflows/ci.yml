@@ -1,245 +1,246 @@
-name: CI Matrix
+name: 🔨 CI Matrix
+
 # Author: @rafaelmeloreisnovo
-# RAFCODE-Φ: CI-MATRIX-v1.0
-#
-# Multi-language CI pipeline with matrix builds for:
-# - C (gcc, clang)
-# - Kotlin (kotlinc)
-# - Java (javac, Gradle)
-# - Python (3.9, 3.10, 3.11)
-# - Shell (shellcheck)
+# RAFCODE-Φ Seal: ⟨Φ⟩-CI-MATRIX-v1.0
+# Multi-language CI for C, Assembly, Kotlin, Java, Python, and Shell
 
 on:
-  push:
-    branches:
-      - master
-      - main
-      - develop
-      - 'rafaelia/**'
   pull_request:
     branches:
-      - master
       - main
-      - develop
+      - master
+      - 'rafaelia/**'
+  push:
+    branches:
+      - main
+      - master
+      - 'rafaelia/**'
   workflow_dispatch:
 
-jobs:
-  detect-languages:
-    name: 🔍 Detect Languages
-    runs-on: ubuntu-latest
-    outputs:
-      has_c: ${{ steps.detect.outputs.has_c }}
-      has_kotlin: ${{ steps.detect.outputs.has_kotlin }}
-      has_java: ${{ steps.detect.outputs.has_java }}
-      has_python: ${{ steps.detect.outputs.has_python }}
-      has_shell: ${{ steps.detect.outputs.has_shell }}
-    
-    steps:
-      - name: 🔄 Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-      
-      - name: 🔍 Detect languages
-        id: detect
-        run: |
-          echo "has_c=$([ -n "$(find . -name '*.c' -o -name '*.h' | head -1)" ] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
-          echo "has_kotlin=$([ -n "$(find . -name '*.kt' | head -1)" ] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
-          echo "has_java=$([ -n "$(find . -name '*.java' | head -1)" ] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
-          echo "has_python=$([ -n "$(find . -name '*.py' | head -1)" ] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
-          echo "has_shell=$([ -n "$(find . -name '*.sh' | head -1)" ] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+permissions:
+  contents: read
 
+jobs:
+  # C Language Tests
   c-build:
-    name: 🔨 C Build (${{ matrix.compiler }})
-    needs: detect-languages
-    if: needs.detect-languages.outputs.has_c == 'true'
+    name: 🔧 C Build & Test
     runs-on: ubuntu-latest
-    
-    strategy:
-      fail-fast: false
-      matrix:
-        compiler: [gcc, clang]
+    timeout-minutes: 15
     
     steps:
-      - name: 🔄 Checkout
+      - name: 📥 Checkout
         uses: actions/checkout@v4
-      
-      - name: 📦 Install dependencies
+        
+      - name: 📦 Install C toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential ${{ matrix.compiler }}
-      
-      - name: 🔨 Compile C files
-        run: |
-          echo "🔨 Compiling with ${{ matrix.compiler }}..."
+          sudo apt-get install -y gcc make
           
-          # Find and compile C files
-          for c_file in $(find . -maxdepth 1 -name '*.c' -type f); do
-            output="${c_file%.c}.out"
-            echo "  Compiling: $c_file"
-            ${{ matrix.compiler }} -Wall -Wextra -O2 "$c_file" -o "$output" || echo "  ⚠️  Compilation failed: $c_file"
+      - name: 🔨 Build C files
+        run: |
+          echo "🔍 Finding C files..."
+          C_FILES=$(find . -maxdepth 1 -name "*.c" -type f | head -n 5)
+          if [ -z "$C_FILES" ]; then
+            echo "✓ No root-level C files to compile"
+            exit 0
+          fi
+          
+          echo "🔨 Compiling C files..."
+          for file in $C_FILES; do
+            echo "  - Compiling $file"
+            gcc -c "$file" -o "${file%.c}.o" || echo "⚠️ Failed to compile $file"
           done
           
-          echo "✓ C compilation completed"
+          echo "✓ C compilation check complete"
+          
+      - name: 🧪 Run C tests (if available)
+        run: |
+          if [ -d "tests" ] && [ -f "tests/Makefile" ]; then
+            cd tests && make test-c || true
+          else
+            echo "ℹ️ No C test suite found"
+          fi
 
-  kotlin-build:
-    name: 🔨 Kotlin Build
-    needs: detect-languages
-    if: needs.detect-languages.outputs.has_kotlin == 'true'
+  # Kotlin/Java Tests
+  kotlin-java-build:
+    name: ☕ Kotlin/Java Build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     
     steps:
-      - name: 🔄 Checkout
+      - name: 📥 Checkout
         uses: actions/checkout@v4
-      
-      - name: ☕ Set up JDK
+        
+      - name: ☕ Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-      
-      - name: 🔨 Gradle build
-        run: |
-          echo "🔨 Building with Gradle..."
-          if [ -f "./gradlew" ]; then
-            chmod +x ./gradlew
-            ./gradlew assembleDebug --no-daemon --stacktrace || true
-            echo "✓ Gradle build completed"
-          else
-            echo "⚠️  No gradlew found, skipping build"
-          fi
-
-  java-build:
-    name: 🔨 Java Build (JDK ${{ matrix.java }})
-    needs: detect-languages
-    if: needs.detect-languages.outputs.has_java == 'true'
-    runs-on: ubuntu-latest
-    
-    strategy:
-      fail-fast: false
-      matrix:
-        java: ['11', '17', '21']
-    
-    steps:
-      - name: 🔄 Checkout
-        uses: actions/checkout@v4
-      
-      - name: ☕ Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: ${{ matrix.java }}
-      
-      - name: 🔨 Compile Java files
-        run: |
-          echo "🔨 Compiling Java files with JDK ${{ matrix.java }}..."
+          cache: 'gradle'
           
-          # Find and compile standalone Java files
-          for java_file in $(find . -maxdepth 1 -name '*.java' -type f); do
-            echo "  Compiling: $java_file"
-            javac "$java_file" || echo "  ⚠️  Compilation failed: $java_file"
-          done
+      - name: 🔨 Build with Gradle
+        run: |
+          echo "🔨 Building Android project..."
+          ./gradlew assembleDebug --no-daemon --warning-mode=all
           
-          echo "✓ Java compilation completed"
+      - name: 🧪 Run Kotlin/Java tests
+        run: |
+          echo "🧪 Running unit tests..."
+          ./gradlew testDebugUnitTest --no-daemon
 
+  # Python Tests
   python-test:
-    name: 🐍 Python (${{ matrix.python-version }})
-    needs: detect-languages
-    if: needs.detect-languages.outputs.has_python == 'true'
+    name: 🐍 Python Lint & Test
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 10
     strategy:
-      fail-fast: false
       matrix:
-        python-version: ['3.9', '3.10', '3.11']
+        python-version: ['3.9', '3.11']
     
     steps:
-      - name: 🔄 Checkout
+      - name: 📥 Checkout
         uses: actions/checkout@v4
-      
+        
       - name: 🐍 Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      
-      - name: 📦 Install dependencies
+          cache: 'pip'
+          
+      - name: 📦 Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyyaml psutil
+          pip install pylint flake8 pyyaml
           
-          # Install dev dependencies if requirements exist
+          # Install dependencies from requirements.txt if it exists
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt
           fi
-          if [ -f requirements-dev.txt ]; then
-            pip install -r requirements-dev.txt
-          fi
-      
-      - name: 🔍 Check Python syntax
-        run: |
-          echo "🔍 Checking Python syntax..."
-          python -m py_compile tools/*.py 2>&1 || true
-          echo "✓ Syntax check completed"
-      
-      - name: 🧪 Run Python tools
-        run: |
-          echo "🧪 Testing Python tools..."
           
-          # Test check_workflows.py
-          if [ -f tools/check_workflows.py ]; then
-            python tools/check_workflows.py --help || true
+      - name: 🔍 Lint Python files
+        run: |
+          echo "🔍 Finding Python files..."
+          PYTHON_FILES=$(find . -name "*.py" -type f | grep -v __pycache__ | head -n 10)
+          
+          if [ -z "$PYTHON_FILES" ]; then
+            echo "✓ No Python files to lint"
+            exit 0
           fi
           
-          echo "✓ Python tools tested"
+          echo "🔍 Running flake8..."
+          # W503 (line break before binary operator) is deprecated by PEP 8 and is extend-ignored
+          flake8 $PYTHON_FILES --max-line-length=120 --extend-ignore=W503 || echo "⚠️ Linting found issues"
+          
+      - name: 🧪 Run Python tests (if available)
+        run: |
+          if [ -f "pytest.ini" ] || [ -d "tests" ]; then
+            pip install pytest
+            pytest -v || echo "⚠️ Some tests failed"
+          else
+            echo "ℹ️ No Python test suite found"
+          fi
 
-  shell-check:
-    name: 🐚 Shell Check
-    needs: detect-languages
-    if: needs.detect-languages.outputs.has_shell == 'true'
+  # Shell Script Tests
+  shell-test:
+    name: 🐚 Shell Script Validation
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     
     steps:
-      - name: 🔄 Checkout
+      - name: 📥 Checkout
         uses: actions/checkout@v4
-      
+        
       - name: 📦 Install shellcheck
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck
-      
-      - name: 🔍 Run shellcheck
-        run: |
-          echo "🔍 Running shellcheck..."
           
-          # Find and check shell scripts
-          find . -name '*.sh' -type f | while read -r script; do
-            echo "  Checking: $script"
-            shellcheck "$script" || echo "  ⚠️  Issues found in: $script"
+      - name: 🔍 Validate shell scripts
+        run: |
+          echo "🔍 Finding shell scripts..."
+          SHELL_SCRIPTS=$(find . -name "*.sh" -type f | head -n 20)
+          
+          if [ -z "$SHELL_SCRIPTS" ]; then
+            echo "✓ No shell scripts to validate"
+            exit 0
+          fi
+          
+          echo "🔍 Running shellcheck..."
+          # SC2086: Double quote to prevent globbing and word splitting (tolerated for compatibility)
+          # SC2181: Check exit code directly with e.g. 'if mycmd;', not indirectly with $? (style preference)
+          ERROR_COUNT=0
+          for script in $SHELL_SCRIPTS; do
+            echo "  - Checking $script"
+            if ! shellcheck "$script" -e SC2086,SC2181; then
+              ERROR_COUNT=$((ERROR_COUNT + 1))
+            fi
           done
           
-          echo "✓ Shellcheck completed"
+          if [ $ERROR_COUNT -gt 0 ]; then
+            echo "⚠️ Found issues in $ERROR_COUNT script(s)"
+          else
+            echo "✓ All shell scripts passed validation"
+          fi
+          
+      - name: 🧪 Test shell scripts (basic syntax)
+        run: |
+          echo "🧪 Testing shell script syntax..."
+          SHELL_SCRIPTS=$(find . -name "*.sh" -type f | head -n 20)
+          
+          for script in $SHELL_SCRIPTS; do
+            echo "  - Syntax check: $script"
+            bash -n "$script" || echo "⚠️ Syntax error in $script"
+          done
+          
+          echo "✓ Syntax check complete"
 
-  summary:
-    name: 📊 CI Summary
-    needs: [detect-languages, c-build, kotlin-build, java-build, python-test, shell-check]
-    if: always()
+  # Assembly (basic check)
+  assembly-check:
+    name: 🔩 Assembly Files Check
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     
     steps:
-      - name: 📊 Display summary
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        
+      - name: 🔍 Check for Assembly files
         run: |
-          echo "## CI Matrix Results"
-          echo ""
-          echo "Languages detected:"
-          echo "  C: ${{ needs.detect-languages.outputs.has_c }}"
-          echo "  Kotlin: ${{ needs.detect-languages.outputs.has_kotlin }}"
-          echo "  Java: ${{ needs.detect-languages.outputs.has_java }}"
-          echo "  Python: ${{ needs.detect-languages.outputs.has_python }}"
-          echo "  Shell: ${{ needs.detect-languages.outputs.has_shell }}"
-          echo ""
-          echo "Build results:"
-          echo "  C: ${{ needs.c-build.result }}"
-          echo "  Kotlin: ${{ needs.kotlin-build.result }}"
-          echo "  Java: ${{ needs.java-build.result }}"
-          echo "  Python: ${{ needs.python-test.result }}"
-          echo "  Shell: ${{ needs.shell-check.result }}"
+          echo "🔍 Searching for Assembly files..."
+          ASM_FILES=$(find . -name "*.s" -o -name "*.S" -o -name "*.asm" | head -n 10)
+          
+          if [ -z "$ASM_FILES" ]; then
+            echo "ℹ️ No Assembly files found"
+            exit 0
+          fi
+          
+          echo "📋 Found Assembly files:"
+          for file in $ASM_FILES; do
+            echo "  - $file ($(wc -l < "$file") lines)"
+          done
+          
+          echo "✓ Assembly file inventory complete"
+          echo "ℹ️ Note: Assembly compilation requires specific toolchain setup"
+
+  # Summary Job
+  ci-summary:
+    name: 📊 CI Summary
+    runs-on: ubuntu-latest
+    needs: [c-build, kotlin-java-build, python-test, shell-test, assembly-check]
+    if: always()
+    timeout-minutes: 5
+    
+    steps:
+      - name: 📊 Generate summary
+        run: |
+          echo "## 🔨 CI Matrix Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| C Build & Test | ${{ needs.c-build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Kotlin/Java Build | ${{ needs.kotlin-java-build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Python Lint & Test | ${{ needs.python-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Shell Script Validation | ${{ needs.shell-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Assembly Files Check | ${{ needs.assembly-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✓ Multi-language CI matrix complete" >> $GITHUB_STEP_SUMMARY

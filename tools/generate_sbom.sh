@@ -1,185 +1,240 @@
 #!/bin/bash
-# SBOM Generator Script
+#
+# SBOM Generator - Software Bill of Materials
 # Author: @rafaelmeloreisnovo
-# RAFCODE-Φ: SBOM-GENERATOR-v1.0
+# RAFCODE-Φ Seal: ⟨Φ⟩-SBOM-GENERATOR-v1.0
+#
+# Generates SBOM using Syft and computes integrity hashes
+# This is a PROTOTYPE script. Production use requires additional validation.
 
 set -euo pipefail
 
-# Script configuration
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-OUTPUT_DIR="${ROOT_DIR}/build/sbom"
+# Configuration
+SBOM_FORMAT="${SBOM_FORMAT:-json}"
+SBOM_OUTPUT="${SBOM_OUTPUT:-sbom.json}"
+HASH_OUTPUT="${HASH_OUTPUT:-sbom.sha256}"
 
-# Color output
+# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo_info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
+log_info() {
+    echo -e "${BLUE}ℹ️  $*${NC}"
 }
 
-echo_success() {
-    echo -e "${GREEN}✓ $1${NC}"
+log_success() {
+    echo -e "${GREEN}✓ $*${NC}"
 }
 
-echo_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+log_warning() {
+    echo -e "${YELLOW}⚠️  $*${NC}"
 }
 
-echo_error() {
-    echo -e "${RED}✗ $1${NC}" >&2
+log_error() {
+    echo -e "${RED}❌ $*${NC}" >&2
 }
 
-# Check if syft is available
-check_syft() {
-    if command -v syft &> /dev/null; then
-        echo_success "syft found: $(syft version --output json 2>/dev/null | grep -o '"version":"[^"]*"' || echo 'installed')"
-        return 0
-    else
-        echo_warning "syft not found"
-        echo_info "Install syft: https://github.com/anchore/syft#installation"
-        echo_info "  curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin"
-        return 1
-    fi
-}
-
-# Generate SBOM using syft
-generate_sbom_syft() {
-    local target="$1"
-    local output_file="$2"
-    local format="${3:-spdx-json}"
+check_dependencies() {
+    log_info "Checking dependencies..."
     
-    echo_info "Generating SBOM for: ${target}"
-    echo_info "Output format: ${format}"
-    
-    if syft "${target}" -o "${format}=${output_file}" 2>&1 | tee /tmp/syft.log; then
-        echo_success "SBOM generated: ${output_file}"
-        return 0
-    else
-        echo_error "Failed to generate SBOM"
-        return 1
-    fi
-}
-
-# Generate fallback SBOM (basic inventory)
-generate_fallback_sbom() {
-    local output_file="$1"
-    
-    echo_info "Generating fallback SBOM (basic inventory)"
-    
-    cat > "${output_file}" <<EOF
-{
-  "bomFormat": "CycloneDX",
-  "specVersion": "1.4",
-  "version": 1,
-  "metadata": {
-    "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-    "tools": [
-      {
-        "vendor": "rafaelmeloreisnovo",
-        "name": "generate_sbom.sh",
-        "version": "1.0.0"
-      }
-    ],
-    "component": {
-      "type": "application",
-      "name": "UserLAnd",
-      "version": "unknown"
-    }
-  },
-  "components": []
-}
-EOF
-    
-    echo_warning "Generated minimal SBOM (install syft for complete analysis)"
-    echo_success "Fallback SBOM: ${output_file}"
-}
-
-# Main function
-main() {
-    echo_info "🔨 SBOM Generator Script"
-    echo_info "Root directory: ${ROOT_DIR}"
-    
-    # Parse arguments
-    local target="${1:-${ROOT_DIR}}"
-    local format="${2:-spdx-json}"
-    local output_name="${3:-sbom}"
-    
-    # Create output directory
-    mkdir -p "${OUTPUT_DIR}"
-    
-    # Determine output file extension
-    local extension="json"
-    case "${format}" in
-        *json) extension="json" ;;
-        *xml) extension="xml" ;;
-        *text) extension="txt" ;;
-    esac
-    
-    local output_file="${OUTPUT_DIR}/${output_name}.${extension}"
-    
-    # Check for syft and generate SBOM
-    if check_syft; then
-        if generate_sbom_syft "${target}" "${output_file}" "${format}"; then
-            echo_success "SBOM generation completed successfully"
-            echo_info "📄 Output: ${output_file}"
-            
-            # Display summary if JSON
-            if [[ "${extension}" == "json" ]] && command -v jq &> /dev/null; then
-                echo ""
-                echo_info "📊 SBOM Summary:"
-                jq -r '
-                    if .artifacts then
-                        "  Artifacts: \(.artifacts | length)"
-                    elif .components then
-                        "  Components: \(.components | length)"
-                    else
-                        "  Unable to determine component count"
-                    end
-                ' "${output_file}" 2>/dev/null || echo "  (summary not available)"
-            fi
-            
-            return 0
+    # Check for syft
+    if ! command -v syft &> /dev/null; then
+        log_warning "Syft not found. Installing..."
+        
+        # Try to install syft
+        if command -v curl &> /dev/null; then
+            log_info "Installing Syft via curl..."
+            local INSTALL_BIN_DIR="${HOME}/.local/bin"
+            mkdir -p "${INSTALL_BIN_DIR}"
+            curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b "${INSTALL_BIN_DIR}"
+            export PATH="${INSTALL_BIN_DIR}:${PATH}"
         else
-            echo_error "SBOM generation failed, creating fallback"
-            generate_fallback_sbom "${output_file}"
+            log_error "curl not found. Please install syft manually:"
+            log_error "  https://github.com/anchore/syft#installation"
             return 1
         fi
+    fi
+    
+    log_success "Dependencies OK"
+}
+
+generate_sbom() {
+    local target="${1:-.}"
+    
+    log_info "Generating SBOM for: $target"
+    
+    # Run syft
+    if syft "$target" -o "$SBOM_FORMAT" > "$SBOM_OUTPUT"; then
+        log_success "SBOM generated: $SBOM_OUTPUT"
     else
-        echo_warning "syft not available, creating fallback SBOM"
-        generate_fallback_sbom "${output_file}"
+        log_error "Failed to generate SBOM"
         return 1
+    fi
+    
+    # Get file size
+    local size
+    size=$(stat -c%s "$SBOM_OUTPUT" 2>/dev/null || stat -f%z "$SBOM_OUTPUT" 2>/dev/null || echo "unknown")
+    log_info "SBOM size: $size bytes"
+}
+
+generate_hash() {
+    log_info "Generating integrity hash..."
+    
+    if [ ! -f "$SBOM_OUTPUT" ]; then
+        log_error "SBOM file not found: $SBOM_OUTPUT"
+        return 1
+    fi
+    
+    # Generate SHA-256 hash
+    if command -v sha256sum &> /dev/null; then
+        sha256sum "$SBOM_OUTPUT" > "$HASH_OUTPUT"
+    elif command -v shasum &> /dev/null; then
+        shasum -a 256 "$SBOM_OUTPUT" > "$HASH_OUTPUT"
+    else
+        log_error "No SHA-256 utility found (sha256sum or shasum)"
+        return 1
+    fi
+    
+    log_success "Hash generated: $HASH_OUTPUT"
+    
+    # Display hash
+    local hash_value
+    hash_value=$(cut -d' ' -f1 "$HASH_OUTPUT")
+    log_info "SHA-256: $hash_value"
+}
+
+display_summary() {
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📊 SBOM GENERATION SUMMARY"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    if [ -f "$SBOM_OUTPUT" ]; then
+        echo "✓ SBOM File:      $SBOM_OUTPUT"
+        
+        # Count packages if JSON format
+        if [ "$SBOM_FORMAT" = "json" ] && command -v jq &> /dev/null; then
+            local pkg_count
+            pkg_count=$(jq '.artifacts | length' "$SBOM_OUTPUT" 2>/dev/null || echo "unknown")
+            echo "  Packages:       $pkg_count"
+        fi
+    fi
+    
+    if [ -f "$HASH_OUTPUT" ]; then
+        echo "✓ Hash File:      $HASH_OUTPUT"
+        cat "$HASH_OUTPUT" | while read -r line; do
+            echo "  Hash:           ${line%% *}"
+        done
+    fi
+    
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    
+    log_info "To verify SBOM integrity later, run:"
+    if command -v sha256sum &> /dev/null; then
+        echo "  sha256sum -c $HASH_OUTPUT"
+    elif command -v shasum &> /dev/null; then
+        echo "  shasum -a 256 -c $HASH_OUTPUT"
     fi
 }
 
-# Show usage if --help
-if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
-    cat <<EOF
-Usage: $0 [TARGET] [FORMAT] [OUTPUT_NAME]
+usage() {
+    cat << EOF
+SBOM Generator - Software Bill of Materials
 
-Generate Software Bill of Materials (SBOM) for the project.
+Usage: $0 [OPTIONS] [TARGET]
 
 Arguments:
-  TARGET       Path to analyze (default: project root)
-  FORMAT       Output format (default: spdx-json)
-               Options: spdx-json, cyclonedx-json, syft-json, etc.
-  OUTPUT_NAME  Output filename without extension (default: sbom)
+  TARGET              Directory or image to scan (default: current directory)
+
+Options:
+  -f, --format FORMAT SBOM format: json, spdx, cyclonedx (default: json)
+  -o, --output FILE   Output file (default: sbom.json)
+  -h, --help          Show this help message
+
+Environment Variables:
+  SBOM_FORMAT         Default SBOM format
+  SBOM_OUTPUT         Default output file
+  HASH_OUTPUT         Default hash output file
 
 Examples:
+  # Generate SBOM for current directory
   $0
-  $0 . spdx-json project-sbom
-  $0 app/build/outputs/apk cyclonedx-json app-sbom
 
-Requirements:
-  - syft (recommended): https://github.com/anchore/syft
-  - jq (optional, for summary display)
+  # Generate SBOM for specific directory
+  $0 /path/to/project
 
+  # Generate SBOM in SPDX format
+  $0 -f spdx -o sbom.spdx
+
+  # Generate SBOM for Docker image
+  $0 myimage:latest
+
+For more information:
+  https://github.com/anchore/syft
 EOF
-    exit 0
-fi
+}
 
-# Run main
+main() {
+    local target="."
+    
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -f|--format)
+                SBOM_FORMAT="$2"
+                shift 2
+                ;;
+            -o|--output)
+                SBOM_OUTPUT="$2"
+                HASH_OUTPUT="${2}.sha256"
+                shift 2
+                ;;
+            -h|--help)
+                usage
+                exit 0
+                ;;
+            -*)
+                log_error "Unknown option: $1"
+                usage
+                exit 1
+                ;;
+            *)
+                target="$1"
+                shift
+                ;;
+        esac
+    done
+    
+    echo "🔍 RAFAELIA SBOM Generator"
+    echo ""
+    
+    # Check dependencies
+    if ! check_dependencies; then
+        log_error "Dependency check failed"
+        exit 1
+    fi
+    
+    # Generate SBOM
+    if ! generate_sbom "$target"; then
+        log_error "SBOM generation failed"
+        exit 1
+    fi
+    
+    # Generate hash
+    if ! generate_hash; then
+        log_error "Hash generation failed"
+        exit 1
+    fi
+    
+    # Display summary
+    display_summary
+    
+    log_success "SBOM generation complete!"
+    exit 0
+}
+
 main "$@"

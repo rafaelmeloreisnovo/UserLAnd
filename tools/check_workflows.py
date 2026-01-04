@@ -1,42 +1,60 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Workflow Validator - Line-by-line YAML Analysis
+RAFAELIA Workflow Validator
 Author: @rafaelmeloreisnovo
-RAFCODE-Φ: WORKFLOW-VALIDATOR-v1.0
+RAFCODE-Φ Seal: ⟨Φ⟩-WORKFLOW-VALIDATOR-v1.0
+License: MIT
 
-This script analyzes GitHub Actions workflow YAML files line-by-line
-to detect potential issues, security concerns, and best practice violations.
+This script analyzes GitHub Actions workflow files line-by-line to detect
+potential issues, security concerns, and best practices violations.
 """
 
-import os
 import sys
 import json
 import yaml
-import glob
+import re
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import List, Dict, Any
+
 
 class WorkflowValidator:
-    """Validates GitHub Actions workflow files."""
+    """Validates GitHub Actions workflow files"""
     
-    def __init__(self):
+    def __init__(self, workflows_dir: str):
+        self.workflows_dir = Path(workflows_dir)
         self.findings = []
-        self.errors = []
         
-    def validate_workflow_file(self, filepath: str) -> Dict[str, Any]:
-        """Validate a single workflow file."""
-        print(f"🔍 Analyzing: {filepath}")
+    def validate_all(self) -> List[Dict[str, Any]]:
+        """Validate all workflow files in the directory"""
+        if not self.workflows_dir.exists():
+            self.findings.append({
+                "severity": "error",
+                "file": str(self.workflows_dir),
+                "line": 0,
+                "message": f"Workflows directory not found: {self.workflows_dir}"
+            })
+            return self.findings
+            
+        workflow_files = list(self.workflows_dir.glob("*.yml")) + list(self.workflows_dir.glob("*.yaml"))
         
-        file_findings = {
-            "file": filepath,
-            "issues": [],
-            "warnings": [],
-            "info": []
-        }
-        
+        if not workflow_files:
+            self.findings.append({
+                "severity": "info",
+                "file": str(self.workflows_dir),
+                "line": 0,
+                "message": "No workflow files found"
+            })
+            return self.findings
+            
+        for workflow_file in workflow_files:
+            self.validate_workflow(workflow_file)
+            
+        return self.findings
+    
+    def validate_workflow(self, workflow_path: Path):
+        """Validate a single workflow file"""
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(workflow_path, 'r', encoding='utf-8') as f:
                 content = f.read()
                 lines = content.split('\n')
                 
@@ -44,181 +62,141 @@ class WorkflowValidator:
             try:
                 workflow = yaml.safe_load(content)
             except yaml.YAMLError as e:
-                file_findings["issues"].append({
-                    "line": getattr(e, 'problem_mark', {}).line if hasattr(e, 'problem_mark') else 0,
+                self.findings.append({
                     "severity": "error",
+                    "file": str(workflow_path.name),
+                    "line": e.problem_mark.line if hasattr(e, "problem_mark") and e.problem_mark is not None else 0,
                     "message": f"YAML parsing error: {str(e)}"
                 })
-                return file_findings
+                return
+                
+            # Line-by-line checks
+            for line_num, line in enumerate(lines, start=1):
+                self.check_line(workflow_path.name, line_num, line)
+                
+            # Structural checks
+            self.check_structure(workflow_path.name, workflow)
             
-            # Line-by-line analysis
-            for line_num, line in enumerate(lines, 1):
-                # Check for secrets exposure
-                if 'password' in line.lower() or 'token' in line.lower():
-                    if '}}' in line and not '${{' in line:
-                        file_findings["warnings"].append({
-                            "line": line_num,
-                            "severity": "warning",
-                            "message": "Potential secret exposure - verify proper secret handling"
-                        })
-                
-                # Check for unsigned container images
-                if 'image:' in line and '@sha256:' not in line:
-                    file_findings["info"].append({
-                        "line": line_num,
-                        "severity": "info",
-                        "message": "Consider pinning container image to specific SHA256 digest"
-                    })
-                
-                # Check for shell injection risks
-                if 'run:' in line:
-                    next_lines = lines[line_num:line_num+5]
-                    for nl in next_lines:
-                        if '${{' in nl and 'github.event' in nl:
-                            file_findings["warnings"].append({
-                                "line": line_num,
-                                "severity": "warning",
-                                "message": "Potential shell injection - validate user input before use"
-                            })
-                            break
-            
-            # Structural validations
-            if workflow:
-                # Check for workflow name
-                if 'name' not in workflow:
-                    file_findings["warnings"].append({
-                        "line": 0,
-                        "severity": "warning",
-                        "message": "Workflow missing 'name' field"
-                    })
-                
-                # Check for jobs
-                if 'jobs' not in workflow:
-                    file_findings["issues"].append({
-                        "line": 0,
-                        "severity": "error",
-                        "message": "Workflow missing 'jobs' field"
-                    })
-                elif workflow['jobs']:
-                    for job_name, job_data in workflow['jobs'].items():
-                        # Check for runner specification
-                        if 'runs-on' not in job_data:
-                            file_findings["issues"].append({
-                                "line": 0,
-                                "severity": "error",
-                                "message": f"Job '{job_name}' missing 'runs-on' field"
-                            })
-                        
-                        # Check for steps
-                        if 'steps' not in job_data or not job_data['steps']:
-                            file_findings["warnings"].append({
-                                "line": 0,
-                                "severity": "warning",
-                                "message": f"Job '{job_name}' has no steps defined"
-                            })
-            
-            # Summary
-            total_issues = len(file_findings["issues"]) + len(file_findings["warnings"])
-            if total_issues == 0:
-                file_findings["info"].append({
-                    "line": 0,
-                    "severity": "info",
-                    "message": "✓ No critical issues found"
-                })
-                
         except Exception as e:
-            file_findings["issues"].append({
-                "line": 0,
+            self.findings.append({
                 "severity": "error",
-                "message": f"Failed to process file: {str(e)}"
+                "file": str(workflow_path.name),
+                "line": 0,
+                "message": f"Failed to validate workflow: {str(e)}"
             })
+    
+    def check_line(self, filename: str, line_num: int, line: str):
+        """Check a single line for issues"""
+        # Check for hardcoded secrets
+        secret_patterns = [
+            r'password\s*:\s*["\'](?!.*\$\{\{)',
+            r'token\s*:\s*["\'](?!.*\$\{\{)',
+            r'api[_-]?key\s*:\s*["\'](?!.*\$\{\{)',
+        ]
+        
+        for pattern in secret_patterns:
+            if re.search(pattern, line, re.IGNORECASE):
+                self.findings.append({
+                    "severity": "critical",
+                    "file": filename,
+                    "line": line_num,
+                    "message": "Potential hardcoded secret detected"
+                })
+        
+        # Check for unsafe shell execution
+        if 'run:' in line:
+            if '${{' in line and 'github.event' in line:
+                self.findings.append({
+                    "severity": "warning",
+                    "file": filename,
+                    "line": line_num,
+                    "message": "Potential command injection via github.event - ensure proper input sanitization"
+                })
+        
+        # Check for deprecated actions
+        if 'actions/checkout@v1' in line or 'actions/checkout@v2' in line:
+            self.findings.append({
+                "severity": "info",
+                "file": filename,
+                "line": line_num,
+                "message": "Consider updating to actions/checkout@v4 for latest features"
+            })
+    
+    def check_structure(self, filename: str, workflow: Dict[str, Any]):
+        """Check workflow structure for best practices"""
+        if not workflow:
+            return
             
-        return file_findings
-    
-    def validate_all_workflows(self, workflows_dir: str = ".github/workflows") -> List[Dict[str, Any]]:
-        """Validate all workflow files in the directory."""
-        print(f"🔨 Starting workflow validation in: {workflows_dir}")
+        # Check if workflow has a name
+        if 'name' not in workflow:
+            self.findings.append({
+                "severity": "info",
+                "file": filename,
+                "line": 0,
+                "message": "Workflow should have a descriptive 'name' field"
+            })
         
-        if not os.path.exists(workflows_dir):
-            print(f"❌ Error: Workflows directory not found: {workflows_dir}")
-            return []
-        
-        workflow_files = glob.glob(os.path.join(workflows_dir, "*.yml")) + \
-                        glob.glob(os.path.join(workflows_dir, "*.yaml"))
-        
-        if not workflow_files:
-            print(f"⚠️  Warning: No workflow files found in {workflows_dir}")
-            return []
-        
-        print(f"📋 Found {len(workflow_files)} workflow file(s)")
-        
-        results = []
-        for workflow_file in sorted(workflow_files):
-            result = self.validate_workflow_file(workflow_file)
-            results.append(result)
-        
-        return results
-    
-    def generate_report(self, results: List[Dict[str, Any]], output_file: str = "workflow-validation-report.json"):
-        """Generate JSON report of findings."""
-        report = {
-            "timestamp": str(Path(output_file).stat().st_mtime if os.path.exists(output_file) else ""),
-            "total_files": len(results),
-            "results": results,
-            "summary": {
-                "total_errors": sum(len(r["issues"]) for r in results),
-                "total_warnings": sum(len(r["warnings"]) for r in results),
-                "total_info": sum(len(r["info"]) for r in results)
-            }
-        }
-        
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(report, f, indent=2, ensure_ascii=False)
-        
-        print(f"\n✓ Report generated: {output_file}")
-        print(f"📊 Summary: {report['summary']['total_errors']} errors, "
-              f"{report['summary']['total_warnings']} warnings, "
-              f"{report['summary']['total_info']} info")
-        
-        return report
+        # Check for jobs
+        if 'jobs' not in workflow:
+            self.findings.append({
+                "severity": "warning",
+                "file": filename,
+                "line": 0,
+                "message": "Workflow has no jobs defined"
+            })
+            return
+            
+        jobs = workflow.get('jobs', {})
+        for job_name, job_config in jobs.items():
+            if not isinstance(job_config, dict):
+                continue
+                
+            # Check for timeout
+            if 'timeout-minutes' not in job_config:
+                self.findings.append({
+                    "severity": "info",
+                    "file": filename,
+                    "line": 0,
+                    "message": f"Job '{job_name}' should define timeout-minutes to prevent hanging"
+                })
+
 
 def main():
-    """Main entry point."""
-    import argparse
+    """Main entry point"""
+    # Determine workflows directory
+    script_dir = Path(__file__).parent
+    repo_root = script_dir.parent
+    workflows_dir = repo_root / ".github" / "workflows"
     
-    parser = argparse.ArgumentParser(
-        description='Validate GitHub Actions workflow files',
-        formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument(
-        '--workflows-dir',
-        default='.github/workflows',
-        help='Path to workflows directory (default: .github/workflows)'
-    )
-    parser.add_argument(
-        '--output',
-        default='workflow-validation-report.json',
-        help='Output JSON report file (default: workflow-validation-report.json)'
-    )
+    print(f"🔍 Validating workflows in: {workflows_dir}")
     
-    args = parser.parse_args()
+    validator = WorkflowValidator(str(workflows_dir))
+    findings = validator.validate_all()
     
-    validator = WorkflowValidator()
-    results = validator.validate_all_workflows(args.workflows_dir)
+    # Generate output
+    output_file = repo_root / "workflow_findings.json"
+    with open(output_file, 'w', encoding='utf-8') as f:
+        json.dump(findings, f, indent=2)
     
-    if results:
-        report = validator.generate_report(results, args.output)
-        
-        # Exit with error if critical issues found
-        if report['summary']['total_errors'] > 0:
-            print("\n❌ Critical errors found in workflows!")
-            sys.exit(1)
-        else:
-            print("\n✓ Workflow validation completed successfully")
-            sys.exit(0)
-    else:
-        print("\n⚠️  No workflows to validate")
-        sys.exit(0)
+    print(f"✓ Validation complete. Findings written to: {output_file}")
+    print(f"📊 Summary: {len(findings)} finding(s)")
+    
+    # Print summary by severity
+    severity_counts = {}
+    for finding in findings:
+        severity = finding.get('severity', 'unknown')
+        severity_counts[severity] = severity_counts.get(severity, 0) + 1
+    
+    for severity, count in sorted(severity_counts.items()):
+        emoji = {"critical": "🔴", "error": "❌", "warning": "⚠️", "info": "ℹ️"}.get(severity, "❓")
+        print(f"  {emoji} {severity}: {count}")
+    
+    # Exit with error if critical or error findings
+    if any(f.get('severity') in ['critical', 'error'] for f in findings):
+        return 1
+    
+    return 0
 
-if __name__ == '__main__':
-    main()
+
+if __name__ == "__main__":
+    sys.exit(main())

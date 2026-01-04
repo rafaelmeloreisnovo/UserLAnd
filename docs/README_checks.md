@@ -1,306 +1,339 @@
-# Workflow Checks and Validation Documentation
-<!-- Author: @rafaelmeloreisnovo -->
-<!-- RAFCODE-Φ: CHECKS-DOCUMENTATION-v1.0 -->
+# RAFAELIA Checks & Validation Documentation
 
-## 🔍 Overview
+**Author:** @rafaelmeloreisnovo  
+**RAFCODE-Φ Seal:** ⟨Φ⟩-CHECKS-DOCUMENTATION-v1.0  
+**Last Updated:** 2026-01-04
 
-This documentation covers the validation tools, CI/CD checks, and governance mechanisms implemented in the UserLAnd repository.
+This document describes the automated checks, validation tools, and governance mechanisms implemented in the UserLAnd repository.
 
-## 🛠️ Validation Tools
+## 📋 Table of Contents
 
-### 1. Workflow Validator (`tools/check_workflows.py`)
+1. [Overview](#overview)
+2. [Workflow Validation](#workflow-validation)
+3. [CI Matrix](#ci-matrix)
+4. [RAFAELIA Tools](#rafaelia-tools)
+5. [SBOM Generation](#sbom-generation)
+6. [Signing and Verification](#signing-and-verification)
+7. [Branch Protection](#branch-protection)
+8. [Troubleshooting](#troubleshooting)
 
-**Purpose**: Performs line-by-line analysis of GitHub Actions workflow files to detect security issues, best practice violations, and potential problems.
+---
 
-#### Installation
+## 🎯 Overview
+
+The RAFAELIA validation system provides:
+
+- **Workflow Validation**: Line-by-line analysis of GitHub Actions workflows
+- **Multi-Language CI**: Matrix builds for C, Assembly, Kotlin, Java, Python, and Shell
+- **Ethica[8] Engine**: Ethical constraint checking (prevents infinite loops)
+- **BitRAF64**: Compression/decompression utilities
+- **RAFCODE-Φ**: Code signing and provenance tracking
+- **SBOM**: Software Bill of Materials generation
+- **Governance**: DCO, GPG signing, and code ownership
+
+All tools are **prototypes** requiring review and testing before production use.
+
+---
+
+## 🔍 Workflow Validation
+
+### Purpose
+
+The workflow validator (`tools/check_workflows.py`) analyzes GitHub Actions workflow files for:
+
+- YAML syntax errors
+- Hardcoded secrets
+- Command injection vulnerabilities
+- Deprecated action versions
+- Missing timeouts
+- Best practices violations
+
+### Running Locally
 
 ```bash
-# Install dependencies
-pip install pyyaml
-```
-
-#### Usage
-
-```bash
-# Validate all workflows in default directory
+# Run the validator
 python tools/check_workflows.py
 
-# Specify custom workflows directory
-python tools/check_workflows.py --workflows-dir .github/workflows
-
-# Custom output file
-python tools/check_workflows.py --output my-report.json
+# Output: workflow_findings.json
 ```
 
-#### What It Checks
+### CI Integration
 
-- ✅ YAML syntax validity
-- ✅ Required workflow fields (name, jobs, runs-on, steps)
-- ✅ Secret exposure patterns
-- ✅ Unsigned container images
-- ✅ Shell injection risks
-- ✅ Best practices compliance
+The validation runs automatically via `.github/workflows/validate-workflows.yml`:
 
-#### Output
+- **Triggers**: PRs and pushes affecting workflows
+- **Output**: Findings artifact uploaded to GitHub
+- **Summary**: Results displayed in job summary
 
-Generates a JSON report with:
-- File-by-file analysis
-- Issues (errors), warnings, and info messages
-- Line numbers for each finding
-- Summary statistics
-
-#### Example Output
+### Findings Format
 
 ```json
-{
-  "timestamp": "...",
-  "total_files": 5,
-  "results": [...],
-  "summary": {
-    "total_errors": 0,
-    "total_warnings": 3,
-    "total_info": 5
+[
+  {
+    "severity": "critical",
+    "file": "workflow.yml",
+    "line": 42,
+    "message": "Potential hardcoded secret detected"
   }
-}
+]
 ```
 
-### 2. Bitraf64 Compressor/Decompressor
+**Severity Levels:**
+- `critical`: Must fix before merge
+- `error`: Should fix before merge
+- `warning`: Review recommended
+- `info`: Informational only
 
-**Purpose**: Prototype compression/decompression system with integrity markers.
+---
 
-#### Installation
+## 🔨 CI Matrix
 
+### Purpose
+
+Multi-language CI matrix (`.github/workflows/ci.yml`) validates:
+
+- **C**: Compilation of C source files
+- **Kotlin/Java**: Android Gradle builds and tests
+- **Python**: Linting (flake8) and unit tests (pytest)
+- **Shell**: shellcheck validation and syntax checks
+- **Assembly**: File inventory (compilation requires specific toolchain)
+
+### Running Locally
+
+#### C Build
 ```bash
-# No additional dependencies required (uses stdlib)
+gcc -c your_file.c -o your_file.o
 ```
 
-#### Usage
+#### Kotlin/Java Build
+```bash
+./gradlew assembleDebug
+./gradlew testDebugUnitTest
+```
 
+#### Python Lint
+```bash
+pip install flake8
+flake8 your_file.py --max-line-length=120
+```
+
+#### Shell Check
+```bash
+shellcheck your_script.sh
+bash -n your_script.sh  # Syntax check
+```
+
+### CI Matrix Jobs
+
+| Job | Purpose | Timeout |
+|-----|---------|---------|
+| `c-build` | Compile C files | 15 min |
+| `kotlin-java-build` | Build Android app | 20 min |
+| `python-test` | Lint and test Python | 10 min |
+| `shell-test` | Validate shell scripts | 10 min |
+| `assembly-check` | Inventory ASM files | 5 min |
+| `ci-summary` | Generate summary | 5 min |
+
+---
+
+## 🛠️ RAFAELIA Tools
+
+### Ethica[8] Engine
+
+**Purpose**: Detect infinite loops, unbounded recursion, and dangerous code patterns.
+
+**Usage:**
+```bash
+python tools/rafaelia_ethica_engine.py <file_or_directory>
+```
+
+**Example:**
+```bash
+# Analyze a single file
+python tools/rafaelia_ethica_engine.py script.py
+
+# Analyze a directory
+python tools/rafaelia_ethica_engine.py tools/
+```
+
+**Checks:**
+- Infinite `while True` loops without breaks
+- Unbounded recursion
+- Dangerous functions (`eval`, `exec`)
+
+**Eight Principles:**
+1. No infinite loops
+2. Bounded recursion
+3. Resource limits
+4. Time constraints
+5. Memory bounds
+6. I/O throttling
+7. Safe concurrency
+8. Graceful degradation
+
+---
+
+### BitRAF64 Compressor
+
+**Purpose**: Compress data with zlib and encode as base64.
+
+**Usage:**
 ```bash
 # Compress a file
-python tools/bitraf64_compressor.py input.txt output.b64 --level 9
+python tools/bitraf64_compressor.py input.txt output.txt.br64 9
 
-# Decompress a file
-python tools/bitraf64_decompressor.py output.b64 recovered.txt
+# Compression level: 0-9 (default: 6)
 ```
 
-#### Features
-
-- DEFLATE compression (zlib)
-- Base64 encoding
-- Integrity markers (BITRAF64 header)
-- Version tracking
-- Compression ratio reporting
-
-### 3. RAFCODE-Φ Encoder
-
-**Purpose**: Code signing and provenance tracking system skeleton.
-
-#### Installation
-
+**Example:**
 ```bash
-# No additional dependencies required (uses stdlib)
+python tools/bitraf64_compressor.py README.md README.md.br64
+# Output: README.md.br64
 ```
 
-#### Usage
+---
 
+### BitRAF64 Decompressor
+
+**Purpose**: Decompress BitRAF64 files.
+
+**Usage:**
+```bash
+# Decompress a file
+python tools/bitraf64_decompressor.py input.txt.br64 output.txt
+```
+
+**Example:**
+```bash
+python tools/bitraf64_decompressor.py README.md.br64 README.md
+# Output: README.md
+```
+
+---
+
+### RAFCODE-Φ Encoder
+
+**Purpose**: Generate cryptographic seals for code authentication.
+
+**Usage:**
 ```bash
 # Generate seal for a file
-python tools/rafacode_encoder.py myfile.py --author @username
+python tools/rafacode_encoder.py script.py MY-COMPONENT
 
-# Generate seal with provenance record
-python tools/rafacode_encoder.py myfile.py --output provenance.json
+# Output: script.rafcode.json
 ```
 
-#### Features
-
-- SHA-256 content hashing
-- Authorship tracking
-- Timestamp generation
-- Ethical compliance markers
-- Provenance records
-- Chain of custody tracking
-
-### 4. Rafaelia Ethica[8] Engine
-
-**Purpose**: Ethical validation engine that enforces human-protective norms.
-
-#### Installation
-
+**Example:**
 ```bash
-# Install dependencies
-pip install psutil
+python tools/rafacode_encoder.py tools/check_workflows.py WORKFLOW-VALIDATOR
 ```
 
-#### Usage
-
-```bash
-# Validate an operation
-python tools/rafaelia_ethica_engine.py --validate operation.json --strict
-```
-
-#### Operation Descriptor Format
-
+**Seal Format:**
 ```json
 {
-  "type": "FILE_DELETE",
-  "description": "Delete temporary files",
-  "critical": false,
-  "reversible": true,
-  "documented": true,
-  "logged": true,
-  "has_loop": false,
-  "has_bound": true,
-  "fail_safe": true,
-  "collects_data": false
+  "seal": "⟨Φ⟩-WORKFLOW-VALIDATOR-v1.0",
+  "author": "@rafaelmeloreisnovo",
+  "file": "check_workflows.py",
+  "hash": {
+    "algorithm": "SHA-256",
+    "value": "abc123..."
+  },
+  "timestamp": "2026-01-04T00:00:00Z",
+  "version": "1.0"
 }
 ```
 
-#### Ethical Principles
-
-1. **Human-Protective Norms**: Safety first
-2. **No Infinite Loops**: Guaranteed termination
-3. **Transparency**: Documented and logged
-4. **Human-in-the-Loop**: Critical decisions require review
-5. **Reversibility**: Create backups for irreversible operations
-6. **Privacy by Default**: Minimal data collection
-7. **Fail-Safe**: Graceful failure handling
-8. **Documented Rationale**: Clear decision documentation
-
-#### Verdicts
-
-- `ALLOW`: Execute immediately
-- `DENY`: Block execution
-- `REQUIRE_REVIEW`: Human review needed
-- `CONDITIONAL`: Execute with conditions
-
-### 5. SBOM Generator
-
-**Purpose**: Generate Software Bill of Materials for transparency.
-
-#### Installation
-
-```bash
-# Install syft (recommended)
-curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-
-# Or use package manager
-brew install syft  # macOS
+**Embedding in Code:**
+```python
+# Author: @rafaelmeloreisnovo
+# RAFCODE-Φ Seal: ⟨Φ⟩-WORKFLOW-VALIDATOR-v1.0
 ```
 
-#### Usage
+---
+
+## 📦 SBOM Generation
+
+### Purpose
+
+Generate Software Bill of Materials using [Syft](https://github.com/anchore/syft) and compute integrity hashes.
+
+### Prerequisites
+
+**Install Syft (recommended method - package manager):**
 
 ```bash
-# Generate SBOM for project
+# On macOS using Homebrew
+brew install syft
+
+# On Linux using snap
+snap install syft
+
+# On Windows using Scoop
+scoop install syft
+```
+
+**Alternative: Install from GitHub release (with verification):**
+
+```bash
+# Download a specific pinned release with checksum verification
+# Check https://github.com/anchore/syft/releases for the latest version
+VERSION="v0.98.0"  # Update to desired version
+curl -sSfLO "https://github.com/anchore/syft/releases/download/${VERSION}/syft_${VERSION}_linux_amd64.tar.gz"
+curl -sSfLO "https://github.com/anchore/syft/releases/download/${VERSION}/syft_${VERSION}_checksums.txt"
+
+# Verify checksum
+sha256sum --ignore-missing -c syft_${VERSION}_checksums.txt
+
+# Extract and install
+tar -xzf syft_${VERSION}_linux_amd64.tar.gz
+sudo mv syft /usr/local/bin/
+```
+
+**Note:** Avoid using `curl | sh` from mutable branches for security reasons. The script in `tools/generate_sbom.sh` will attempt automatic installation to `~/.local/bin` if Syft is not found, but manual installation is preferred.
+
+### Usage
+
+```bash
+# Generate SBOM for current directory
 ./tools/generate_sbom.sh
 
-# Custom target and format
-./tools/generate_sbom.sh ./app spdx-json app-sbom
+# Generate SBOM for specific directory
+./tools/generate_sbom.sh /path/to/project
 
-# Available formats
-./tools/generate_sbom.sh . cyclonedx-json
-./tools/generate_sbom.sh . syft-json
+# Specify format and output
+./tools/generate_sbom.sh -f spdx -o sbom.spdx
+
+# Generate SBOM for Docker image
+./tools/generate_sbom.sh myimage:latest
 ```
 
-#### Output Locations
+### Formats
 
-SBOMs are generated in: `build/sbom/`
+- `json` (default): JSON format
+- `spdx`: SPDX 2.2 format
+- `cyclonedx`: CycloneDX format
 
-## 🚀 CI/CD Workflows
+### Output Files
 
-### Workflow: `validate-workflows.yml`
+- `sbom.json`: SBOM data
+- `sbom.sha256`: SHA-256 hash for integrity verification
 
-**Trigger**: Push or PR to `.github/workflows/`
-
-**What it does**:
-1. Checks out repository
-2. Sets up Python environment
-3. Installs dependencies (pyyaml)
-4. Runs `check_workflows.py`
-5. Displays validation summary
-6. Uploads report artifact
-7. Fails if critical errors found
-
-**Artifacts**: `workflow-validation-report` (JSON)
-
-### Workflow: `ci.yml`
-
-**Trigger**: Push to main branches, PRs, manual dispatch
-
-**What it does**:
-1. Detects languages in repository
-2. Runs matrix builds for detected languages:
-   - **C**: gcc and clang
-   - **Kotlin/Java**: Gradle build with multiple JDK versions
-   - **Python**: Syntax checks with 3.9, 3.10, 3.11
-   - **Shell**: shellcheck validation
-3. Generates summary report
-
-**Matrix Strategy**: Parallel execution with fail-fast disabled
-
-## 🔐 Running Checks Locally
-
-### Before Committing
+### Verification
 
 ```bash
-# 1. Validate workflows
-python tools/check_workflows.py
-
-# 2. Check shell scripts
-shellcheck scripts/*.sh tools/*.sh
-
-# 3. Lint Kotlin code
-./gradlew ktlint
-
-# 4. Run tests
-./gradlew testDebug
-
-# 5. Check for secrets (if git-secrets installed)
-git secrets --scan
-
-# 6. Build APK (optional)
-./gradlew assembleDebug
+# Verify SBOM integrity
+sha256sum -c sbom.sha256
+# or
+shasum -a 256 -c sbom.sha256
 ```
 
-### One-Liner Check
+---
 
-```bash
-python tools/check_workflows.py && \
-find scripts tools -name "*.sh" -exec shellcheck {} \; && \
-./gradlew ktlint && \
-./gradlew testDebug && \
-echo "✓ All checks passed"
-```
+## 🔐 Signing and Verification
 
-## 🔒 Hash Verification
+### GPG Commit Signing
 
-### Generate File Hashes
-
-```bash
-# SHA-256 hash of a file
-sha256sum myfile.txt
-
-# Multiple files
-sha256sum tools/*.py > checksums.txt
-
-# Verify checksums
-sha256sum -c checksums.txt
-```
-
-### Generate Hashes for Release
-
-```bash
-# Create checksums for APK
-sha256sum app/build/outputs/apk/debug/app-debug.apk > app-debug.sha256
-
-# Create checksums for all artifacts
-find build -type f -name "*.apk" -o -name "*.aab" | xargs sha256sum > checksums.txt
-```
-
-## 🔑 GPG Signing
-
-### Setup GPG Key
-
+**Setup:**
 ```bash
 # Generate GPG key
 gpg --full-generate-key
@@ -308,185 +341,231 @@ gpg --full-generate-key
 # List keys
 gpg --list-secret-keys --keyid-format=long
 
-# Export public key
-gpg --armor --export YOUR_KEY_ID > public-key.asc
-
-# Configure Git to use GPG
+# Configure Git
 git config --global user.signingkey YOUR_KEY_ID
 git config --global commit.gpgsign true
 ```
 
-### Sign Commits
-
+**Signing Commits:**
 ```bash
 # Sign a commit
-git commit -S -m "Your commit message"
+git commit -S -m "Your message"
 
 # Verify signature
 git log --show-signature -1
 ```
 
-### Sign Files
+**Verify on GitHub:**
+- Signed commits show "Verified" badge
+- GitHub verifies GPG signature against your account
 
+---
+
+### DCO Sign-off
+
+**Purpose**: Developer Certificate of Origin certifies your right to contribute.
+
+**Usage:**
 ```bash
-# Sign a file
-gpg --detach-sign --armor myfile.apk
+# Sign off commit
+git commit -s -m "Your message"
 
-# Verify signature
-gpg --verify myfile.apk.asc myfile.apk
+# Adds: Signed-off-by: Your Name <email@example.com>
 ```
 
-## 🔐 Cosign Signing (Container/Artifact Signing)
-
-### Install Cosign
-
+**Combine with GPG:**
 ```bash
-# Download from GitHub releases
-curl -LO https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64
-chmod +x cosign-linux-amd64
-sudo mv cosign-linux-amd64 /usr/local/bin/cosign
-
-# Or use package manager
-brew install cosign  # macOS
+git commit -S -s -m "Your message"
 ```
 
-### Sign Artifacts
+---
 
+### File Hashing
+
+**Generate hash:**
 ```bash
-# Generate key pair
-cosign generate-key-pair
+# SHA-256
+sha256sum file.txt > file.txt.sha256
 
-# Sign file
-cosign sign-blob --key cosign.key myfile.apk > myfile.sig
-
-# Verify signature
-cosign verify-blob --key cosign.pub --signature myfile.sig myfile.apk
+# Or using shasum
+shasum -a 256 file.txt > file.txt.sha256
 ```
 
-## 📊 SBOM Analysis
-
-### Generate and Analyze SBOM
-
+**Verify hash:**
 ```bash
-# Generate SBOM
+sha256sum -c file.txt.sha256
+# or
+shasum -a 256 -c file.txt.sha256
+```
+
+---
+
+## 🛡️ Branch Protection
+
+### Recommended Settings
+
+Enable these settings in GitHub repository settings:
+
+#### Branch: `main` and `master`
+
+**Protection Rules:**
+- ✅ Require pull request reviews before merging
+  - Required approving reviews: 1
+  - Dismiss stale reviews when new commits are pushed
+- ✅ Require status checks to pass before merging
+  - Required checks:
+    - `validate-workflows`
+    - `ci-summary` (from CI matrix)
+    - `CodeQL`
+- ✅ Require conversation resolution before merging
+- ✅ Require signed commits
+- ✅ Require linear history
+- ✅ Include administrators
+
+**Additional Settings:**
+- ✅ Allow force pushes: **Disabled**
+- ✅ Allow deletions: **Disabled**
+
+#### CODEOWNERS
+
+The `CODEOWNERS` file automatically requests review from:
+- `@rafaelmeloreisnovo` for all changes
+- Special review for workflows, security files, and build configs
+
+---
+
+## ❓ Troubleshooting
+
+### Workflow Validation Fails
+
+**Issue**: Critical findings in workflow validation
+
+**Solution:**
+1. Review `workflow_findings.json`
+2. Fix critical and error severity issues
+3. Re-run validation locally
+4. Push fixes and verify CI passes
+
+---
+
+### CI Matrix Job Fails
+
+**Issue**: Specific language build fails
+
+**Solutions:**
+
+**C Build:**
+```bash
+# Check for syntax errors
+gcc -fsyntax-only your_file.c
+```
+
+**Kotlin/Java:**
+```bash
+# Clean and rebuild
+./gradlew clean assembleDebug
+```
+
+**Python:**
+```bash
+# Check specific issues
+flake8 --show-source your_file.py
+```
+
+**Shell:**
+```bash
+# Check specific script
+shellcheck -x your_script.sh
+```
+
+---
+
+### Ethica[8] False Positives
+
+**Issue**: Ethica[8] flags safe code as infinite loop
+
+**Solution:**
+- Review the flagged code
+- Ensure loops have clear exit conditions
+- Add explicit break or return statements
+- Consider refactoring to make exit conditions more obvious
+
+---
+
+### SBOM Generation Fails
+
+**Issue**: Syft not found or generation fails
+
+**Solution:**
+```bash
+# Install Syft manually
+curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+# Verify installation
+syft version
+
+# Try generation again
 ./tools/generate_sbom.sh
-
-# View SBOM (if jq installed)
-jq '.' build/sbom/sbom.json
-
-# Count components
-jq '.components | length' build/sbom/sbom.json
-
-# List component names
-jq -r '.components[].name' build/sbom/sbom.json
-
-# Find specific component
-jq '.components[] | select(.name == "kotlin-stdlib")' build/sbom/sbom.json
 ```
 
-### SBOM Scanning for Vulnerabilities
+---
 
+### GPG Signing Issues
+
+**Issue**: Commits not signed or verification fails
+
+**Solution:**
 ```bash
-# Install grype (vulnerability scanner)
-curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+# Check GPG configuration
+git config --get user.signingkey
 
-# Scan SBOM for vulnerabilities
-grype sbom:build/sbom/sbom.json
+# List GPG keys
+gpg --list-secret-keys
 
-# Generate report
-grype sbom:build/sbom/sbom.json -o json > vulnerabilities.json
+# Test GPG
+echo "test" | gpg --clearsign
+
+# Add GPG key to GitHub
+gpg --armor --export YOUR_KEY_ID
+# Then add to GitHub Settings > SSH and GPG keys
 ```
 
-## 🏗️ CI/CD Integration
-
-### GitHub Actions Integration
-
-```yaml
-# Add to your workflow
-- name: Validate workflows
-  run: |
-    pip install pyyaml
-    python tools/check_workflows.py
-    
-- name: Run ethical validation
-  run: |
-    pip install psutil
-    python tools/rafaelia_ethica_engine.py --validate operation.json
-    
-- name: Generate SBOM
-  run: |
-    ./tools/generate_sbom.sh
-```
-
-### Local CI Simulation
-
-```bash
-# Install act (run GitHub Actions locally)
-# https://github.com/nektos/act
-
-# Run workflow locally
-act -j validate
-```
+---
 
 ## 📚 Additional Resources
 
 ### Documentation
-- [Contributing Guidelines](../.github/CONTRIBUTING.md)
-- [Security Policy](../.github/SECURITY.md)
-- [Development Setup](./DEVELOPMENT_SETUP.md)
+- `.github/CONTRIBUTING.md` - Contribution guidelines
+- `.github/SECURITY.md` - Security policy
+- `docs/TECHNICAL_DOCUMENTATION.md` - Technical details
 
-### Tools
-- [syft](https://github.com/anchore/syft) - SBOM generation
-- [grype](https://github.com/anchore/grype) - Vulnerability scanning
-- [cosign](https://github.com/sigstore/cosign) - Artifact signing
-- [git-secrets](https://github.com/awslabs/git-secrets) - Prevent secret commits
-- [shellcheck](https://www.shellcheck.net/) - Shell script analysis
-
-### Standards
-- [CycloneDX](https://cyclonedx.org/) - SBOM standard
-- [SPDX](https://spdx.dev/) - Software Package Data Exchange
-- [SLSA](https://slsa.dev/) - Supply chain security framework
-- [Sigstore](https://www.sigstore.dev/) - Software signing
-
-## ❓ Troubleshooting
-
-### Workflow Validator Issues
-
-**Problem**: `ImportError: No module named 'yaml'`  
-**Solution**: Install PyYAML: `pip install pyyaml`
-
-**Problem**: Permission denied  
-**Solution**: Make script executable: `chmod +x tools/check_workflows.py`
-
-### SBOM Generator Issues
-
-**Problem**: `syft: command not found`  
-**Solution**: Install syft or script will generate fallback SBOM
-
-**Problem**: Large project takes too long  
-**Solution**: Target specific directories: `./tools/generate_sbom.sh ./app`
-
-### Ethica Engine Issues
-
-**Problem**: `ImportError: No module named 'psutil'`  
-**Solution**: Install psutil: `pip install psutil`
-
-## 🤝 Contributing
-
-If you find issues with the validation tools or have suggestions for improvements:
-
-1. Check existing issues
-2. Create detailed bug report or feature request
-3. Submit PR with fixes (follow contributing guidelines)
-
-## 📞 Support
-
-Questions? Contact:
-- Create an issue: [GitHub Issues](https://github.com/rafaelmeloreisnovo/UserLAnd/issues)
-- Security concerns: See [Security Policy](../.github/SECURITY.md)
+### External Links
+- [GitHub Actions Documentation](https://docs.github.com/en/actions)
+- [Syft SBOM Tool](https://github.com/anchore/syft)
+- [GPG Signature Verification](https://docs.github.com/en/authentication/managing-commit-signature-verification)
+- [Developer Certificate of Origin](https://developercertificate.org/)
 
 ---
 
-**Documentation Version**: 1.0  
-**Last Updated**: 2026-01-04  
-**Maintainer**: @rafaelmeloreisnovo
+## 🤝 Support
+
+For questions or issues:
+
+1. **GitHub Issues**: Report bugs or request features
+2. **GitHub Discussions**: Ask questions
+3. **Security Issues**: Use `.github/SECURITY.md` guidelines
+
+---
+
+## 📝 Notes
+
+- All tools in `tools/` are **prototypes**
+- Review and test before production use
+- Regular updates recommended for dependencies
+- Security vulnerabilities should be reported privately
+
+---
+
+**Maintained by:** @rafaelmeloreisnovo  
+**License:** MIT  
+**Project:** UserLAnd - Linux on Android

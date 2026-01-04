@@ -81,11 +81,16 @@ add2/RAFAELIA_CORE_MATRIX_multiarch
 add2/arch_detect.h
 app/.cxx/
 
-# Python cache
+# RAFAELIA validation generated files
+workflow_findings.json
+*.rafcode.json
+sbom.json
+sbom.sha256
+*.br64
+
+# Python cache files
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-
-# Tools output
-workflow-validation-report.json
+.Python

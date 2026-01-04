@@ -1,123 +1,128 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Bitraf64 Compressor - Prototype Implementation
+BitRAF64 Compressor - Prototype
 Author: @rafaelmeloreisnovo
-RAFCODE-Φ: BITRAF64-COMPRESS-v0.1-PROTOTYPE
+RAFCODE-Φ Seal: ⟨Φ⟩-BITRAF64-COMPRESS-v1.0
+License: MIT
 
-This is a functional placeholder for the Bitraf64 compression algorithm.
-Production implementation requires cryptographic signing and integrity validation.
+BitRAF64 is a simple compression scheme that combines basic compression
+with base64 encoding for safe transmission.
+
+This is a PROTOTYPE implementation. Production use requires optimization
+and extensive testing.
 """
 
-import base64
-import zlib
 import sys
-from typing import Union
+import zlib
+import base64
+from pathlib import Path
+from typing import Optional
 
-class Bitraf64Compressor:
-    """
-    Bitraf64 compression prototype.
+
+class BitRAF64Compressor:
+    """Simple compressor using zlib + base64"""
     
-    Applies DEFLATE compression and Base64 encoding with integrity markers.
-    """
-    
-    MAGIC_HEADER = b'BITRAF64'
-    VERSION = b'v0.1'
-    
-    def __init__(self, compression_level: int = 9):
+    def __init__(self, compression_level: int = 6):
         """
-        Initialize compressor.
+        Initialize compressor
         
         Args:
-            compression_level: zlib compression level (0-9, default 9)
+            compression_level: zlib compression level (0-9, default 6)
         """
+        if not 0 <= compression_level <= 9:
+            raise ValueError("Compression level must be between 0 and 9")
         self.compression_level = compression_level
     
-    def compress(self, data: Union[str, bytes]) -> str:
+    def compress_data(self, data: bytes) -> str:
         """
-        Compress data using Bitraf64 algorithm.
+        Compress data and encode as BitRAF64
         
         Args:
-            data: Input data (string or bytes)
+            data: Raw bytes to compress
             
         Returns:
-            Base64-encoded compressed data with Bitraf64 header
+            BitRAF64 encoded string
         """
-        # Convert string to bytes if needed
-        if isinstance(data, str):
-            data = data.encode('utf-8')
+        # Compress with zlib
+        compressed = zlib.compress(data, level=self.compression_level)
         
-        # Add integrity marker
-        integrity_data = self.MAGIC_HEADER + self.VERSION + data
-        
-        # Compress using zlib (DEFLATE)
-        compressed = zlib.compress(integrity_data, level=self.compression_level)
-        
-        # Encode to Base64
+        # Encode to base64
         encoded = base64.b64encode(compressed).decode('ascii')
         
-        return encoded
+        # Add BitRAF64 header
+        return f"BITRAF64:{encoded}"
     
-    def get_compression_ratio(self, original_size: int, compressed_size: int) -> float:
-        """Calculate compression ratio."""
-        if original_size == 0:
-            return 0.0
-        return (1 - compressed_size / original_size) * 100
-
-def main():
-    """Command-line interface for compression."""
-    import argparse
-    
-    parser = argparse.ArgumentParser(
-        description='Bitraf64 Compressor - Prototype',
-        formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument(
-        'input_file',
-        help='Input file to compress'
-    )
-    parser.add_argument(
-        'output_file',
-        help='Output compressed file (.b64)'
-    )
-    parser.add_argument(
-        '--level',
-        type=int,
-        default=9,
-        choices=range(0, 10),
-        help='Compression level (0-9, default: 9)'
-    )
-    
-    args = parser.parse_args()
-    
-    try:
+    def compress_file(self, input_path: Path, output_path: Optional[Path] = None) -> Path:
+        """
+        Compress a file
+        
+        Args:
+            input_path: Path to input file
+            output_path: Path to output file (optional, defaults to input + .br64)
+            
+        Returns:
+            Path to compressed file
+        """
+        if not input_path.exists():
+            raise FileNotFoundError(f"Input file not found: {input_path}")
+        
         # Read input file
-        with open(args.input_file, 'rb') as f:
+        with open(input_path, 'rb') as f:
             data = f.read()
         
-        original_size = len(data)
-        print(f"📥 Input file: {args.input_file} ({original_size} bytes)")
-        
         # Compress
-        compressor = Bitraf64Compressor(compression_level=args.level)
-        compressed = compressor.compress(data)
+        compressed = self.compress_data(data)
+        
+        # Determine output path
+        if output_path is None:
+            output_path = input_path.with_suffix(input_path.suffix + '.br64')
         
         # Write output
-        with open(args.output_file, 'w', encoding='utf-8') as f:
+        with open(output_path, 'w', encoding='utf-8') as f:
             f.write(compressed)
         
+        # Print statistics
+        original_size = len(data)
         compressed_size = len(compressed)
-        ratio = compressor.get_compression_ratio(original_size, compressed_size)
+        ratio = ((original_size - compressed_size) / original_size) * 100 if original_size > 0 else 0
+        label = "Compression" if ratio >= 0 else "Expansion"
         
-        print(f"📤 Output file: {args.output_file} ({compressed_size} bytes)")
-        print(f"📊 Compression ratio: {ratio:.2f}%")
-        print(f"✓ Compression completed successfully")
+        print(f"✓ Compressed: {input_path.name}")
+        print(f"  Original size:   {original_size:,} bytes")
+        print(f"  Compressed size: {compressed_size:,} bytes")
+        print(f"  {label}:         {abs(ratio):.1f}%")
         
-        return 0
-        
-    except Exception as e:
-        print(f"❌ Error: {str(e)}", file=sys.stderr)
-        return 1
+        return output_path
 
-if __name__ == '__main__':
-    sys.exit(main())
+
+def main():
+    """Main entry point"""
+    if len(sys.argv) < 2:
+        print("BitRAF64 Compressor")
+        print(f"Usage: {sys.argv[0]} <input_file> [output_file] [compression_level]")
+        print()
+        print("Arguments:")
+        print("  input_file:        File to compress")
+        print("  output_file:       Output file (optional, defaults to input.br64)")
+        print("  compression_level: 0-9 (optional, default 6)")
+        print()
+        print("Example:")
+        print(f"  {sys.argv[0]} data.txt data.txt.br64 9")
+        sys.exit(1)
+    
+    input_path = Path(sys.argv[1])
+    output_path = Path(sys.argv[2]) if len(sys.argv) >= 3 else None
+    compression_level = int(sys.argv[3]) if len(sys.argv) >= 4 else 6
+    
+    try:
+        compressor = BitRAF64Compressor(compression_level=compression_level)
+        result = compressor.compress_file(input_path, output_path)
+        print(f"✓ Output written to: {result}")
+        sys.exit(0)
+    except Exception as e:
+        print(f"❌ Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

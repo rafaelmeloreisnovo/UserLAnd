@@ -1,65 +1,49 @@
-# CODEOWNERS
+# CODEOWNERS - Define code ownership and review requirements
 # Author: @rafaelmeloreisnovo
-# RAFCODE-Φ: CODEOWNERS-v1.0
+# RAFCODE-Φ Seal: ⟨Φ⟩-CODEOWNERS-v1.0
 #
-# This file defines code ownership and review requirements.
-# Protected files require approval from specific maintainers.
-#
-# Format: path/pattern @username @team
-# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# These owners will be requested for review when someone opens a pull request
+# that modifies files in the specified paths.
+# More info: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
-# Default owner for everything (fallback)
+# Default owner for everything in the repo
 * @rafaelmeloreisnovo
 
-# CI/CD and Workflow Files (Nuclear Assets)
+# GitHub Actions workflows - require approval for security
 /.github/workflows/ @rafaelmeloreisnovo
 /.github/actions/ @rafaelmeloreisnovo
-/.github/workflows/*.yml @rafaelmeloreisnovo
-/.github/workflows/*.yaml @rafaelmeloreisnovo
 
-# Governance and Security Documentation
-/.github/CONTRIBUTING.md @rafaelmeloreisnovo
+# Security and governance files
 /.github/SECURITY.md @rafaelmeloreisnovo
-/.github/pull_request_template.md @rafaelmeloreisnovo
+/.github/CONTRIBUTING.md @rafaelmeloreisnovo
 /CODEOWNERS @rafaelmeloreisnovo
 /SECURITY.md @rafaelmeloreisnovo
-/CONTRIBUTING.md @rafaelmeloreisnovo
 
-# Validation and Security Tools
+# CI/CD and build configuration
+/.circleci/ @rafaelmeloreisnovo
+/build.gradle @rafaelmeloreisnovo
+/gradle/ @rafaelmeloreisnovo
+/gradle.properties @rafaelmeloreisnovo
+
+# Code signing configuration
+/signing.properties* @rafaelmeloreisnovo
+/*.jks @rafaelmeloreisnovo
+/*.keystore @rafaelmeloreisnovo
+
+# RAFAELIA core components
+/tools/ @rafaelmeloreisnovo
+/rafaelia/ @rafaelmeloreisnovo
 /tools/check_workflows.py @rafaelmeloreisnovo
 /tools/rafaelia_ethica_engine.py @rafaelmeloreisnovo
-/tools/rafacode_encoder.py @rafaelmeloreisnovo
-/tools/bitraf64_*.py @rafaelmeloreisnovo
 /tools/generate_sbom.sh @rafaelmeloreisnovo
 
-# Build and Release Configuration
-/build.gradle @rafaelmeloreisnovo
-/settings.gradle @rafaelmeloreisnovo
-/gradle.properties @rafaelmeloreisnovo
-/app/build.gradle @rafaelmeloreisnovo
-/scripts/sign_apk.sh @rafaelmeloreisnovo
-/scripts/build_apk.sh @rafaelmeloreisnovo
+# Documentation requiring review
+/docs/README_checks.md @rafaelmeloreisnovo
+/docs/SECURITY*.md @rafaelmeloreisnovo
 
-# Signing and Security Configuration
-/signing.properties* @rafaelmeloreisnovo
-*.jks @rafaelmeloreisnovo
-*.keystore @rafaelmeloreisnovo
-
-# Core Application Code
-/app/src/main/java/tech/ula/ @rafaelmeloreisnovo
-
-# Native Code and Core Binaries
-*.c @rafaelmeloreisnovo
-*.h @rafaelmeloreisnovo
-/rafaelia/ @rafaelmeloreisnovo
-
-# Documentation
-/docs/ @rafaelmeloreisnovo
-/README.md @rafaelmeloreisnovo
-
-# Android Manifest
-/app/src/main/AndroidManifest.xml @rafaelmeloreisnovo
-
-# Dependency Configuration
+# Dependency management
 /Gemfile @rafaelmeloreisnovo
 /Gemfile.lock @rafaelmeloreisnovo
+/requirements.txt @rafaelmeloreisnovo
+/package.json @rafaelmeloreisnovo
+/package-lock.json @rafaelmeloreisnovo

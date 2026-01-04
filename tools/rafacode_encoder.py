@@ -1,214 +1,174 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-RAFCODE-Φ Encoder - Skeleton Implementation
+RAFCODE-Φ Encoder - Prototype
 Author: @rafaelmeloreisnovo
-RAFCODE-Φ: RAFCODE-PHI-ENCODER-v0.1-SKELETON
+RAFCODE-Φ Seal: ⟨Φ⟩-RAFCODE-ENCODER-v1.0
+License: MIT
 
-This is a skeleton implementation of the RAFCODE-Φ encoding system.
-RAFCODE-Φ is an ethical code signing and provenance system that ensures
-code authorship, integrity, and ethical compliance.
+RAFCODE-Φ (RAFCODE-Phi) is a symbolic encoding system that combines
+cryptographic hashing with semantic markers for code authentication
+and provenance tracking.
 
-Production implementation requires:
-- Cryptographic signing infrastructure
-- Distributed ledger integration
-- Multi-signature validation
-- Temporal provenance tracking
+This is a PROTOTYPE/SKELETON implementation. Production use requires
+cryptographic review and extensive testing.
 """
 
+import sys
 import hashlib
 import json
-import sys
-from datetime import datetime
+from pathlib import Path
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
-class RafcodeEncoder:
+
+class RAFCODEEncoder:
     """
-    RAFCODE-Φ encoder skeleton.
+    RAFCODE-Φ Encoder
     
-    Provides basic structure for code signing and provenance tracking.
+    Generates unique seals for files using:
+    - SHA-256 hash
+    - Timestamp
+    - Author information
+    - Semantic tags
     """
-    
-    VERSION = "0.1.0-SKELETON"
-    ENCODING_SCHEME = "RAFCODE-Φ"
     
     def __init__(self, author: str = "@rafaelmeloreisnovo"):
-        """
-        Initialize encoder.
-        
-        Args:
-            author: Code author identifier
-        """
         self.author = author
-        
-    def generate_seal(self, content: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        self.version = "1.0"
+    
+    def encode_file(self, filepath: Path, component_name: Optional[str] = None) -> Dict[str, Any]:
         """
-        Generate RAFCODE-Φ seal for content.
+        Generate RAFCODE-Φ seal for a file
         
         Args:
-            content: Content to seal
-            metadata: Optional metadata dictionary
+            filepath: Path to file
+            component_name: Optional semantic name for component
             
         Returns:
-            RAFCODE-Φ seal dictionary
+            Dictionary with seal information
         """
-        # Generate content hash
-        content_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
+        if not filepath.exists():
+            raise FileNotFoundError(f"File not found: {filepath}")
         
-        # Create seal structure
+        # Read file content
+        with open(filepath, 'rb') as f:
+            content = f.read()
+        
+        # Calculate hash
+        sha256_hash = hashlib.sha256(content).hexdigest()
+        
+        # Generate seal
+        timestamp = datetime.now(timezone.utc).isoformat()
+        
+        if component_name is None:
+            component_name = filepath.stem.upper()
+        
         seal = {
-            "version": self.VERSION,
-            "encoding": self.ENCODING_SCHEME,
+            "seal": f"⟨Φ⟩-{component_name}-v{self.version}",
             "author": self.author,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "content_hash": content_hash,
-            "hash_algorithm": "SHA-256",
-            "seal_type": "PROTOTYPE",
-            "metadata": metadata or {}
-        }
-        
-        # Add ethical compliance markers
-        seal["ethical_compliance"] = {
-            "human_protective_norm": True,
-            "no_infinite_loops": True,
-            "requires_human_review": True,
-            "transparency": True
+            "file": str(filepath.name),
+            "hash": {
+                "algorithm": "SHA-256",
+                "value": sha256_hash
+            },
+            "timestamp": timestamp,
+            "version": self.version
         }
         
         return seal
     
-    def encode_header(self, seal: Dict[str, Any], comment_style: str = "#") -> str:
+    def generate_seal_string(self, filepath: Path, component_name: Optional[str] = None) -> str:
         """
-        Encode RAFCODE-Φ seal as file header comment.
+        Generate a compact seal string for embedding in source code
         
         Args:
-            seal: RAFCODE-Φ seal dictionary
-            comment_style: Comment style ("#", "//", "/*", etc.)
+            filepath: Path to file
+            component_name: Optional semantic name
             
         Returns:
-            Header string
+            Compact seal string
         """
+        seal = self.encode_file(filepath, component_name)
+        return seal["seal"]
+    
+    def generate_header_comment(self, 
+                                filepath: Path, 
+                                component_name: Optional[str] = None,
+                                comment_style: str = "#") -> str:
+        """
+        Generate a header comment with RAFCODE-Φ seal
+        
+        Args:
+            filepath: Path to file
+            component_name: Optional semantic name
+            comment_style: Comment character(s) to use
+            
+        Returns:
+            Multi-line header comment
+        """
+        seal = self.encode_file(filepath, component_name)
+        
         lines = [
-            f"{comment_style} RAFCODE-Φ SEAL",
             f"{comment_style} Author: {seal['author']}",
-            f"{comment_style} Version: {seal['version']}",
-            f"{comment_style} Timestamp: {seal['timestamp']}",
-            f"{comment_style} Content-Hash: {seal['content_hash'][:16]}...",
-            f"{comment_style} Ethical-Compliance: ✓",
+            f"{comment_style} RAFCODE-Φ Seal: {seal['seal']}",
+            f"{comment_style} Hash (SHA-256): {seal['hash']['value'][:16]}...",
+            f"{comment_style} Generated: {seal['timestamp']}"
         ]
         
-        return "\n".join(lines) + "\n"
-    
-    def verify_seal(self, content: str, seal: Dict[str, Any]) -> bool:
-        """
-        Verify RAFCODE-Φ seal (placeholder).
-        
-        Args:
-            content: Content to verify
-            seal: RAFCODE-Φ seal dictionary
-            
-        Returns:
-            True if seal is valid
-        """
-        # Compute current hash
-        current_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
-        
-        # Compare with stored hash (basic verification)
-        stored_hash = seal.get('content_hash', '')
-        
-        if current_hash != stored_hash:
-            return False
-        
-        # Verify ethical compliance markers
-        ethical = seal.get('ethical_compliance', {})
-        if not ethical.get('human_protective_norm', False):
-            return False
-        
-        return True
-    
-    def create_provenance_record(self, file_path: str, seal: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Create provenance record for tracking.
-        
-        Args:
-            file_path: Path to file
-            seal: RAFCODE-Φ seal
-            
-        Returns:
-            Provenance record dictionary
-        """
-        return {
-            "file": file_path,
-            "seal": seal,
-            "provenance_id": hashlib.sha256(
-                f"{file_path}{seal['timestamp']}".encode('utf-8')
-            ).hexdigest()[:16],
-            "chain_of_custody": [
-                {
-                    "actor": seal['author'],
-                    "action": "CREATE",
-                    "timestamp": seal['timestamp']
-                }
-            ]
-        }
+        return "\n".join(lines)
+
 
 def main():
-    """Command-line interface for RAFCODE-Φ encoding."""
-    import argparse
+    """Main entry point"""
+    if len(sys.argv) < 2:
+        print("RAFCODE-Φ Encoder")
+        print(f"Usage: {sys.argv[0]} <file> [component_name]")
+        print()
+        print("Arguments:")
+        print("  file:           File to encode")
+        print("  component_name: Optional semantic name (default: filename)")
+        print()
+        print("Example:")
+        print(f"  {sys.argv[0]} script.py MY-SCRIPT")
+        sys.exit(1)
     
-    parser = argparse.ArgumentParser(
-        description='RAFCODE-Φ Encoder - Skeleton',
-        formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument(
-        'input_file',
-        help='Input file to seal'
-    )
-    parser.add_argument(
-        '--author',
-        default='@rafaelmeloreisnovo',
-        help='Author identifier'
-    )
-    parser.add_argument(
-        '--output',
-        help='Output provenance record file (JSON)'
-    )
-    
-    args = parser.parse_args()
+    filepath = Path(sys.argv[1])
+    component_name = sys.argv[2] if len(sys.argv) >= 3 else None
     
     try:
-        # Read input file
-        with open(args.input_file, 'r', encoding='utf-8') as f:
-            content = f.read()
+        encoder = RAFCODEEncoder()
         
-        print(f"📥 Input file: {args.input_file}")
+        # Generate full seal
+        seal = encoder.encode_file(filepath, component_name)
         
-        # Generate seal
-        encoder = RafcodeEncoder(author=args.author)
-        seal = encoder.generate_seal(content)
+        print("=" * 60)
+        print("RAFCODE-Φ SEAL GENERATED")
+        print("=" * 60)
+        print()
+        print(json.dumps(seal, indent=2))
+        print()
+        print("Compact seal string:")
+        print(f"  {seal['seal']}")
+        print()
+        print("Header comment (Python/Shell):")
+        print("-" * 60)
+        header = encoder.generate_header_comment(filepath, component_name)
+        print(header)
+        print("-" * 60)
+        print()
+        print("✓ RAFCODE-Φ seal generated successfully")
         
-        print(f"🔒 RAFCODE-Φ seal generated")
-        print(f"   Author: {seal['author']}")
-        print(f"   Hash: {seal['content_hash'][:16]}...")
-        print(f"   Timestamp: {seal['timestamp']}")
+        # Optionally write seal to JSON file
+        seal_file = filepath.with_suffix('.rafcode.json')
+        with open(seal_file, 'w', encoding='utf-8') as f:
+            json.dump(seal, f, indent=2)
+        print(f"✓ Seal metadata written to: {seal_file}")
         
-        # Create provenance record
-        provenance = encoder.create_provenance_record(args.input_file, seal)
-        
-        # Output provenance if requested
-        if args.output:
-            with open(args.output, 'w', encoding='utf-8') as f:
-                json.dump(provenance, f, indent=2, ensure_ascii=False)
-            print(f"📤 Provenance record: {args.output}")
-        else:
-            print("\n" + json.dumps(seal, indent=2))
-        
-        print(f"✓ Encoding completed successfully")
-        return 0
-        
+        sys.exit(0)
     except Exception as e:
-        print(f"❌ Error: {str(e)}", file=sys.stderr)
-        return 1
+        print(f"❌ Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
-if __name__ == '__main__':
-    sys.exit(main())
+
+if __name__ == "__main__":
+    main()

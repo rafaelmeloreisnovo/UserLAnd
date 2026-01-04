@@ -1,130 +1,129 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Bitraf64 Decompressor - Prototype Implementation
+BitRAF64 Decompressor - Prototype
 Author: @rafaelmeloreisnovo
-RAFCODE-Φ: BITRAF64-DECOMPRESS-v0.1-PROTOTYPE
+RAFCODE-Φ Seal: ⟨Φ⟩-BITRAF64-DECOMPRESS-v1.0
+License: MIT
 
-This is a functional placeholder for the Bitraf64 decompression algorithm.
-Production implementation requires cryptographic signature verification.
+Decompressor for BitRAF64 compressed data.
+
+This is a PROTOTYPE implementation. Production use requires optimization
+and extensive testing.
 """
 
-import base64
-import zlib
 import sys
+import zlib
+import base64
+from pathlib import Path
+from typing import Optional
 
-class Bitraf64Decompressor:
-    """
-    Bitraf64 decompression prototype.
+
+class BitRAF64Decompressor:
+    """Decompressor for BitRAF64 format"""
     
-    Decodes Base64 and decompresses DEFLATE data with integrity verification.
-    """
+    HEADER = "BITRAF64:"
     
-    MAGIC_HEADER = b'BITRAF64'
-    VERSION = b'v0.1'
-    
-    def decompress(self, encoded_data: str) -> bytes:
+    def decompress_data(self, bitraf64_string: str) -> bytes:
         """
-        Decompress Bitraf64-encoded data.
+        Decompress BitRAF64 encoded data
         
         Args:
-            encoded_data: Base64-encoded compressed data
+            bitraf64_string: BitRAF64 encoded string
             
         Returns:
-            Original decompressed data as bytes
-            
-        Raises:
-            ValueError: If data is invalid or corrupted
+            Decompressed bytes
         """
+        # Check header
+        if not bitraf64_string.startswith(self.HEADER):
+            raise ValueError("Invalid BitRAF64 format: missing header")
+        
+        # Remove header
+        encoded = bitraf64_string[len(self.HEADER):]
+        
+        # Decode from base64
         try:
-            # Decode from Base64
-            compressed = base64.b64decode(encoded_data)
-            
-            # Decompress using zlib
-            decompressed = zlib.decompress(compressed)
-            
-            # Verify integrity marker
-            if not decompressed.startswith(self.MAGIC_HEADER):
-                raise ValueError("Invalid Bitraf64 format: missing magic header")
-            
-            # Check version
-            header_len = len(self.MAGIC_HEADER)
-            version_len = len(self.VERSION)
-            
-            if decompressed[header_len:header_len+version_len] != self.VERSION:
-                print(f"⚠️  Warning: Version mismatch", file=sys.stderr)
-            
-            # Extract original data (remove header and version)
-            original_data = decompressed[header_len+version_len:]
-            
-            return original_data
-            
-        except base64.binascii.Error as e:
-            raise ValueError(f"Invalid Base64 encoding: {str(e)}")
-        except zlib.error as e:
-            raise ValueError(f"Decompression failed: {str(e)}")
+            compressed = base64.b64decode(encoded)
+        except Exception as e:
+            raise ValueError("Invalid base64 encoding") from e
+        
+        # Decompress with zlib
+        try:
+            data = zlib.decompress(compressed)
+        except Exception as e:
+            raise ValueError("Decompression failed") from e
+        
+        return data
     
-    def verify_integrity(self, data: bytes) -> bool:
+    def decompress_file(self, input_path: Path, output_path: Optional[Path] = None) -> Path:
         """
-        Verify data integrity (placeholder for signature verification).
+        Decompress a BitRAF64 file
         
         Args:
-            data: Decompressed data to verify
+            input_path: Path to compressed file
+            output_path: Path to output file (optional)
             
         Returns:
-            True if integrity check passes
+            Path to decompressed file
         """
-        # Placeholder - production should verify cryptographic signatures
-        return len(data) > 0
-
-def main():
-    """Command-line interface for decompression."""
-    import argparse
-    
-    parser = argparse.ArgumentParser(
-        description='Bitraf64 Decompressor - Prototype',
-        formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument(
-        'input_file',
-        help='Input compressed file (.b64)'
-    )
-    parser.add_argument(
-        'output_file',
-        help='Output decompressed file'
-    )
-    
-    args = parser.parse_args()
-    
-    try:
-        # Read input file
-        with open(args.input_file, 'r', encoding='utf-8') as f:
-            encoded_data = f.read().strip()
+        if not input_path.exists():
+            raise FileNotFoundError(f"Input file not found: {input_path}")
         
-        compressed_size = len(encoded_data)
-        print(f"📥 Input file: {args.input_file} ({compressed_size} bytes)")
+        # Read compressed file
+        with open(input_path, 'r', encoding='utf-8') as f:
+            compressed_data = f.read()
         
         # Decompress
-        decompressor = Bitraf64Decompressor()
-        decompressed = decompressor.decompress(encoded_data)
+        data = self.decompress_data(compressed_data)
         
-        # Verify integrity
-        if not decompressor.verify_integrity(decompressed):
-            print(f"⚠️  Warning: Integrity verification failed", file=sys.stderr)
+        # Determine output path
+        if output_path is None:
+            # Try to remove .br64 extension
+            if input_path.suffix == '.br64':
+                output_path = input_path.with_suffix('')
+            else:
+                output_path = input_path.with_suffix('.decompressed')
         
         # Write output
-        with open(args.output_file, 'wb') as f:
-            f.write(decompressed)
+        with open(output_path, 'wb') as f:
+            f.write(data)
         
-        original_size = len(decompressed)
-        print(f"📤 Output file: {args.output_file} ({original_size} bytes)")
-        print(f"✓ Decompression completed successfully")
+        # Print statistics
+        compressed_size = len(compressed_data)
+        decompressed_size = len(data)
         
-        return 0
+        print(f"✓ Decompressed: {input_path.name}")
+        print(f"  Compressed size:   {compressed_size:,} bytes")
+        print(f"  Decompressed size: {decompressed_size:,} bytes")
         
-    except Exception as e:
-        print(f"❌ Error: {str(e)}", file=sys.stderr)
-        return 1
+        return output_path
 
-if __name__ == '__main__':
-    sys.exit(main())
+
+def main():
+    """Main entry point"""
+    if len(sys.argv) < 2:
+        print("BitRAF64 Decompressor")
+        print(f"Usage: {sys.argv[0]} <input_file> [output_file]")
+        print()
+        print("Arguments:")
+        print("  input_file:  BitRAF64 compressed file")
+        print("  output_file: Output file (optional)")
+        print()
+        print("Example:")
+        print(f"  {sys.argv[0]} data.txt.br64 data.txt")
+        sys.exit(1)
+    
+    input_path = Path(sys.argv[1])
+    output_path = Path(sys.argv[2]) if len(sys.argv) >= 3 else None
+    
+    try:
+        decompressor = BitRAF64Decompressor()
+        result = decompressor.decompress_file(input_path, output_path)
+        print(f"✓ Output written to: {result}")
+        sys.exit(0)
+    except Exception as e:
+        print(f"❌ Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

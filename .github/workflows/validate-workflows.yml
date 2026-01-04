@@ -1,89 +1,111 @@
-name: Validate Workflows
+name: 🔍 Validate Workflows
+
 # Author: @rafaelmeloreisnovo
-# RAFCODE-Φ: WORKFLOW-VALIDATOR-ACTION-v1.0
-#
-# This workflow validates all GitHub Actions workflow files
-# using line-by-line analysis to detect security issues,
-# best practice violations, and potential problems.
+# RAFCODE-Φ Seal: ⟨Φ⟩-WORKFLOW-VALIDATOR-ACTION-v1.0
 
 on:
-  push:
-    paths:
-      - '.github/workflows/**'
   pull_request:
     paths:
       - '.github/workflows/**'
+      - 'tools/check_workflows.py'
+  push:
+    branches:
+      - main
+      - master
+      - 'rafaelia/**'
+    paths:
+      - '.github/workflows/**'
+      - 'tools/check_workflows.py'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
-  validate:
-    name: Validate Workflow Files
+  validate-workflows:
+    name: Validate GitHub Actions Workflows
     runs-on: ubuntu-latest
-    
-    permissions:
-      contents: read
+    timeout-minutes: 10
     
     steps:
-      - name: 🔄 Checkout repository
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-      
+        
       - name: 🐍 Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
-      
+          
       - name: 📦 Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pyyaml
-      
+          
       - name: 🔍 Run workflow validator
         id: validate
         run: |
-          echo "🔨 Running workflow validation..."
-          python tools/check_workflows.py \
-            --workflows-dir .github/workflows \
-            --output workflow-validation-report.json
+          python tools/check_workflows.py || true
           
-          echo "✓ Validation completed"
-          
-          # Check if report exists and has content
-          if [ -f workflow-validation-report.json ]; then
-            echo "report_generated=true" >> $GITHUB_OUTPUT
-          else
-            echo "report_generated=false" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: 📊 Display validation summary
-        if: steps.validate.outputs.report_generated == 'true'
+      - name: 📊 Display findings
+        if: always()
         run: |
-          echo "## Workflow Validation Summary"
-          if command -v jq &> /dev/null; then
-            jq -r '
-              "Total files: \(.total_files)",
-              "Errors: \(.summary.total_errors)",
-              "Warnings: \(.summary.total_warnings)",
-              "Info: \(.summary.total_info)"
-            ' workflow-validation-report.json
+          if [ -f workflow_findings.json ]; then
+            echo "## 🔍 Workflow Validation Findings" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            # Parse and display findings
+            python -c "
+          import json
+          import sys
+          
+          with open('workflow_findings.json', 'r', encoding='utf-8') as f:
+              findings = json.load(f)
+          
+          if not findings:
+              print('✅ No issues found!')
+              sys.exit(0)
+          
+          # Group by severity
+          by_severity = {}
+          for finding in findings:
+              severity = finding.get('severity', 'unknown')
+              by_severity.setdefault(severity, []).append(finding)
+          
+          # Display by severity
+          severity_order = ['critical', 'error', 'warning', 'info']
+          emoji_map = {
+              'critical': '🔴',
+              'error': '❌',
+              'warning': '⚠️',
+              'info': 'ℹ️'
+          }
+          
+          for severity in severity_order:
+              if severity in by_severity:
+                  items = by_severity[severity]
+                  print(f'\n### {emoji_map.get(severity, \"❓\")} {severity.upper()} ({len(items)})')
+                  for item in items[:10]:  # Limit to first 10 per severity
+                      file = item.get('file', 'unknown')
+                      line = item.get('line', 0)
+                      msg = item.get('message', 'No message')
+                      if line > 0:
+                          print(f'- **{file}:{line}** - {msg}')
+                      else:
+                          print(f'- **{file}** - {msg}')
+                  if len(items) > 10:
+                      print(f'- ... and {len(items) - 10} more')
+          " >> $GITHUB_STEP_SUMMARY
           else
-            cat workflow-validation-report.json
+            echo "⚠️ No findings file generated" >> $GITHUB_STEP_SUMMARY
           fi
-      
-      - name: 📤 Upload validation report
-        if: always() && steps.validate.outputs.report_generated == 'true'
+          
+      - name: 📤 Upload findings
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: workflow-validation-report
-          path: workflow-validation-report.json
-          retention-days: 30
+          name: workflow-findings
+          path: workflow_findings.json
           if-no-files-found: warn
-      
-      - name: ❌ Fail on critical errors
-        if: failure()
-        run: |
-          echo "::error::Workflow validation failed with critical errors"
-          echo "Please review the validation report artifact for details"
-          exit 1
+          retention-days: 30

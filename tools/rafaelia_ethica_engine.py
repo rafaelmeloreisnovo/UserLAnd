@@ -1,269 +1,224 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Rafaelia Ethica Engine - Skeleton Implementation
+RAFAELIA Ethica[8] Engine - Prototype
 Author: @rafaelmeloreisnovo
-RAFCODE-Φ: ETHICA-ENGINE-v0.8-SKELETON
+RAFCODE-Φ Seal: ⟨Φ⟩-ETHICA-ENGINE-v1.0
+License: MIT
 
-This is a skeleton implementation of the Rafaelia Ethica[8] engine.
-The Ethica engine provides ethical validation and execution control,
-ensuring that code execution adheres to human-protective norms.
+Ethica[8] is an ethical constraint engine that prevents infinite loops,
+resource exhaustion, and other potentially harmful code patterns from
+executing automatically in CI/CD pipelines.
 
-Core Principles:
-1. Prevalence of Human-Protective Norms
-2. No Infinite Loops or Resource Exhaustion
-3. Transparent Decision Making
-4. Human-in-the-Loop for Critical Decisions
-5. Reversible Actions (where possible)
-6. Privacy by Default
-7. Fail-Safe Mechanisms
-8. Documented Rationale
-
-Production implementation requires:
-- Formal verification frameworks
-- Real-time resource monitoring
-- Integration with execution environments
-- Decision audit logging
+This is a PROTOTYPE/SKELETON implementation. Production use requires
+extensive testing and refinement.
 """
 
+import ast
 import sys
-import time
-import psutil
-from typing import Dict, Any, Callable, Optional
-from enum import Enum
+from pathlib import Path
+from typing import List, Dict, Any, Tuple
 
-class EthicalVerdict(Enum):
-    """Ethical validation verdict."""
-    ALLOW = "ALLOW"
-    DENY = "DENY"
-    REQUIRE_REVIEW = "REQUIRE_REVIEW"
-    CONDITIONAL = "CONDITIONAL"
 
 class EthicaEngine:
     """
-    Rafaelia Ethica[8] engine skeleton.
+    Ethica[8] - Ethical Constraint Engine
     
-    Validates code execution against ethical norms.
+    Eight core principles:
+    1. No infinite loops
+    2. Bounded recursion
+    3. Resource limits
+    4. Time constraints
+    5. Memory bounds
+    6. I/O throttling
+    7. Safe concurrency
+    8. Graceful degradation
     """
     
-    VERSION = "0.8.0-SKELETON"
-    PRINCIPLES = 8
-    
-    def __init__(self, strict_mode: bool = True):
-        """
-        Initialize Ethica engine.
+    def __init__(self):
+        self.violations = []
+        self.max_loop_iterations = 10000  # Configurable limit
+        self.max_recursion_depth = 1000
         
-        Args:
-            strict_mode: Enforce strict ethical validation
+    def analyze_python_file(self, filepath: Path) -> Tuple[bool, List[Dict[str, Any]]]:
         """
-        self.strict_mode = strict_mode
-        self.validations_performed = []
+        Analyze a Python file for ethical violations
         
-    def validate_execution(self, operation: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Validate if operation should be allowed to execute.
-        
-        Args:
-            operation: Operation descriptor dictionary
-            
         Returns:
-            Validation result with verdict and rationale
+            (is_safe, violations_list)
         """
-        operation_type = operation.get('type', 'UNKNOWN')
-        
-        print(f"🔍 Ethica[8] validating: {operation_type}")
-        
-        # Initialize result
-        result = {
-            "verdict": EthicalVerdict.ALLOW,
-            "rationale": [],
-            "conditions": [],
-            "requires_human_review": False
-        }
-        
-        # Principle 1: Human-Protective Norms
-        if self._check_human_safety(operation):
-            result["rationale"].append("✓ Human safety check passed")
-        else:
-            result["verdict"] = EthicalVerdict.DENY
-            result["rationale"].append("✗ Potential human safety concern")
-            return result
-        
-        # Principle 2: No Infinite Loops
-        if self._check_termination(operation):
-            result["rationale"].append("✓ Termination guaranteed")
-        else:
-            result["verdict"] = EthicalVerdict.REQUIRE_REVIEW
-            result["rationale"].append("⚠ Termination cannot be guaranteed")
-            result["requires_human_review"] = True
-        
-        # Principle 3: Transparency
-        if self._check_transparency(operation):
-            result["rationale"].append("✓ Operation is transparent")
-        else:
-            result["rationale"].append("⚠ Limited transparency")
-            result["conditions"].append("Log all actions")
-        
-        # Principle 4: Human-in-the-Loop
-        if operation.get('critical', False):
-            result["verdict"] = EthicalVerdict.REQUIRE_REVIEW
-            result["requires_human_review"] = True
-            result["rationale"].append("⚠ Critical operation requires human review")
-        
-        # Principle 5: Reversibility
-        if not operation.get('reversible', True):
-            result["conditions"].append("Create backup before execution")
-            result["rationale"].append("⚠ Irreversible operation - backup required")
-        
-        # Principle 6: Privacy by Default
-        if operation.get('collects_data', False):
-            result["conditions"].append("Ensure data minimization")
-            result["conditions"].append("Obtain explicit consent")
-            result["rationale"].append("⚠ Data collection - privacy safeguards required")
-        
-        # Principle 7: Fail-Safe
-        if not operation.get('fail_safe', False):
-            result["conditions"].append("Implement graceful failure handling")
-            result["rationale"].append("⚠ Add fail-safe mechanisms")
-        
-        # Principle 8: Documented Rationale
-        if not operation.get('documented', False):
-            result["conditions"].append("Document decision rationale")
-            result["rationale"].append("⚠ Documentation required")
-        
-        # Record validation
-        self.validations_performed.append({
-            "operation": operation_type,
-            "verdict": result["verdict"].value,
-            "timestamp": time.time()
-        })
-        
-        return result
-    
-    def _check_human_safety(self, operation: Dict[str, Any]) -> bool:
-        """Check if operation poses risk to human safety."""
-        dangerous_patterns = [
-            'rm -rf /',
-            'format',
-            'delete_all',
-            'nuclear',
-            'weapon'
-        ]
-        
-        description = str(operation.get('description', '')).lower()
-        return not any(pattern in description for pattern in dangerous_patterns)
-    
-    def _check_termination(self, operation: Dict[str, Any]) -> bool:
-        """Check if operation is guaranteed to terminate."""
-        # Placeholder - production should use static analysis
-        has_loop = operation.get('has_loop', False)
-        has_bound = operation.get('has_bound', True)
-        
-        return not has_loop or has_bound
-    
-    def _check_transparency(self, operation: Dict[str, Any]) -> bool:
-        """Check if operation is transparent."""
-        return operation.get('documented', False) and \
-               operation.get('logged', False)
-    
-    def enforce_verdict(self, verdict_result: Dict[str, Any], 
-                       callback: Optional[Callable] = None) -> bool:
-        """
-        Enforce ethical verdict.
-        
-        Args:
-            verdict_result: Result from validate_execution
-            callback: Optional callback for conditional execution
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                source = f.read()
+                
+            tree = ast.parse(source, filename=str(filepath))
+            self.violations = []
             
-        Returns:
-            True if execution should proceed
-        """
-        verdict = verdict_result['verdict']
-        
-        if verdict == EthicalVerdict.ALLOW:
-            print("✓ Ethica[8]: Execution ALLOWED")
-            if callback:
-                return callback()
-            return True
+            # Visit all nodes in the AST
+            self._visit_node(tree, str(filepath))
             
-        elif verdict == EthicalVerdict.DENY:
-            print("✗ Ethica[8]: Execution DENIED")
-            print("Rationale:")
-            for reason in verdict_result['rationale']:
-                print(f"  {reason}")
-            return False
+            is_safe = len(self.violations) == 0
+            return is_safe, self.violations
             
-        elif verdict == EthicalVerdict.REQUIRE_REVIEW:
-            print("⚠ Ethica[8]: Human review REQUIRED")
-            print("Rationale:")
-            for reason in verdict_result['rationale']:
-                print(f"  {reason}")
-            return False
-            
-        else:  # CONDITIONAL
-            print("⚠ Ethica[8]: Execution allowed with CONDITIONS")
-            print("Conditions:")
-            for condition in verdict_result['conditions']:
-                print(f"  • {condition}")
-            if callback:
-                return callback()
-            return True
+        except SyntaxError as e:
+            return False, [{
+                "type": "syntax_error",
+                "file": str(filepath),
+                "line": e.lineno,
+                "message": str(e)
+            }]
+        except Exception as e:
+            return False, [{
+                "type": "analysis_error",
+                "file": str(filepath),
+                "line": 0,
+                "message": f"Failed to analyze: {str(e)}"
+            }]
     
-    def get_resource_usage(self) -> Dict[str, Any]:
-        """Get current resource usage."""
-        return {
-            "cpu_percent": psutil.cpu_percent(interval=0.1),
-            "memory_percent": psutil.virtual_memory().percent,
-            "disk_usage": psutil.disk_usage('/').percent
-        }
+    def _visit_node(self, node: ast.AST, filepath: str):
+        """Visit an AST node and check for violations"""
+        
+        # Check for infinite while loops
+        if isinstance(node, ast.While):
+            if self._is_infinite_while(node):
+                self.violations.append({
+                    "type": "infinite_loop",
+                    "severity": "critical",
+                    "file": filepath,
+                    "line": node.lineno,
+                    "message": "Potential infinite while loop detected (while True without break)"
+                })
+        
+        # Check for unbounded recursion
+        if isinstance(node, ast.FunctionDef):
+            if self._has_unbounded_recursion(node):
+                self.violations.append({
+                    "type": "unbounded_recursion",
+                    "severity": "high",
+                    "file": filepath,
+                    "line": node.lineno,
+                    "message": f"Function '{node.name}' may have unbounded recursion"
+                })
+        
+        # Check for suspicious eval/exec usage
+        if isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name):
+                if node.func.id in ['eval', 'exec']:
+                    self.violations.append({
+                        "type": "dangerous_call",
+                        "severity": "critical",
+                        "file": filepath,
+                        "line": node.lineno,
+                        "message": f"Dangerous function '{node.func.id}' detected"
+                    })
+        
+        # Recursively visit child nodes
+        for child in ast.iter_child_nodes(node):
+            self._visit_node(child, filepath)
+    
+    def _is_infinite_while(self, node: ast.While) -> bool:
+        """Check if a while loop might be infinite"""
+        # Simple heuristic: while True without a break statement
+        if isinstance(node.test, ast.Constant) and node.test.value is True:
+            # Check if there's a break statement in the body
+            has_break = self._has_break_statement(node.body)
+            return not has_break
+        return False
+    
+    def _has_break_statement(self, body: List[ast.stmt]) -> bool:
+        """Check if a code block contains a break statement"""
+        for stmt in body:
+            if isinstance(stmt, ast.Break):
+                return True
+            # Check nested structures
+            if isinstance(stmt, (ast.If, ast.For, ast.While, ast.With)):
+                if hasattr(stmt, 'body') and self._has_break_statement(stmt.body):
+                    return True
+                if hasattr(stmt, 'orelse') and self._has_break_statement(stmt.orelse):
+                    return True
+        return False
+    
+    def _has_unbounded_recursion(self, node: ast.FunctionDef) -> bool:
+        """Check if a function has potentially unbounded recursion"""
+        func_name = node.name
+        
+        # Look for calls to itself without clear base case
+        for stmt in ast.walk(node):
+            if isinstance(stmt, ast.Call):
+                if isinstance(stmt.func, ast.Name) and stmt.func.id == func_name:
+                    # Found recursive call - check for base case
+                    # Simple heuristic: look for if statements that might be base cases
+                    has_base_case = self._has_apparent_base_case(node)
+                    if not has_base_case:
+                        return True
+        
+        return False
+    
+    def _has_apparent_base_case(self, node: ast.FunctionDef) -> bool:
+        """Check if function has an apparent base case for recursion"""
+        # Look for early returns anywhere in the function body
+        for stmt in ast.walk(node):
+            if isinstance(stmt, ast.Return):
+                return True
+        return False
+
 
 def main():
-    """Command-line interface for Ethica engine."""
-    import argparse
-    import json
+    """Main entry point for Ethica[8] engine"""
     
-    parser = argparse.ArgumentParser(
-        description='Rafaelia Ethica[8] Engine - Skeleton',
-        formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument(
-        '--validate',
-        help='Validate operation (JSON file)'
-    )
-    parser.add_argument(
-        '--strict',
-        action='store_true',
-        default=True,
-        help='Enable strict mode (default: true)'
-    )
+    if len(sys.argv) < 2:
+        print("Usage: rafaelia_ethica_engine.py <file_or_directory>")
+        print("\nEthica[8] - Ethical Constraint Engine")
+        print("Analyzes code for potentially harmful patterns")
+        sys.exit(1)
     
-    args = parser.parse_args()
+    target = Path(sys.argv[1])
+    engine = EthicaEngine()
     
-    engine = EthicaEngine(strict_mode=args.strict)
+    all_violations = []
     
-    print(f"🛡️  Rafaelia Ethica[{engine.PRINCIPLES}] Engine v{engine.VERSION}")
-    print(f"Mode: {'STRICT' if engine.strict_mode else 'PERMISSIVE'}")
+    if target.is_file():
+        files = [target]
+    elif target.is_dir():
+        files = list(target.rglob("*.py"))
+    else:
+        print(f"❌ Error: {target} not found")
+        sys.exit(1)
+    
+    print(f"🔍 Ethica[8] Analysis")
+    print(f"📁 Scanning: {target}")
+    print(f"📄 Files to analyze: {len(files)}")
     print()
     
-    if args.validate:
-        try:
-            with open(args.validate, 'r', encoding='utf-8') as f:
-                operation = json.load(f)
-            
-            result = engine.validate_execution(operation)
-            engine.enforce_verdict(result)
-            
-            print("\n📊 Validation Result:")
-            print(json.dumps(result, indent=2, default=str))
-            
-            return 0 if result['verdict'] in [EthicalVerdict.ALLOW, EthicalVerdict.CONDITIONAL] else 1
-            
-        except Exception as e:
-            print(f"❌ Error: {str(e)}", file=sys.stderr)
-            return 1
+    for filepath in files:
+        is_safe, violations = engine.analyze_python_file(filepath)
+        
+        if not is_safe:
+            all_violations.extend(violations)
+            print(f"⚠️  {filepath.name}: {len(violations)} violation(s)")
+        else:
+            print(f"✓  {filepath.name}: Safe")
+    
+    print()
+    print("=" * 60)
+    
+    if all_violations:
+        print(f"🔴 Found {len(all_violations)} ethical violation(s)")
+        print()
+        
+        for v in all_violations:
+            severity_emoji = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🟢"}.get(v.get('severity', 'medium'), "⚠️")
+            print(f"{severity_emoji} {v['type'].upper()}")
+            print(f"   File: {v['file']}")
+            print(f"   Line: {v['line']}")
+            print(f"   {v['message']}")
+            print()
+        
+        sys.exit(1)
     else:
-        print("ℹ️  Use --validate <operation.json> to validate an operation")
-        return 0
+        print("✅ All files passed Ethica[8] analysis")
+        print("🛡️  No infinite loops or dangerous patterns detected")
+        sys.exit(0)
 
-if __name__ == '__main__':
-    sys.exit(main())
+
+if __name__ == "__main__":
+    main()
