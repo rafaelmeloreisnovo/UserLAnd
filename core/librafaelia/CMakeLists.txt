@@ -8,7 +8,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(RAFAELIA_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 add_library(rafaelia SHARED
-  ${CMAKE_CURRENT_SOURCE_DIR}/raf_cpu_parser.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/impl/raf_cpu_parser.c
   ${CMAKE_CURRENT_SOURCE_DIR}/raf_crc_ecc.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../add2/bitstack_Version2.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../app/src/main/cpp/rafaelia_jni.c
@@ -16,6 +16,7 @@ add_library(rafaelia SHARED
 
 target_include_directories(rafaelia PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/impl
   ${RAFAELIA_ROOT}/include
 )
 

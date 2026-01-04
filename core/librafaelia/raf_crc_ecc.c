@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "raf_core_minimal.h"
 #include "raf_core.h"
 
 uint32_t raf_crc32(const uint8_t *data, uint32_t len) {
