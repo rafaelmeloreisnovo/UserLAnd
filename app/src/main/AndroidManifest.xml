@@ -32,6 +32,7 @@
     </queries>
 
     <application
+        android:name=".UserLAndApplication"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -53,6 +54,26 @@
 
             <nav-graph android:value="@navigation/nav_graph"/>
         </activity>
+
+        <!-- Crash Report Activity -->
+        <activity
+            android:name=".crash.CrashReportActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme"
+            android:launchMode="singleTask" />
+
+        <!-- Consent Review Activity -->
+        <activity
+            android:name=".consent.ConsentReviewActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme"
+            android:launchMode="singleTask" />
+
+        <!-- Debug Panel Activity -->
+        <activity
+            android:name=".debug.DebugPanelActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme" />
 
         <service
             android:name=".ServerService"

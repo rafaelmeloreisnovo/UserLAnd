@@ -1,0 +1,100 @@
+name: License Check
+
+on:
+  pull_request:
+    paths:
+      - 'app/build.gradle'
+      - 'build.gradle'
+      - 'scripts/license_audit.py'
+      - '.github/workflows/license-check.yml'
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+jobs:
+  license-audit:
+    name: License Compliance Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: 🔧 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: 🔧 Setup Android SDK
+        uses: android-actions/setup-android@v3
+      
+      - name: 📦 Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      
+      - name: 🔍 Run License Audit
+        run: |
+          echo "🔨 Running license audit..."
+          python3 scripts/license_audit.py
+        continue-on-error: false
+      
+      - name: 📄 Upload License Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: |
+            THIRD_PARTY_NOTICES.md
+            build/license_report.json
+          if-no-files-found: warn
+      
+      - name: 💬 Comment on PR (if failed)
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let report = 'License audit failed. Please ensure all dependencies have known licenses.';
+            
+            try {
+              if (fs.existsSync('build/license_report.json')) {
+                const data = JSON.parse(fs.readFileSync('build/license_report.json', 'utf8'));
+                if (data.unknown_licenses && data.unknown_licenses.length > 0) {
+                  report = `## ⚠️ License Audit Failed\n\n`;
+                  report += `Found ${data.unknown_licenses.length} dependencies with unknown licenses:\n\n`;
+                  data.unknown_licenses.forEach(dep => {
+                    report += `- \`${dep}\`\n`;
+                  });
+                  report += `\nPlease add license information to \`scripts/license_audit.py\` or update dependencies.`;
+                }
+              }
+            } catch (e) {
+              console.log('Could not read license report:', e);
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+      
+      - name: ✅ License Audit Passed
+        if: success()
+        run: |
+          echo "✅ All dependencies have known licenses"
+          echo "📊 License report generated successfully"

@@ -301,5 +301,46 @@
     <string name="diagnostic_error">Error running diagnostics: %s</string>
     <string name="diagnostic_share_error">Error sharing report: %s</string>
     <string name="diagnostic_request_notification_permission">Enable Notifications</string>
+
+    <!-- Crash Report -->
+    <string name="crash_title">App Crashed</string>
+    <string name="crash_subtitle">Exception: %s</string>
+    <string name="crash_icon_desc">Error icon</string>
+    <string name="crash_error_label">ERROR MESSAGE</string>
+    <string name="crash_details_label">TECHNICAL DETAILS</string>
+    <string name="crash_copy_error">Copy Error</string>
+    <string name="crash_export_report">Export Full Report</string>
+    <string name="crash_export_title">Export Crash Report</string>
+    <string name="crash_restart">Restart App</string>
+    <string name="crash_close">Close</string>
+    <string name="crash_copied">Error copied to clipboard</string>
+
+    <!-- Debug Panel -->
+    <string name="debug_panel_title">Hardware/Debug Panel</string>
+    <string name="debug_panel_device_info">Device Information</string>
+    <string name="debug_panel_generate">Generate Report</string>
+    <string name="debug_panel_copy">Copy Summary</string>
+    <string name="debug_panel_export">Export File</string>
+    <string name="debug_panel_dev_options">Open Developer Options</string>
+    <string name="debug_panel_app_details">Open App Details</string>
+    <string name="debug_panel_all_files">Request All Files Access</string>
+    <string name="debug_panel_consent_required">Consent Required</string>
+    <string name="debug_panel_export_title">Export Debug Report</string>
+    <string name="debug_dev_options_guide_message">To enable Developer Options:\n\n1. Go to Settings → About Phone\n2. Tap \"Build Number\" 7 times\n3. You\'ll see \"You are now a developer!\"\n4. Go back to Settings\n5. Find \"Developer Options\" (usually in System or Advanced)\n\nFor Wireless Debugging:\n- Open Developer Options\n- Enable \"Wireless Debugging\"\n- Your device must be on the same network\n\n⚠️ WARNING: Developer Options can affect system stability. Only enable features you understand.\n\nWould you like to open Settings now?</string>
+    
+    <!-- Consent -->
+    <string name="consent_review_title">Review Permissions</string>
+    <string name="consent_review_subtitle">The following features require your consent:</string>
+    <string name="consent_agree">I fully consent to enable these features</string>
+    <string name="consent_accept">Accept and Continue</string>
+    <string name="consent_deny">Deny All</string>
+    <string name="consent_item_hardware">Hardware Report (Local)</string>
+    <string name="consent_item_hardware_desc">Collect device info: CPU, RAM, GPU, sensors, kernel version. Stored locally only.</string>
+    <string name="consent_item_export">Export Logs/Reports</string>
+    <string name="consent_item_export_desc">Share diagnostic files via other apps. You control what to share.</string>
+    <string name="consent_item_all_files">All Files Access</string>
+    <string name="consent_item_all_files_desc">Request permission to access all storage. Opens system settings for your approval.</string>
+    <string name="consent_item_dev_guide">Developer Options Guide</string>
+    <string name="consent_item_dev_guide_desc">Show how to enable Developer Options and Wireless Debugging. Opens system settings only.</string>
   
 </resources>
