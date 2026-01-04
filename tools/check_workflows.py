@@ -13,7 +13,6 @@ IMPORTANT: This is a prototype/draft. Do not execute any infinite loops.
 Ethica[8] blocks prohibited executions.
 """
 
-import os
 import sys
 import yaml
 from pathlib import Path
