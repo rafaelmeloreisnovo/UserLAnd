@@ -17,7 +17,7 @@ import sys
 import hashlib
 import json
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
 
@@ -58,7 +58,7 @@ class RAFCODEEncoder:
         sha256_hash = hashlib.sha256(content).hexdigest()
         
         # Generate seal
-        timestamp = datetime.utcnow().isoformat() + 'Z'
+        timestamp = datetime.now(timezone.utc).isoformat()
         
         if component_name is None:
             component_name = filepath.stem.upper()

@@ -44,13 +44,13 @@ class BitRAF64Decompressor:
         try:
             compressed = base64.b64decode(encoded)
         except Exception as e:
-            raise ValueError(f"Invalid base64 encoding: {e}")
+            raise ValueError("Invalid base64 encoding") from e
         
         # Decompress with zlib
         try:
             data = zlib.decompress(compressed)
         except Exception as e:
-            raise ValueError(f"Decompression failed: {e}")
+            raise ValueError("Decompression failed") from e
         
         return data
     

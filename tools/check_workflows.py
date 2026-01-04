@@ -89,9 +89,9 @@ class WorkflowValidator:
         """Check a single line for issues"""
         # Check for hardcoded secrets
         secret_patterns = [
-            r'password\s*:\s*["\'](?!.*\$\{)',
-            r'token\s*:\s*["\'](?!.*\$\{)',
-            r'api[_-]?key\s*:\s*["\'](?!.*\$\{)',
+            r'password\s*:\s*["\'](?!.*\$\{\{)',
+            r'token\s*:\s*["\'](?!.*\$\{\{)',
+            r'api[_-]?key\s*:\s*["\'](?!.*\$\{\{)',
         ]
         
         for pattern in secret_patterns:

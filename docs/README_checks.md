@@ -259,10 +259,37 @@ Generate Software Bill of Materials using [Syft](https://github.com/anchore/syft
 
 ### Prerequisites
 
+**Install Syft (recommended method - package manager):**
+
 ```bash
-# Install Syft
-curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+# On macOS using Homebrew
+brew install syft
+
+# On Linux using snap
+snap install syft
+
+# On Windows using Scoop
+scoop install syft
 ```
+
+**Alternative: Install from GitHub release (with verification):**
+
+```bash
+# Download a specific pinned release with checksum verification
+# Check https://github.com/anchore/syft/releases for the latest version
+VERSION="v0.98.0"  # Update to desired version
+curl -sSfLO "https://github.com/anchore/syft/releases/download/${VERSION}/syft_${VERSION}_linux_amd64.tar.gz"
+curl -sSfLO "https://github.com/anchore/syft/releases/download/${VERSION}/syft_${VERSION}_checksums.txt"
+
+# Verify checksum
+sha256sum --ignore-missing -c syft_${VERSION}_checksums.txt
+
+# Extract and install
+tar -xzf syft_${VERSION}_linux_amd64.tar.gz
+sudo mv syft /usr/local/bin/
+```
+
+**Note:** Avoid using `curl | sh` from mutable branches for security reasons. The script in `tools/generate_sbom.sh` will attempt automatic installation to `~/.local/bin` if Syft is not found, but manual installation is preferred.
 
 ### Usage
 

@@ -76,7 +76,7 @@ generate_sbom() {
     
     # Get file size
     local size
-    size=$(stat -f%z "$SBOM_OUTPUT" 2>/dev/null || stat -c%s "$SBOM_OUTPUT" 2>/dev/null || echo "unknown")
+    size=$(stat -c%s "$SBOM_OUTPUT" 2>/dev/null || stat -f%z "$SBOM_OUTPUT" 2>/dev/null || echo "unknown")
     log_info "SBOM size: $size bytes"
 }
 

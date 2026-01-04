@@ -128,9 +128,8 @@ jobs:
           fi
           
           echo "🔍 Running flake8..."
-          # E501 (line too long) is ignored because max-line-length is already set to 120
-          # W503 (line break before binary operator) is ignored per PEP 8 recommendation
-          flake8 $PYTHON_FILES --max-line-length=120 --ignore=W503 || echo "⚠️ Linting found issues"
+          # W503 (line break before binary operator) is deprecated by PEP 8 and is extend-ignored
+          flake8 $PYTHON_FILES --max-line-length=120 --extend-ignore=W503 || echo "⚠️ Linting found issues"
           
       - name: 🧪 Run Python tests (if available)
         run: |

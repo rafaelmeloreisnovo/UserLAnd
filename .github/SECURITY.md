@@ -13,7 +13,6 @@ We take security seriously. If you discover a security vulnerability, please rep
 
 Instead, please report security issues to:
 
-- **Email**: [Create a private security advisory on GitHub]
 - **GitHub Security Advisory**: https://github.com/rafaelmeloreisnovo/UserLAnd/security/advisories/new
 
 ### What to Include in Your Report
