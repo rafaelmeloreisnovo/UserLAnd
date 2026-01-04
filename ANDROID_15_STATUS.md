@@ -45,6 +45,7 @@ All necessary changes for Android 15 compatibility have been implemented in the 
 - **Kernel**: `5.15.178-android13-8-gabf75819a85e-ab569`
   - Note: The "android13" follows AOSP kernel versioning, which differs from Android OS version numbering
   - This device runs Android 15 OS with a kernel based on AOSP android13 sources
+  - Reference: [Android Kernel Versioning](https://source.android.com/docs/core/architecture/kernel/releases)
 - **Android Version**: Android 15
 
 ### Supported Architectures
@@ -62,24 +63,29 @@ The application builds successfully and generates APK:
 - **Build System**: Gradle 8.7 with AGP 8.6.0
 
 ### Known CI Environment Issue
-The CI environment had an incomplete NDK 26.1.10909125 installation (missing source.properties file). This caused the build system to select the wrong NDK version instead of the configured NDK 27.3.13750724 (specified in gradle.properties). The Android Gradle Plugin requires source.properties to validate NDK installations and determine the correct version to use.
+The CI environment had an incomplete NDK 26.1.10909125 installation (missing source.properties file). This caused the build system to select the wrong NDK version instead of the configured NDK 27.3.13750724 (specified in gradle.properties). 
+
+The Android Gradle Plugin requires source.properties to validate NDK installations. Without this file, the build system cannot determine the correct version to use.
 
 **This is an infrastructure issue, not a code problem.**
 
-**Solution for CI (RECOMMENDED APPROACH)**:
+**Solution for CI (RECOMMENDED APPROACH - Uses variable for safety)**:
 ```bash
-# Step 1: Verify the problematic directory exists
-ls -la /usr/local/lib/android/sdk/ndk/26.1.10909125
+# Define the problematic NDK path as a variable to reduce copy-paste errors
+NDK_PATH='/usr/local/lib/android/sdk/ndk/26.1.10909125'
 
-# Step 2: Verify it's missing source.properties
-ls -la /usr/local/lib/android/sdk/ndk/26.1.10909125/source.properties || echo "Missing source.properties - this is the broken NDK"
+# Step 1: Verify the problematic directory exists
+ls -la "$NDK_PATH"
+
+# Step 2: Verify it's missing source.properties (confirms it's the broken NDK)
+ls -la "$NDK_PATH/source.properties" || echo "Missing source.properties - this is the broken NDK"
 
 # Step 3: SAFEST - Rename instead of delete (can be restored if needed)
-sudo mv /usr/local/lib/android/sdk/ndk/26.1.10909125 /usr/local/lib/android/sdk/ndk/26.1.10909125.broken
+sudo mv "$NDK_PATH" "${NDK_PATH}.broken"
 
 # Alternative (only after verification above): Remove the directory
-# WARNING: Double-check the path is correct before running!
-# sudo rm -rf /usr/local/lib/android/sdk/ndk/26.1.10909125
+# WARNING: Only use after confirming steps 1 and 2 above!
+# sudo rm -rf "$NDK_PATH"
 ```
 
 After renaming or removal, the build system correctly uses NDK 27.3.13750724 as configured in gradle.properties.
