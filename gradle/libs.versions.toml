@@ -25,7 +25,7 @@ kotlinx-coroutines = "1.10.3"
 # Network and serialization
 okhttp = "4.12.0"
 moshi = "1.15.2"
-gson = "2.11.0"
+gson = "2.13.2"
 
 # Utilities
 jarchivelib = "0.8.0"
