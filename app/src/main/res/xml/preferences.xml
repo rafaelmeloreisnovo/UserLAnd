@@ -63,4 +63,24 @@
             android:title="@string/pref_proot_delete_debug_file_title"
             app:iconSpaceReserved="false"/>
     </PreferenceCategory>
+    <PreferenceCategory
+        android:title="@string/pref_safety_guard_status_title"
+        android:key="pref_safety_guard_category"
+        app:iconSpaceReserved="false">
+        <CheckBoxPreference
+            android:key="safety_guard_enabled"
+            android:title="@string/pref_safety_guard_enabled_title"
+            android:summary="@string/pref_safety_guard_enabled_summary"
+            android:defaultValue="true"
+            app:iconSpaceReserved="false"/>
+        <Preference
+            android:key="pref_safety_guard_status"
+            android:title="@string/pref_safety_guard_status_title"
+            android:summary="@string/pref_safety_guard_status_none"
+            app:iconSpaceReserved="false"/>
+        <Preference
+            android:key="pref_safety_guard_clear"
+            android:title="@string/pref_safety_guard_clear_title"
+            app:iconSpaceReserved="false"/>
+    </PreferenceCategory>
 </PreferenceScreen>

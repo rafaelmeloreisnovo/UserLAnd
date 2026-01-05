@@ -159,6 +159,13 @@
     <string name="pref_proot_debugging_level_summary">The higher the number, the greater the verbosity.</string>
     <string name="pref_proot_debugging_level_default">-1</string>
     <string name="pref_proot_delete_debug_file_title">Delete Old Debug Files</string>
+    <string name="pref_safety_guard_enabled_title">Safety Guard Enabled</string>
+    <string name="pref_safety_guard_enabled_summary">Protects against repeated startup failures and loops by temporarily pausing new sessions.</string>
+    <string name="pref_safety_guard_clear_title">Clear Safety Guard State</string>
+    <string name="pref_safety_guard_status_title">Safety Guard Status</string>
+    <string name="pref_safety_guard_status_none">No recent safety events.</string>
+    <string name="pref_safety_guard_status_active">Safety mode active until %1$s.</string>
+    <string name="pref_safety_guard_status_triggered">Last trigger: %1$s. Reason: %2$s.</string>
 
     <!-- Help Activity -->
     <string name="github_message">Experiencing bugs or want to request a feature? Our Github page is the best place to go to get a fast response.</string>
