@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import tech.ula.crash.GlobalExceptionHandler
 import tech.ula.utils.MemoryMonitor
+import tech.ula.utils.SafetyGuard
 
 /**
  * UserLAnd Application class with safe initialization.
@@ -24,6 +25,7 @@ class UserLAndApplication : Application() {
             
             // Log memory status at startup
             MemoryMonitor.logMemoryStatus(this, TAG)
+            SafetyGuard.recordStartupModules(this)
             
             Log.i(TAG, "UserLAnd application initialized successfully")
         } catch (e: Exception) {

@@ -69,6 +69,11 @@
         app:iconSpaceReserved="false">
         <CheckBoxPreference
             android:key="safety_guard_enabled"
+        android:title="@string/pref_safety_guard_category"
+        android:key="pref_safety_guard_category"
+        app:iconSpaceReserved="false">
+        <CheckBoxPreference
+            android:key="pref_safety_guard_enabled"
             android:title="@string/pref_safety_guard_enabled_title"
             android:summary="@string/pref_safety_guard_enabled_summary"
             android:defaultValue="true"
@@ -81,6 +86,30 @@
         <Preference
             android:key="pref_safety_guard_clear"
             android:title="@string/pref_safety_guard_clear_title"
+        <CheckBoxPreference
+            android:dependency="pref_safety_guard_enabled"
+            android:key="pref_safety_guard_indicator"
+            android:title="@string/pref_safety_guard_indicator_title"
+            android:summary="@string/pref_safety_guard_indicator_summary"
+            android:defaultValue="true"
+            app:iconSpaceReserved="false"/>
+        <CheckBoxPreference
+            android:dependency="pref_safety_guard_enabled"
+            android:key="pref_safety_guard_logging"
+            android:title="@string/pref_safety_guard_logging_title"
+            android:summary="@string/pref_safety_guard_logging_summary"
+            android:defaultValue="true"
+            app:iconSpaceReserved="false"/>
+        <CheckBoxPreference
+            android:dependency="pref_safety_guard_enabled"
+            android:key="pref_safety_guard_safe_mode"
+            android:title="@string/pref_safety_guard_safe_mode_title"
+            android:summary="@string/pref_safety_guard_safe_mode_summary"
+            android:defaultValue="false"
+            app:iconSpaceReserved="false"/>
+        <Preference
+            android:key="pref_safety_guard_clear_last_event"
+            android:title="@string/pref_safety_guard_clear_last_event_title"
             app:iconSpaceReserved="false"/>
     </PreferenceCategory>
 </PreferenceScreen>

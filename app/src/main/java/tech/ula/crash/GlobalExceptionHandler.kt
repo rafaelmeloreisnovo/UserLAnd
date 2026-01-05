@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import org.json.JSONObject
+import tech.ula.utils.SafetyGuard
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -38,6 +39,12 @@ class GlobalExceptionHandler(
     override fun uncaughtException(thread: Thread, throwable: Throwable) {
         try {
             Log.e(TAG, "Uncaught exception on thread ${thread.name}", throwable)
+
+            try {
+                tech.ula.utils.SafetyMonitor.markCrash(context, throwable)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to mark crash for safety monitor", e)
+            }
             
             // Save crash report
             try {
@@ -51,6 +58,13 @@ class GlobalExceptionHandler(
                 saveDeviceReport(throwable)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to save device report", e)
+            }
+
+            // Enable safe mode for next boot to avoid crash loops
+            try {
+                SafetyGuard.setSafeMode(context, true)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to enable safety guard safe mode", e)
             }
             
             // Launch crash report activity with multiple fallback attempts

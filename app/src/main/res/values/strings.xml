@@ -159,13 +159,17 @@
     <string name="pref_proot_debugging_level_summary">The higher the number, the greater the verbosity.</string>
     <string name="pref_proot_debugging_level_default">-1</string>
     <string name="pref_proot_delete_debug_file_title">Delete Old Debug Files</string>
-    <string name="pref_safety_guard_enabled_title">Safety Guard Enabled</string>
-    <string name="pref_safety_guard_enabled_summary">Protects against repeated startup failures and loops by temporarily pausing new sessions.</string>
-    <string name="pref_safety_guard_clear_title">Clear Safety Guard State</string>
-    <string name="pref_safety_guard_status_title">Safety Guard Status</string>
-    <string name="pref_safety_guard_status_none">No recent safety events.</string>
-    <string name="pref_safety_guard_status_active">Safety mode active until %1$s.</string>
-    <string name="pref_safety_guard_status_triggered">Last trigger: %1$s. Reason: %2$s.</string>
+    <string name="pref_safety_guard_category">Safety Guard</string>
+    <string name="pref_safety_guard_enabled_title">Enable Safety Guard</string>
+    <string name="pref_safety_guard_enabled_summary">Adds lightweight checks to avoid startup crashes and memory pressure loops.</string>
+    <string name="pref_safety_guard_indicator_title">Show Safety Indicator</string>
+    <string name="pref_safety_guard_indicator_summary">Shows a small status dot in the corner with memory pressure state.</string>
+    <string name="pref_safety_guard_logging_title">Log Safety Events</string>
+    <string name="pref_safety_guard_logging_summary">Stores the last trigger reason for troubleshooting and safe-mode activation.</string>
+    <string name="pref_safety_guard_safe_mode_title">Safe Mode Boot</string>
+    <string name="pref_safety_guard_safe_mode_summary">Skips automatic session start when enabled.</string>
+    <string name="pref_safety_guard_clear_last_event_title">Clear Safety Event Log</string>
+    <string name="pref_safety_guard_clear_last_event_toast">Safety event log cleared.</string>
 
     <!-- Help Activity -->
     <string name="github_message">Experiencing bugs or want to request a feature? Our Github page is the best place to go to get a fast response.</string>
@@ -321,6 +325,19 @@
     <string name="crash_restart">Restart App</string>
     <string name="crash_close">Close</string>
     <string name="crash_copied">Error copied to clipboard</string>
+
+    <!-- Safety monitor -->
+    <string name="safety_indicator_label">SAFE</string>
+    <string name="pref_safety_category">Safety Monitor</string>
+    <string name="pref_safety_monitor_enabled_title">Enable safety monitor</string>
+    <string name="pref_safety_monitor_enabled_summary">Protect against low-memory crashes and loops</string>
+    <string name="pref_safety_indicator_enabled_title">Show safety indicator</string>
+    <string name="pref_safety_indicator_enabled_summary">Display a small on-screen indicator when monitoring is active</string>
+    <string name="pref_safety_logs_enabled_title">Enable safety logs</string>
+    <string name="pref_safety_logs_enabled_summary">Store lightweight logs for safety events</string>
+    <string name="pref_safety_clear_logs_title">Clear safety logs</string>
+    <string name="pref_safety_safe_mode_title">Safe mode (after crash)</string>
+    <string name="pref_safety_safe_mode_summary">Disable monitoring after a crash until you turn it back on</string>
 
     <!-- Debug Panel -->
     <string name="debug_panel_title">Hardware/Debug Panel</string>
