@@ -9,6 +9,7 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import tech.ula.R
 import tech.ula.utils.ProotDebugLogger
+import tech.ula.utils.SafetyMonitor
 import tech.ula.utils.UlaFiles
 import tech.ula.utils.defaultSharedPreferences
 
@@ -38,6 +39,20 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 apply()
                 true
             }
+        }
+
+        val clearSafetyLogsPreference: Preference? = findPreference("pref_safety_clear_logs")
+        clearSafetyLogsPreference?.setOnPreferenceClickListener {
+            SafetyMonitor.clearLogs(requireContext())
+            true
+        }
+
+        val safeModePreference: Preference? = findPreference("pref_safety_safe_mode")
+        safeModePreference?.setOnPreferenceChangeListener { _, newValue ->
+            if (newValue == false) {
+                SafetyMonitor.exitSafeMode(requireContext())
+            }
+            true
         }
     }
 

@@ -17,6 +17,7 @@ import tech.ula.model.entities.Session
 import tech.ula.ui.AppsListFragment
 import tech.ula.ui.SessionListFragment
 import tech.ula.utils.MemoryMonitor
+import tech.ula.utils.SafetyMonitor
 
 /**
  * Minimal stub MainActivity for CI builds.
@@ -83,6 +84,12 @@ class MainActivity :
         } catch (e: Exception) {
             Log.e(TAG, "Failed to log memory status", e)
         }
+
+        try {
+            updateSafetyIndicator()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update safety indicator", e)
+        }
     }
     
     override fun onPause() {
@@ -93,6 +100,27 @@ class MainActivity :
     override fun onDestroy() {
         super.onDestroy()
         Log.i(TAG, "MainActivity.onDestroy()")
+    }
+
+    private fun updateSafetyIndicator() {
+        val indicator = binding.safetyStatusIndicator
+        if (SafetyMonitor.isSafeModeActive(this) || !SafetyMonitor.isMonitorEnabled(this)) {
+            indicator.visibility = android.view.View.GONE
+            return
+        }
+
+        if (!SafetyMonitor.isIndicatorEnabled(this)) {
+            indicator.visibility = android.view.View.GONE
+            return
+        }
+
+        val status = SafetyMonitor.updateStatus(this)
+        indicator.text = if (status.lowMemory) {
+            "LOW ${status.availableMB}MB"
+        } else {
+            getString(R.string.safety_indicator_label)
+        }
+        indicator.visibility = android.view.View.VISIBLE
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {

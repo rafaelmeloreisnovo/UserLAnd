@@ -63,4 +63,41 @@
             android:title="@string/pref_proot_delete_debug_file_title"
             app:iconSpaceReserved="false"/>
     </PreferenceCategory>
+    <PreferenceCategory
+        android:title="@string/pref_safety_category"
+        android:key="pref_safety_category"
+        app:iconSpaceReserved="false">
+        <CheckBoxPreference
+            android:key="pref_safety_monitor_enabled"
+            android:title="@string/pref_safety_monitor_enabled_title"
+            android:summary="@string/pref_safety_monitor_enabled_summary"
+            android:defaultValue="true"
+            app:iconSpaceReserved="false"/>
+        <CheckBoxPreference
+            android:dependency="pref_safety_monitor_enabled"
+            android:key="pref_safety_indicator_enabled"
+            android:title="@string/pref_safety_indicator_enabled_title"
+            android:summary="@string/pref_safety_indicator_enabled_summary"
+            android:defaultValue="true"
+            app:iconSpaceReserved="false"/>
+        <CheckBoxPreference
+            android:dependency="pref_safety_monitor_enabled"
+            android:key="pref_safety_logs_enabled"
+            android:title="@string/pref_safety_logs_enabled_title"
+            android:summary="@string/pref_safety_logs_enabled_summary"
+            android:defaultValue="false"
+            app:iconSpaceReserved="false"/>
+        <Preference
+            android:dependency="pref_safety_monitor_enabled"
+            android:key="pref_safety_clear_logs"
+            android:title="@string/pref_safety_clear_logs_title"
+            app:iconSpaceReserved="false" />
+        <CheckBoxPreference
+            android:dependency="pref_safety_monitor_enabled"
+            android:key="pref_safety_safe_mode"
+            android:title="@string/pref_safety_safe_mode_title"
+            android:summary="@string/pref_safety_safe_mode_summary"
+            android:defaultValue="false"
+            app:iconSpaceReserved="false"/>
+    </PreferenceCategory>
 </PreferenceScreen>
