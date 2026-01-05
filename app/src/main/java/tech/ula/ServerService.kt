@@ -236,6 +236,24 @@ class ServerService : Service() {
                 busyboxExecutor.enableDebug()
             }
 
+            val guardEnabled = this.defaultSharedPreferences.getBoolean(SafetyGuard.KEY_ENABLED, true)
+            if (guardEnabled) {
+                val guardState = SafetyGuard.evaluate(this)
+                if (guardState.safeModeActive) {
+                    SafetyGuard.recordEvent(this, guardState, "safe_mode_boot")
+                    busyboxExecutor.logError("SafetyGuard safe mode active - skipping session start for ${session.name}")
+                    stopServiceIfIdle()
+                    return
+                }
+
+                if (guardState.isTriggered) {
+                    SafetyGuard.recordEvent(this, guardState, "start_session")
+                    if (guardState.delayMillis > 0L) {
+                        delay(guardState.delayMillis)
+                    }
+                }
+            }
+
             startForeground(
                 NotificationConstructor.SERVICE_NOTIFICATION_ID,
                 notificationManager.buildPersistentServiceNotification(),

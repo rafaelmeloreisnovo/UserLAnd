@@ -5,10 +5,12 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.widget.Toast
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import tech.ula.R
 import tech.ula.utils.ProotDebugLogger
+import tech.ula.utils.SafetyGuard
 import tech.ula.utils.SafetyMonitor
 import tech.ula.utils.UlaFiles
 import tech.ula.utils.defaultSharedPreferences
@@ -41,17 +43,10 @@ class SettingsFragment : PreferenceFragmentCompat() {
             }
         }
 
-        val clearSafetyLogsPreference: Preference? = findPreference("pref_safety_clear_logs")
-        clearSafetyLogsPreference?.setOnPreferenceClickListener {
-            SafetyMonitor.clearLogs(requireContext())
-            true
-        }
-
-        val safeModePreference: Preference? = findPreference("pref_safety_safe_mode")
-        safeModePreference?.setOnPreferenceChangeListener { _, newValue ->
-            if (newValue == false) {
-                SafetyMonitor.exitSafeMode(requireContext())
-            }
+        val clearSafetyGuardPreference: Preference = findPreference("pref_safety_guard_clear_last_event")!!
+        clearSafetyGuardPreference.setOnPreferenceClickListener {
+            SafetyGuard.clearLastEvent(activity!!)
+            Toast.makeText(activity, R.string.pref_safety_guard_clear_last_event_toast, Toast.LENGTH_SHORT).show()
             true
         }
     }

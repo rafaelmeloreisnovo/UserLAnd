@@ -3,9 +3,13 @@ package tech.ula
 import android.app.ProgressDialog
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import tech.ula.consent.ConsentLedger
@@ -17,7 +21,9 @@ import tech.ula.model.entities.Session
 import tech.ula.ui.AppsListFragment
 import tech.ula.ui.SessionListFragment
 import tech.ula.utils.MemoryMonitor
-import tech.ula.utils.SafetyMonitor
+import tech.ula.utils.SafetyGuard
+import tech.ula.utils.defaultSharedPreferences
+import java.util.Locale
 
 /**
  * Minimal stub MainActivity for CI builds.
@@ -30,6 +36,7 @@ class MainActivity :
     AppsListFragment.AppSelection {
     private lateinit var binding: ActivityMainBinding
     private var progressDialog: ProgressDialog? = null
+    private val uiHandler = Handler(Looper.getMainLooper())
 
     companion object {
         private const val TAG = "MainActivity"
@@ -65,6 +72,8 @@ class MainActivity :
             } catch (e: Exception) {
                 Log.e(TAG, "Error setting up toolbar", e)
             }
+
+            setupSafetyIndicator()
             
             Log.i(TAG, "MainActivity initialized successfully")
         } catch (e: Exception) {
@@ -102,25 +111,47 @@ class MainActivity :
         Log.i(TAG, "MainActivity.onDestroy()")
     }
 
+    private fun setupSafetyIndicator() {
+        binding.safetyIndicator.setOnClickListener {
+            val prefs = defaultSharedPreferences
+            val lastEvent = prefs.getString(SafetyGuard.KEY_LAST_EVENT, null)
+            val lastEventAt = prefs.getString(SafetyGuard.KEY_LAST_EVENT_AT, null)
+            val message =
+                if (!lastEvent.isNullOrBlank() && !lastEventAt.isNullOrBlank()) {
+                    "SafetyGuard: $lastEventAt\n$lastEvent"
+                } else {
+                    "SafetyGuard: no recent events"
+                }
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun updateSafetyIndicator() {
-        val indicator = binding.safetyStatusIndicator
-        if (SafetyMonitor.isSafeModeActive(this) || !SafetyMonitor.isMonitorEnabled(this)) {
-            indicator.visibility = android.view.View.GONE
+        val prefs = defaultSharedPreferences
+        val indicatorEnabled = prefs.getBoolean(SafetyGuard.KEY_INDICATOR_ENABLED, true)
+        val guardEnabled = prefs.getBoolean(SafetyGuard.KEY_ENABLED, true)
+        if (!indicatorEnabled || !guardEnabled) {
+            binding.safetyIndicator.visibility = View.GONE
             return
         }
 
-        if (!SafetyMonitor.isIndicatorEnabled(this)) {
-            indicator.visibility = android.view.View.GONE
-            return
+        val state = SafetyGuard.evaluate(this)
+        val colorRes =
+            when (state.severity) {
+                SafetyGuard.Severity.Critical -> R.color.holo_red_light
+                SafetyGuard.Severity.Warning -> R.color.holo_orange_light
+                SafetyGuard.Severity.Normal -> R.color.holo_green_light
+            }
+
+        binding.safetyIndicator.apply {
+            visibility = View.VISIBLE
+            setTextColor(getColor(colorRes))
+            contentDescription = "Safety guard ${state.severity.name.lowercase(Locale.getDefault())}"
         }
 
-        val status = SafetyMonitor.updateStatus(this)
-        indicator.text = if (status.lowMemory) {
-            "LOW ${status.availableMB}MB"
-        } else {
-            getString(R.string.safety_indicator_label)
+        if (state.isTriggered) {
+            uiHandler.postDelayed({ updateSafetyIndicator() }, 1500L)
         }
-        indicator.visibility = android.view.View.VISIBLE
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {

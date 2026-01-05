@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import org.json.JSONObject
+import tech.ula.utils.SafetyGuard
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -57,6 +58,13 @@ class GlobalExceptionHandler(
                 saveDeviceReport(throwable)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to save device report", e)
+            }
+
+            // Enable safe mode for next boot to avoid crash loops
+            try {
+                SafetyGuard.setSafeMode(context, true)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to enable safety guard safe mode", e)
             }
             
             // Launch crash report activity with multiple fallback attempts
