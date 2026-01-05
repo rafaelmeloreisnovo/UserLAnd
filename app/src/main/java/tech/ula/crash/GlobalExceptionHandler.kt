@@ -39,6 +39,12 @@ class GlobalExceptionHandler(
     override fun uncaughtException(thread: Thread, throwable: Throwable) {
         try {
             Log.e(TAG, "Uncaught exception on thread ${thread.name}", throwable)
+
+            try {
+                tech.ula.utils.SafetyMonitor.markCrash(context, throwable)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to mark crash for safety monitor", e)
+            }
             
             // Save crash report
             try {

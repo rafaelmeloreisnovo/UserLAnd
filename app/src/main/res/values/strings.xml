@@ -326,6 +326,19 @@
     <string name="crash_close">Close</string>
     <string name="crash_copied">Error copied to clipboard</string>
 
+    <!-- Safety monitor -->
+    <string name="safety_indicator_label">SAFE</string>
+    <string name="pref_safety_category">Safety Monitor</string>
+    <string name="pref_safety_monitor_enabled_title">Enable safety monitor</string>
+    <string name="pref_safety_monitor_enabled_summary">Protect against low-memory crashes and loops</string>
+    <string name="pref_safety_indicator_enabled_title">Show safety indicator</string>
+    <string name="pref_safety_indicator_enabled_summary">Display a small on-screen indicator when monitoring is active</string>
+    <string name="pref_safety_logs_enabled_title">Enable safety logs</string>
+    <string name="pref_safety_logs_enabled_summary">Store lightweight logs for safety events</string>
+    <string name="pref_safety_clear_logs_title">Clear safety logs</string>
+    <string name="pref_safety_safe_mode_title">Safe mode (after crash)</string>
+    <string name="pref_safety_safe_mode_summary">Disable monitoring after a crash until you turn it back on</string>
+
     <!-- Debug Panel -->
     <string name="debug_panel_title">Hardware/Debug Panel</string>
     <string name="debug_panel_device_info">Device Information</string>

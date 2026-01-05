@@ -94,7 +94,11 @@ class MainActivity :
             Log.e(TAG, "Failed to log memory status", e)
         }
 
-        updateSafetyIndicator()
+        try {
+            updateSafetyIndicator()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update safety indicator", e)
+        }
     }
     
     override fun onPause() {

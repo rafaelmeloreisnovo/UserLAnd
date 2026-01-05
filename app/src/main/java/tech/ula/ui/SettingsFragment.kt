@@ -11,6 +11,7 @@ import androidx.preference.PreferenceFragmentCompat
 import tech.ula.R
 import tech.ula.utils.ProotDebugLogger
 import tech.ula.utils.SafetyGuard
+import tech.ula.utils.SafetyMonitor
 import tech.ula.utils.UlaFiles
 import tech.ula.utils.defaultSharedPreferences
 
