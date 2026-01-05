@@ -103,7 +103,7 @@ jobs:
           
       - name: 📤 Upload findings
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: workflow-findings
           path: workflow_findings.json
