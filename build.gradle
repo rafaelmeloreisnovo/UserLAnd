@@ -31,6 +31,12 @@ allprojects {
         google()
         mavenCentral()
         maven { url "https://jitpack.io" }
+        // RmR (Rafael Melo Reis) androidx enhancements
+        maven { 
+            url "https://github.com/rafaelmeloreisnovo/androidx_RmR"
+            // For local development, you can use a local path:
+            // url "/path/to/local/androidx_RmR"
+        }
     }
 }
 
