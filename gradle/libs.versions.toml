@@ -29,7 +29,7 @@ gson = "2.11.0"
 
 # Utilities
 jarchivelib = "0.8.0"
-sentry = "7.20.1"
+sentry = "8.29.0"
 slf4j = "2.0.16"
 
 # Google Play Services
