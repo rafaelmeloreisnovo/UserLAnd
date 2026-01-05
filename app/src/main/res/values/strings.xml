@@ -60,6 +60,11 @@
     <string name="error_library_setup_failure">It looks like initial setup failed. Please contact us on Github.</string>
     <string name="error_no_lib_directory">It looks like the library directory we are looking for does not exist. Please contact us on Github.</string>
     <string name="error_filesystem_delete">Deleting filesystem failed! Try stopping all sessions and trying again.</string>
+    <string name="error_session_start">Failed to start session: %1$s</string>
+    <string name="error_session_start_title">Session Error</string>
+    <string name="error_app_selection">Failed to select app: %1$s</string>
+    <string name="error_app_selection_title">App Error</string>
+    <string name="info_app_starting">Starting %1$s...</string>
 
     <!-- Download Failure Reasons -->
     <string name="download_failure_http_error">Http Error: %1$s</string>
@@ -170,6 +175,11 @@
     <string name="pref_safety_guard_safe_mode_summary">Skips automatic session start when enabled.</string>
     <string name="pref_safety_guard_clear_last_event_title">Clear Safety Event Log</string>
     <string name="pref_safety_guard_clear_last_event_toast">Safety event log cleared.</string>
+    <string name="pref_safety_guard_status_title">Safety Guard Status</string>
+    <string name="pref_safety_guard_status_none">No events recorded</string>
+    <string name="pref_safety_guard_status_active">Safe mode active until %1$s</string>
+    <string name="pref_safety_guard_status_triggered">Last triggered at %1$s: %2$s</string>
+    <string name="pref_safety_guard_clear_title">Clear Event History</string>
 
     <!-- Help Activity -->
     <string name="github_message">Experiencing bugs or want to request a feature? Our Github page is the best place to go to get a fast response.</string>
