@@ -29,6 +29,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.IBinder
+import android.os.SystemClock
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import kotlinx.coroutines.*
 import tech.ula.model.entities.App
@@ -45,6 +46,8 @@ class ServerService : Service() {
         // Stability / latency settings
         private const val SESSION_START_TIMEOUT_MILLIS = 30_000L
         private const val POLLING_INTERVAL_MILLIS = 100L
+        private const val START_FAILURE_WINDOW_MILLIS = 120_000L
+        private const val MAX_START_FAILURES = 3
 
         // Default client packages (can be overridden via SharedPreferences)
         const val DEFAULT_VNC_PACKAGE = "com.iiordanov.freebVNC"
@@ -61,6 +64,8 @@ class ServerService : Service() {
 
     // Thread-safe map of active sessions
     private val activeSessions: MutableMap<Long, Session> = ConcurrentHashMap()
+    private val startFailures: MutableMap<Long, ArrayDeque<Long>> = ConcurrentHashMap()
+    private val startInProgress: MutableSet<Long> = ConcurrentHashMap.newKeySet()
 
     private lateinit var broadcaster: LocalBroadcastManager
 
@@ -185,6 +190,44 @@ class ServerService : Service() {
         }
     }
 
+    private fun shouldBlockSessionStart(session: Session): Boolean {
+        val now = SystemClock.elapsedRealtime()
+        val failures = startFailures[session.id] ?: return false
+        synchronized(failures) {
+            pruneStartFailures(failures, now)
+            return failures.size >= MAX_START_FAILURES
+        }
+    }
+
+    private fun recordStartFailure(
+        session: Session,
+        reason: String,
+    ) {
+        val now = SystemClock.elapsedRealtime()
+        val failures =
+            startFailures.getOrPut(session.id) {
+                ArrayDeque()
+            }
+        synchronized(failures) {
+            failures.addLast(now)
+            pruneStartFailures(failures, now)
+        }
+        busyboxExecutor.logError("Start guard recorded failure for ${session.name}: $reason")
+    }
+
+    private fun recordStartSuccess(session: Session) {
+        startFailures.remove(session.id)
+    }
+
+    private fun pruneStartFailures(
+        failures: ArrayDeque<Long>,
+        now: Long,
+    ) {
+        while (failures.isNotEmpty() && now - failures.first > START_FAILURE_WINDOW_MILLIS) {
+            failures.removeFirst()
+        }
+    }
+
     private fun removeSession(session: Session) {
         activeSessions.remove(session.pid)
         stopServiceIfIdle()
@@ -231,6 +274,17 @@ class ServerService : Service() {
         session: Session,
         isDevDebugEnabled: Boolean,
     ) {
+        if (!startInProgress.add(session.id)) {
+            busyboxExecutor.logError("Start already in progress for ${session.name}; skipping duplicate start")
+            return
+        }
+
+        if (shouldBlockSessionStart(session)) {
+            busyboxExecutor.logError("Start guard blocked session ${session.name} after repeated failures")
+            startInProgress.remove(session.id)
+            return
+        }
+
         try {
             if (isDevDebugEnabled) {
                 busyboxExecutor.enableDebug()
@@ -264,6 +318,7 @@ class ServerService : Service() {
                     localServerManager.startServer(session)
                 } catch (e: Exception) {
                     busyboxExecutor.logCritical("startServer failed for ${session.name}: ${e.message}")
+                    recordStartFailure(session, "startServer exception: ${e.message}")
                     sendDialogBroadcast("sessionStartFailed")
                     stopServiceIfIdle()
                     return
@@ -273,6 +328,7 @@ class ServerService : Service() {
                 busyboxExecutor.logCritical(
                     "startServer returned non-positive pid $pid for ${session.name}",
                 )
+                recordStartFailure(session, "non-positive pid: $pid")
                 sendDialogBroadcast("sessionStartFailed")
                 stopServiceIfIdle()
                 return
@@ -292,6 +348,7 @@ class ServerService : Service() {
                 busyboxExecutor.logError(
                     "Session startup timed out after $SESSION_START_TIMEOUT_MILLIS ms for ${session.name}",
                 )
+                recordStartFailure(session, "startup timeout")
                 stopSessionInternal(session)
                 sendDialogBroadcast("sessionTimeoutError")
                 return
@@ -300,13 +357,16 @@ class ServerService : Service() {
             session.active = true
             updateSession(session)
             activeSessions[session.pid] = session
+            recordStartSuccess(session)
 
             startClient(session)
         } catch (e: Exception) {
             busyboxExecutor.logCritical("CRITICAL ERROR in startSession for ${session.name}: ${e.message}")
+            recordStartFailure(session, "critical start error: ${e.message}")
             stopSessionInternal(session)
             sendDialogBroadcast("criticalServiceError")
         } finally {
+            startInProgress.remove(session.id)
             if (isDevDebugEnabled) {
                 busyboxExecutor.disableDebug()
             }
