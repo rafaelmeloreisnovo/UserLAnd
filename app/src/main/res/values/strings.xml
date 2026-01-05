@@ -159,6 +159,17 @@
     <string name="pref_proot_debugging_level_summary">The higher the number, the greater the verbosity.</string>
     <string name="pref_proot_debugging_level_default">-1</string>
     <string name="pref_proot_delete_debug_file_title">Delete Old Debug Files</string>
+    <string name="pref_safety_guard_category">Safety Guard</string>
+    <string name="pref_safety_guard_enabled_title">Enable Safety Guard</string>
+    <string name="pref_safety_guard_enabled_summary">Adds lightweight checks to avoid startup crashes and memory pressure loops.</string>
+    <string name="pref_safety_guard_indicator_title">Show Safety Indicator</string>
+    <string name="pref_safety_guard_indicator_summary">Shows a small status dot in the corner with memory pressure state.</string>
+    <string name="pref_safety_guard_logging_title">Log Safety Events</string>
+    <string name="pref_safety_guard_logging_summary">Stores the last trigger reason for troubleshooting and safe-mode activation.</string>
+    <string name="pref_safety_guard_safe_mode_title">Safe Mode Boot</string>
+    <string name="pref_safety_guard_safe_mode_summary">Skips automatic session start when enabled.</string>
+    <string name="pref_safety_guard_clear_last_event_title">Clear Safety Event Log</string>
+    <string name="pref_safety_guard_clear_last_event_toast">Safety event log cleared.</string>
 
     <!-- Help Activity -->
     <string name="github_message">Experiencing bugs or want to request a feature? Our Github page is the best place to go to get a fast response.</string>
