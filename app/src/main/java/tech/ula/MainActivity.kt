@@ -267,8 +267,8 @@ class MainActivity :
         } catch (e: Exception) {
             Log.e(TAG, "Error starting session: ${session.name}", e)
             displayGenericErrorDialogSafe(
-                "Session Error",
-                "Failed to start session: ${e.message ?: "Unknown error"}"
+                getString(R.string.error_session_start_title),
+                getString(R.string.error_session_start, e.message ?: "Unknown error")
             )
         }
     }
@@ -283,7 +283,7 @@ class MainActivity :
             // Full implementation would use MainActivityViewModel flow
             Toast.makeText(
                 this,
-                "Starting ${app.name}...",
+                getString(R.string.info_app_starting, app.name),
                 Toast.LENGTH_SHORT
             ).show()
             
@@ -296,8 +296,8 @@ class MainActivity :
         } catch (e: Exception) {
             Log.e(TAG, "Error selecting app: ${app.name}", e)
             displayGenericErrorDialogSafe(
-                "App Error",
-                "Failed to select app: ${e.message ?: "Unknown error"}"
+                getString(R.string.error_app_selection_title),
+                getString(R.string.error_app_selection, e.message ?: "Unknown error")
             )
         }
     }
