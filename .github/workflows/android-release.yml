@@ -64,6 +64,22 @@ jobs:
           ls -lh app/build/outputs/apk/release/*.apk
           echo "✓ APK verification complete"
 
+      - name: Summarize Release APK
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          {
+            echo "## Release APK artifacts"
+            for apk in app/build/outputs/apk/release/*.apk; do
+              size=$(du -h "$apk" | cut -f1)
+              sha=$(sha256sum "$apk" | awk '{print $1}')
+              echo "* $(basename "$apk") (${size})"
+              echo "  - SHA256: \`${sha}\`"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -119,6 +135,22 @@ jobs:
           echo "🔍 Verifying APK artifacts..."
           ls -lh app/build/outputs/apk/beta/*.apk
           echo "✓ APK verification complete"
+
+      - name: Summarize Beta APK
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          {
+            echo "## Beta APK artifacts"
+            for apk in app/build/outputs/apk/beta/*.apk; do
+              size=$(du -h "$apk" | cut -f1)
+              sha=$(sha256sum "$apk" | awk '{print $1}')
+              echo "* $(basename "$apk") (${size})"
+              echo "  - SHA256: \`${sha}\`"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload beta APK artifact
         uses: actions/upload-artifact@v4

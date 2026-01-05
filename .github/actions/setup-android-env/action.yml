@@ -65,3 +65,16 @@ runs:
         echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${{ inputs.ndk-version }}" >> "$GITHUB_ENV"
         printf "ndk.dir=%s/ndk/%s\n" "${ANDROID_SDK_ROOT}" "${{ inputs.ndk-version }}" >> local.properties
         echo "✓ NDK configured at ${ANDROID_SDK_ROOT}/ndk/${{ inputs.ndk-version }}"
+
+    - name: Write Android toolchain summary
+      shell: bash
+      run: |
+        {
+          echo "## Android toolchain"
+          echo ""
+          echo "* Java: $(java -version 2>&1 | head -n 1)"
+          echo "* SDK root: ${ANDROID_SDK_ROOT}"
+          echo "* NDK: ${ANDROID_NDK_HOME:-${ANDROID_SDK_ROOT}/ndk/${{ inputs.ndk-version }}}"
+          echo "* Platform: android-${{ inputs.platform-version }}"
+          echo "* Build tools: ${{ inputs.build-tools-version }}"
+        } >> "$GITHUB_STEP_SUMMARY"

@@ -122,6 +122,22 @@ jobs:
           echo "📦 Generated Debug APK:"
           find app/build/outputs/apk/debug -name "*.apk" -exec ls -lh {} \;
 
+      - name: Summarize Debug APK
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          {
+            echo "## Debug APK artifacts"
+            for apk in app/build/outputs/apk/debug/*.apk; do
+              size=$(du -h "$apk" | cut -f1)
+              sha=$(sha256sum "$apk" | awk '{print $1}')
+              echo "* $(basename "$apk") (${size})"
+              echo "  - SHA256: \`${sha}\`"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
@@ -186,6 +202,22 @@ jobs:
         run: |
           echo "📦 Generated Release APK:"
           find app/build/outputs/apk/release -name "*.apk" -exec ls -lh {} \;
+
+      - name: Summarize Release APK
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          {
+            echo "## Release APK artifacts"
+            for apk in app/build/outputs/apk/release/*.apk; do
+              size=$(du -h "$apk" | cut -f1)
+              sha=$(sha256sum "$apk" | awk '{print $1}')
+              echo "* $(basename "$apk") (${size})"
+              echo "  - SHA256: \`${sha}\`"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
