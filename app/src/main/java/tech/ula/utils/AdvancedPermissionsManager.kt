@@ -83,7 +83,7 @@ class AdvancedPermissionsManager(private val context: Context) {
             }
         }.let { perms ->
             // Add Android 15+ permissions
-            if (Build.VERSION.SDK_INT >= 35) {
+            if (AndroidVersion.isAndroid15Plus()) {
                 perms + arrayOf(
                     Manifest.permission.FOREGROUND_SERVICE_SPECIAL_USE
                 )

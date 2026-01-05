@@ -48,7 +48,7 @@ object DeviceOptimizationHelper {
      * Check if running on Android 15+
      */
     fun isAndroid15Plus(): Boolean {
-        return Build.VERSION.SDK_INT >= 35 // API 35 = Android 15
+        return AndroidVersion.isAndroid15Plus()
     }
 
     /**

@@ -2,7 +2,6 @@ package tech.ula.utils
 
 import android.app.ActivityManager
 import android.content.Context
-import android.os.Build
 import android.util.Log
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -123,7 +122,7 @@ object SafetyGuard {
 
     fun startupModulesForSdk(sdk: Int): List<String> {
         val baseModules = mutableListOf("memory_guard", "startup_throttle")
-        if (sdk >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        if (AndroidVersion.isAndroid15Plus(sdk)) {
             baseModules.add("android15_pressure_watch")
         }
         return baseModules

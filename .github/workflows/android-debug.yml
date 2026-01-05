@@ -40,6 +40,22 @@ jobs:
           # se quiser rodar testes:
           # ./gradlew test --stacktrace
 
+      - name: Summarize Debug APK
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          {
+            echo "## Debug APK artifacts"
+            for apk in app/build/outputs/apk/debug/*.apk; do
+              size=$(du -h "$apk" | cut -f1)
+              sha=$(sha256sum "$apk" | awk '{print $1}')
+              echo "* $(basename "$apk") (${size})"
+              echo "  - SHA256: \`${sha}\`"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
