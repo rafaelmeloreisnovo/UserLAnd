@@ -28,6 +28,11 @@
     <uses-permission android:name="com.android.vending.BILLING" />
     
     <!-- Developer/Debugging Permissions -->
+    <!-- Note: Many of these are signature/privileged permissions that require -->
+    <!-- system app status or root access. They are declared for: -->
+    <!-- 1. Documentation of required capabilities -->
+    <!-- 2. Future compatibility with system builds -->
+    <!-- 3. Use with ADB shell commands or root access -->
     <uses-permission android:name="android.permission.DUMP"
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"

@@ -78,17 +78,26 @@ object DeviceOptimizationHelper {
 
     /**
      * Get kernel version string
+     * Returns basic version info without exposing sensitive system details
      */
     fun getKernelVersion(): String {
         return try {
             val version = System.getProperty("os.version") ?: ""
             if (version.isNotEmpty()) {
-                version
+                // Return only the version number, not full details
+                version.substringBefore(" ").trim()
             } else {
-                // Fallback: read from /proc/version
-                File("/proc/version").readText().trim()
+                // Fallback: read minimal info from /proc/version
+                // Only extract version number, not full system details
+                val procVersion = File("/proc/version").readText().trim()
+                // Extract just the version number (first token after "Linux version")
+                procVersion.substringAfter("Linux version ", "")
+                    .substringBefore(" ", "")
+                    .trim()
+                    .ifEmpty { "Unknown" }
             }
         } catch (e: Exception) {
+            // Don't log exception details to avoid leaking system info
             "Unknown"
         }
     }

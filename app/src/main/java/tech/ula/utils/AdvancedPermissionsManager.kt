@@ -56,12 +56,19 @@ class AdvancedPermissionsManager(private val context: Context) {
             Manifest.permission.REQUEST_DELETE_PACKAGES,
             Manifest.permission.READ_PHONE_STATE
         ).let { perms ->
-            // Add Android 13+ permissions
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Add Android 12+ Bluetooth permissions
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 perms + arrayOf(
                     Manifest.permission.BLUETOOTH_CONNECT,
                     Manifest.permission.BLUETOOTH_SCAN
                 )
+            } else {
+                perms
+            }
+        }.let { perms ->
+            // Add Android 13+ permissions
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                perms // Already added BLUETOOTH permissions above if needed
             } else {
                 perms
             }
