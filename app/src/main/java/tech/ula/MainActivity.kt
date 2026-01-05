@@ -288,7 +288,6 @@ class MainActivity :
             ).show()
             
             Log.i(TAG, "App selected: ${app.name}, autoStart: $autoStart")
-            
             // Note: A complete implementation would require:
             // 1. Initialize MainActivityViewModel
             // 2. Call viewModel.submitAppSelection(app, autoStart)
