@@ -411,7 +411,7 @@ dependencies {
     def ktx_version = '1.15.0'
     // Downgrade billing to 6.2.1 for compatibility with Kotlin 2.0.x
     // billing-ktx 8.3.0 is compiled with Kotlin 2.2.x which is incompatible
-    def billing_version = '6.2.1'
+    def billing_version = '8.3.0'
     
     // RmR (Rafael Melo Reis) androidx enhancements - optimized matrix-based implementations
     // Note: These provide high-performance alternatives to standard androidx components
