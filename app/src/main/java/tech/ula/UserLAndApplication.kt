@@ -3,6 +3,7 @@ package tech.ula
 import android.app.Application
 import android.util.Log
 import tech.ula.crash.GlobalExceptionHandler
+import tech.ula.utils.DeviceOptimizationHelper
 import tech.ula.utils.MemoryMonitor
 import tech.ula.utils.SafetyGuard
 
@@ -22,6 +23,9 @@ class UserLAndApplication : Application() {
         
         try {
             super.onCreate()
+            
+            // Log device optimization status for Android 15 / RMX3834
+            DeviceOptimizationHelper.logOptimizationStatus()
             
             // Log memory status at startup
             MemoryMonitor.logMemoryStatus(this, TAG)

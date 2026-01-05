@@ -17,6 +17,8 @@ import tech.ula.R
 import tech.ula.consent.ConsentLedger
 import tech.ula.databinding.ActivityDebugPanelBinding
 import tech.ula.rafaelia.RafaeliaNative
+import tech.ula.utils.AdvancedPermissionsManager
+import tech.ula.utils.DeviceOptimizationHelper
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -30,6 +32,7 @@ class DebugPanelActivity : AppCompatActivity() {
     private lateinit var binding: ActivityDebugPanelBinding
     private lateinit var consentLedger: ConsentLedger
     private lateinit var deviceInfoCollector: DeviceInfoCollector
+    private lateinit var permissionsManager: AdvancedPermissionsManager
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +41,7 @@ class DebugPanelActivity : AppCompatActivity() {
         
         consentLedger = ConsentLedger(this)
         deviceInfoCollector = DeviceInfoCollector(this)
+        permissionsManager = AdvancedPermissionsManager(this)
         
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -95,21 +99,53 @@ class DebugPanelActivity : AppCompatActivity() {
     
     private fun displayDeviceInfo() {
         val info = buildString {
+            appendLine("=== DEVICE INFORMATION ===")
             appendLine("DEVICE: ${Build.MANUFACTURER} ${Build.MODEL}")
             appendLine("ANDROID: ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})")
             appendLine("ABIs: ${Build.SUPPORTED_ABIS.joinToString(", ")}")
             appendLine("CORES: ${Runtime.getRuntime().availableProcessors()}")
+            appendLine()
             
             val runtime = Runtime.getRuntime()
             val maxMemMB = runtime.maxMemory() / (1024 * 1024)
             val usedMemMB = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024)
             appendLine("MEMORY: $usedMemMB / $maxMemMB MB")
+            appendLine()
+            
+            // Device Optimization Status (Android 15 / RMX3834)
+            appendLine("=== OPTIMIZATION STATUS ===")
+            appendLine("Target Device (RMX3834): ${if (DeviceOptimizationHelper.isTargetDevice()) "✓ YES" else "✗ NO"}")
+            appendLine("Android 15+: ${if (DeviceOptimizationHelper.isAndroid15Plus()) "✓ YES" else "✗ NO"}")
+            appendLine("Realme Device: ${if (DeviceOptimizationHelper.isRealmeDevice()) "✓ YES" else "✗ NO"}")
+            appendLine("ARM64 Support: ${if (DeviceOptimizationHelper.isArm64Supported()) "✓ YES" else "✗ NO"}")
+            appendLine("NEON SIMD: ${if (DeviceOptimizationHelper.isNeonAvailable()) "✓ YES" else "✗ NO"}")
+            appendLine("Kernel Version: ${DeviceOptimizationHelper.getKernelVersion()}")
+            appendLine("Target Kernel (5.15.178): ${if (DeviceOptimizationHelper.isTargetKernelVersion()) "✓ YES" else "✗ NO"}")
+            appendLine()
+            appendLine("Optimal Threads: ${DeviceOptimizationHelper.getOptimalThreadCount()}")
+            appendLine("Optimal Buffer: ${DeviceOptimizationHelper.getOptimalBufferSize()} bytes")
+            appendLine("Advanced Debug: ${if (DeviceOptimizationHelper.shouldEnableAdvancedDebugging()) "✓ ON" else "✗ OFF"}")
+            appendLine("Perf Monitoring: ${if (DeviceOptimizationHelper.shouldEnablePerformanceMonitoring()) "✓ ON" else "✗ OFF"}")
+            appendLine("HW Diagnostics: ${if (DeviceOptimizationHelper.shouldEnableHardwareDiagnostics()) "✓ ON" else "✗ OFF"}")
+            appendLine()
+            
+            // Permissions Status
+            appendLine("=== PERMISSIONS STATUS ===")
+            val permSummary = permissionsManager.getPermissionsSummary()
+            appendLine("Runtime Permissions: ${if (permSummary["runtimePermissions"] == true) "✓ Granted" else "✗ Not Granted"}")
+            appendLine("Storage Permissions: ${if (permSummary["storagePermissions"] == true) "✓ Granted" else "✗ Not Granted"}")
+            appendLine("Usage Stats: ${if (permSummary["usageStats"] == true) "✓ Granted" else "✗ Not Granted"}")
+            appendLine("System Alert Window: ${if (permSummary["systemAlertWindow"] == true) "✓ Granted" else "✗ Not Granted"}")
+            appendLine("Write Settings: ${if (permSummary["writeSettings"] == true) "✓ Granted" else "✗ Not Granted"}")
+            appendLine("Manage Storage: ${if (permSummary["manageExternalStorage"] == true) "✓ Granted" else "✗ Not Granted"}")
+            appendLine()
             
             // Native library status
+            appendLine("=== NATIVE LIBRARIES ===")
             if (RafaeliaNative.isNativeLibraryAvailable()) {
-                appendLine("NATIVE: ✓ Loaded")
+                appendLine("RAFAELIA: ✓ Loaded")
             } else {
-                appendLine("NATIVE: ✗ Not available")
+                appendLine("RAFAELIA: ✗ Not available")
                 val error = RafaeliaNative.getLoadError()
                 if (error != null) {
                     appendLine("  Error: ${error.message}")

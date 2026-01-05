@@ -10,6 +10,8 @@ import android.os.StatFs
 import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
+import tech.ula.utils.AdvancedPermissionsManager
+import tech.ula.utils.DeviceOptimizationHelper
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
@@ -38,6 +40,8 @@ class DeviceInfoCollector(private val context: Context) {
             put("sensors", collectSensorInfo())
             put("kernel", collectKernelInfo())
             put("selinux", collectSELinuxInfo())
+            put("optimization", collectOptimizationInfo())
+            put("permissions", collectPermissionsInfo())
         }
     }
     
@@ -137,6 +141,34 @@ class DeviceInfoCollector(private val context: Context) {
                 appendLine("  $selinux")
                 appendLine()
             }
+            
+            // Device Optimization Information (Android 15 / RMX3834)
+            appendLine("DEVICE OPTIMIZATION:")
+            appendLine("  Target Device (RMX3834): ${DeviceOptimizationHelper.isTargetDevice()}")
+            appendLine("  Android 15+: ${DeviceOptimizationHelper.isAndroid15Plus()}")
+            appendLine("  Realme Device: ${DeviceOptimizationHelper.isRealmeDevice()}")
+            appendLine("  ARM64 Support: ${DeviceOptimizationHelper.isArm64Supported()}")
+            appendLine("  NEON SIMD: ${DeviceOptimizationHelper.isNeonAvailable()}")
+            appendLine("  Kernel Version: ${DeviceOptimizationHelper.getKernelVersion()}")
+            appendLine("  Target Kernel (5.15.178): ${DeviceOptimizationHelper.isTargetKernelVersion()}")
+            appendLine("  Optimal Thread Count: ${DeviceOptimizationHelper.getOptimalThreadCount()}")
+            appendLine("  Optimal Buffer Size: ${DeviceOptimizationHelper.getOptimalBufferSize()} bytes")
+            appendLine("  Advanced Debugging: ${DeviceOptimizationHelper.shouldEnableAdvancedDebugging()}")
+            appendLine("  Performance Monitoring: ${DeviceOptimizationHelper.shouldEnablePerformanceMonitoring()}")
+            appendLine("  Hardware Diagnostics: ${DeviceOptimizationHelper.shouldEnableHardwareDiagnostics()}")
+            appendLine()
+            
+            // Permissions Information
+            val permManager = AdvancedPermissionsManager(context)
+            appendLine("PERMISSIONS:")
+            val permSummary = permManager.getPermissionsSummary()
+            appendLine("  Runtime Permissions: ${permSummary["runtimePermissions"]}")
+            appendLine("  Storage Permissions: ${permSummary["storagePermissions"]}")
+            appendLine("  Usage Stats: ${permSummary["usageStats"]}")
+            appendLine("  System Alert Window: ${permSummary["systemAlertWindow"]}")
+            appendLine("  Write Settings: ${permSummary["writeSettings"]}")
+            appendLine("  Manage External Storage: ${permSummary["manageExternalStorage"]}")
+            appendLine()
             
             appendLine("=== End of Report ===")
         }
@@ -295,6 +327,41 @@ class DeviceInfoCollector(private val context: Context) {
         } catch (e: Exception) {
             Log.w(TAG, "Failed to read SELinux status", e)
             "Unknown"
+        }
+    }
+    
+    private fun collectOptimizationInfo(): JSONObject {
+        return JSONObject().apply {
+            put("is_target_device", DeviceOptimizationHelper.isTargetDevice())
+            put("is_android15_plus", DeviceOptimizationHelper.isAndroid15Plus())
+            put("is_realme_device", DeviceOptimizationHelper.isRealmeDevice())
+            put("is_arm64_supported", DeviceOptimizationHelper.isArm64Supported())
+            put("is_neon_available", DeviceOptimizationHelper.isNeonAvailable())
+            put("kernel_version", DeviceOptimizationHelper.getKernelVersion())
+            put("is_target_kernel_version", DeviceOptimizationHelper.isTargetKernelVersion())
+            put("optimal_thread_count", DeviceOptimizationHelper.getOptimalThreadCount())
+            put("optimal_buffer_size", DeviceOptimizationHelper.getOptimalBufferSize())
+            put("advanced_debugging_enabled", DeviceOptimizationHelper.shouldEnableAdvancedDebugging())
+            put("performance_monitoring_enabled", DeviceOptimizationHelper.shouldEnablePerformanceMonitoring())
+            put("hardware_diagnostics_enabled", DeviceOptimizationHelper.shouldEnableHardwareDiagnostics())
+            
+            // Optimization flags
+            val flags = DeviceOptimizationHelper.getOptimizationFlags()
+            put("optimization_flags", JSONObject(flags as Map<*, *>))
+        }
+    }
+    
+    private fun collectPermissionsInfo(): JSONObject {
+        val permManager = AdvancedPermissionsManager(context)
+        val summary = permManager.getPermissionsSummary()
+        
+        return JSONObject().apply {
+            put("runtime_permissions_granted", summary["runtimePermissions"])
+            put("storage_permissions_granted", summary["storagePermissions"])
+            put("usage_stats_granted", summary["usageStats"])
+            put("system_alert_window_granted", summary["systemAlertWindow"])
+            put("write_settings_granted", summary["writeSettings"])
+            put("manage_external_storage_granted", summary["manageExternalStorage"])
         }
     }
 }
