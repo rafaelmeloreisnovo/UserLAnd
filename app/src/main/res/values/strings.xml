@@ -170,6 +170,11 @@
     <string name="pref_safety_guard_safe_mode_summary">Skips automatic session start when enabled.</string>
     <string name="pref_safety_guard_clear_last_event_title">Clear Safety Event Log</string>
     <string name="pref_safety_guard_clear_last_event_toast">Safety event log cleared.</string>
+    <string name="pref_safety_guard_status_title">Safety Guard Status</string>
+    <string name="pref_safety_guard_status_none">No events recorded</string>
+    <string name="pref_safety_guard_status_active">Safe mode active until %1$s</string>
+    <string name="pref_safety_guard_status_triggered">Last triggered at %1$s: %2$s</string>
+    <string name="pref_safety_guard_clear_title">Clear Event History</string>
 
     <!-- Help Activity -->
     <string name="github_message">Experiencing bugs or want to request a feature? Our Github page is the best place to go to get a fast response.</string>
