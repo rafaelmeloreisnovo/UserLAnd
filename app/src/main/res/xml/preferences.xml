@@ -68,11 +68,6 @@
         android:key="pref_safety_guard_category"
         app:iconSpaceReserved="false">
         <CheckBoxPreference
-            android:key="safety_guard_enabled"
-        android:title="@string/pref_safety_guard_category"
-        android:key="pref_safety_guard_category"
-        app:iconSpaceReserved="false">
-        <CheckBoxPreference
             android:key="pref_safety_guard_enabled"
             android:title="@string/pref_safety_guard_enabled_title"
             android:summary="@string/pref_safety_guard_enabled_summary"
@@ -86,6 +81,7 @@
         <Preference
             android:key="pref_safety_guard_clear"
             android:title="@string/pref_safety_guard_clear_title"
+            app:iconSpaceReserved="false"/>
         <CheckBoxPreference
             android:dependency="pref_safety_guard_enabled"
             android:key="pref_safety_guard_indicator"

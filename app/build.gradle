@@ -85,6 +85,21 @@ android {
         buildConfigField 'boolean', 'FORCE_PORTRAIT_GEOMETRY', 'true'
         buildConfigField 'int', "MAX_DIMENSION", "1280"
         buildConfigField 'int', "MIN_DIMENSION", "360"
+        
+        // Android 15 (API 35) specific optimizations
+        buildConfigField 'boolean', 'ANDROID_15_OPTIMIZATIONS', 'true'
+        
+        // Device-specific optimizations for RMX3834 (Realme, Android 15, Kernel 5.15.178)
+        // These flags enable specialized behavior for the target device
+        buildConfigField 'String', 'TARGET_DEVICE_MODEL', '"RMX3834"'
+        buildConfigField 'String', 'TARGET_KERNEL_VERSION', '"5.15.178-android13-8"'
+        buildConfigField 'boolean', 'ENABLE_ARM64_OPTIMIZATIONS', 'true'
+        buildConfigField 'boolean', 'ENABLE_SIMD_ACCELERATION', 'true'
+        
+        // Advanced debugging features for developer mode
+        buildConfigField 'boolean', 'ENABLE_ADVANCED_DEBUGGING', 'true'
+        buildConfigField 'boolean', 'ENABLE_PERFORMANCE_MONITORING', 'true'
+        buildConfigField 'boolean', 'ENABLE_HARDWARE_DIAGNOSTICS', 'true'
 
         lint {
             lintConfig file("$projectDir/src/main/resources/lint.xml")
@@ -397,6 +412,17 @@ dependencies {
     // Downgrade billing to 6.2.1 for compatibility with Kotlin 2.0.x
     // billing-ktx 8.3.0 is compiled with Kotlin 2.2.x which is incompatible
     def billing_version = '6.2.1'
+    
+    // RmR (Rafael Melo Reis) androidx enhancements - optimized matrix-based implementations
+    // Note: These provide high-performance alternatives to standard androidx components
+    // with minimal footprint and bare-metal optimizations for Android 15
+    // Uncomment when androidx_RmR artifacts are available in the repository
+    // implementation 'androidx.rmr:rmr-core:1.0.0-alpha01'
+    // implementation 'androidx.rmr:rmr-lifecycle:1.0.0-alpha01'
+    // implementation 'androidx.rmr:rmr-navigation:1.0.0-alpha01'
+    // implementation 'androidx.rmr:rmr-preference:1.0.0-alpha01'
+    // implementation 'androidx.rmr:rmr-room:1.0.0-alpha01'
+    // implementation 'androidx.rmr:rafaelia:1.0.0-alpha01' // Ultra low-level bare-metal optimizations
 
     implementation project(':terminal-term')
 
