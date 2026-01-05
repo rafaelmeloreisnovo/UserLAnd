@@ -37,7 +37,7 @@ billing = "7.2.0"
 play-services-base = "18.5.0"
 
 # Code quality
-ktlint-cli = "1.5.0"
+ktlint-cli = "1.8.0"
 gradle-download-task = "5.6.0"
 
 # Testing
