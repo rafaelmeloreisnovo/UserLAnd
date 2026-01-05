@@ -28,7 +28,7 @@ moshi = "1.15.2"
 gson = "2.11.0"
 
 # Utilities
-jarchivelib = "0.8.0"
+jarchivelib = "1.2.0"
 sentry = "7.20.1"
 slf4j = "2.0.16"
 
