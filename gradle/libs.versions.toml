@@ -1,6 +1,6 @@
 [versions]
 # Build tools and plugins
-kotlin = "2.1.0"
+kotlin = "2.3.0"
 androidGradlePlugin = "8.7.3"
 jacoco = "0.8.12"
 
