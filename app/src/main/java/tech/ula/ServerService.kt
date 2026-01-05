@@ -56,6 +56,7 @@ class ServerService : Service() {
         // Preference keys
         const val KEY_DEV_DEBUG_ENABLED = "dev_debugger_enabled"
         const val KEY_FORCE_OLD_COMPAT = "force_old_compatibility"
+        const val KEY_SAFE_MODE_ENABLED = "safety_guard_enabled"
     }
 
     // Service coroutine scope
@@ -79,6 +80,10 @@ class ServerService : Service() {
         BusyboxExecutor(ulaFiles, prootDebugLogger)
     }
 
+    private val safetyStartupGuard by lazy {
+        SafetyStartupGuard(this.defaultSharedPreferences)
+    }
+
     private val localServerManager by lazy {
         LocalServerManager(this.filesDir.path, busyboxExecutor)
     }
@@ -99,6 +104,7 @@ class ServerService : Service() {
 
         val type = intent?.getStringExtra("type")
         val isDevDebugEnabled = this.defaultSharedPreferences.getBoolean(KEY_DEV_DEBUG_ENABLED, false)
+        val isSafetyGuardEnabled = this.defaultSharedPreferences.getBoolean(KEY_SAFE_MODE_ENABLED, true)
 
         if (isDevDebugEnabled) {
             busyboxExecutor.logDebug("START_COMMAND received: type=$type")
@@ -111,7 +117,12 @@ class ServerService : Service() {
                     busyboxExecutor.logError("Missing 'session' extra for start command")
                     sendDialogBroadcast("missingSessionExtra")
                 } else {
-                    serviceScope.launch { startSession(session, isDevDebugEnabled) }
+                    if (isSafetyGuardEnabled && safetyStartupGuard.isSafeModeActive()) {
+                        busyboxExecutor.logError("Safety guard active, refusing to start ${session.name}")
+                        sendDialogBroadcast("safetyGuardActive")
+                    } else {
+                        serviceScope.launch { startSession(session, isDevDebugEnabled, isSafetyGuardEnabled) }
+                    }
                 }
             }
 
@@ -138,7 +149,7 @@ class ServerService : Service() {
                 if (session == null) {
                     busyboxExecutor.logError("Missing 'session' extra for kill command")
                 } else {
-                    killSession(session)
+                    killSession(session, isSafetyGuardEnabled)
                 }
             }
 
@@ -153,7 +164,7 @@ class ServerService : Service() {
 
             "stopAll" -> {
                 serviceScope.launch {
-                    activeSessions.values.toList().forEach { stopSessionInternal(it) }
+                    activeSessions.values.toList().forEach { stopSessionInternal(it, false) }
                 }
             }
 
@@ -171,7 +182,7 @@ class ServerService : Service() {
         super.onTaskRemoved(rootIntent)
         // Try to gracefully stop all running sessions
         serviceScope.launch {
-            activeSessions.values.toList().forEach { stopSessionInternal(it) }
+            activeSessions.values.toList().forEach { stopSessionInternal(it, false) }
         }
         stopForeground(true)
         stopSelf()
@@ -242,16 +253,22 @@ class ServerService : Service() {
             }
         }
 
-    private fun killSession(session: Session) {
+    private fun killSession(
+        session: Session,
+        registerFailure: Boolean,
+    ) {
         serviceScope.launch {
-            stopSessionInternal(session)
+            stopSessionInternal(session, registerFailure)
         }
     }
 
     /**
      * Encapsulates session shutdown logic with error handling.
      */
-    private suspend fun stopSessionInternal(session: Session) {
+    private suspend fun stopSessionInternal(
+        session: Session,
+        registerFailure: Boolean,
+    ) {
         try {
             localServerManager.stopService(session)
         } catch (e: Exception) {
@@ -260,6 +277,9 @@ class ServerService : Service() {
             session.active = false
             updateSession(session)
             removeSession(session)
+            if (registerFailure) {
+                registerSafetyFailure("stop_failure")
+            }
         }
     }
 
@@ -273,6 +293,7 @@ class ServerService : Service() {
     private suspend fun startSession(
         session: Session,
         isDevDebugEnabled: Boolean,
+        isSafetyGuardEnabled: Boolean,
     ) {
         if (!startInProgress.add(session.id)) {
             busyboxExecutor.logError("Start already in progress for ${session.name}; skipping duplicate start")
@@ -320,6 +341,9 @@ class ServerService : Service() {
                     busyboxExecutor.logCritical("startServer failed for ${session.name}: ${e.message}")
                     recordStartFailure(session, "startServer exception: ${e.message}")
                     sendDialogBroadcast("sessionStartFailed")
+                    if (isSafetyGuardEnabled) {
+                        registerSafetyFailure("start_server_exception")
+                    }
                     stopServiceIfIdle()
                     return
                 }
@@ -330,6 +354,9 @@ class ServerService : Service() {
                 )
                 recordStartFailure(session, "non-positive pid: $pid")
                 sendDialogBroadcast("sessionStartFailed")
+                if (isSafetyGuardEnabled) {
+                    registerSafetyFailure("start_server_invalid_pid")
+                }
                 stopServiceIfIdle()
                 return
             }
@@ -348,6 +375,7 @@ class ServerService : Service() {
                 busyboxExecutor.logError(
                     "Session startup timed out after $SESSION_START_TIMEOUT_MILLIS ms for ${session.name}",
                 )
+                stopSessionInternal(session, isSafetyGuardEnabled)
                 recordStartFailure(session, "startup timeout")
                 stopSessionInternal(session)
                 sendDialogBroadcast("sessionTimeoutError")
@@ -362,6 +390,7 @@ class ServerService : Service() {
             startClient(session)
         } catch (e: Exception) {
             busyboxExecutor.logCritical("CRITICAL ERROR in startSession for ${session.name}: ${e.message}")
+            stopSessionInternal(session, isSafetyGuardEnabled)
             recordStartFailure(session, "critical start error: ${e.message}")
             stopSessionInternal(session)
             sendDialogBroadcast("criticalServiceError")
@@ -379,7 +408,14 @@ class ServerService : Service() {
                 session.name == app.name
             }
         appSessions.forEach { (_, session) ->
-            killSession(session)
+            killSession(session, false)
+        }
+    }
+
+    private fun registerSafetyFailure(reason: String) {
+        val activation = safetyStartupGuard.recordFailure(reason)
+        if (activation != null) {
+            sendDialogBroadcast("safetyGuardActivated")
         }
     }
 
@@ -487,7 +523,7 @@ class ServerService : Service() {
         activeSessions.values
             .filter { it.filesystemId == filesystemId }
             .forEach { session ->
-                killSession(session)
+                killSession(session, false)
             }
     }
 

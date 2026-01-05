@@ -5,11 +5,13 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.os.Bundle
+import java.text.DateFormat
 import android.widget.Toast
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import tech.ula.R
 import tech.ula.utils.ProotDebugLogger
+import tech.ula.utils.SafetyStartupGuard
 import tech.ula.utils.SafetyGuard
 import tech.ula.utils.SafetyMonitor
 import tech.ula.utils.UlaFiles
@@ -43,11 +45,45 @@ class SettingsFragment : PreferenceFragmentCompat() {
             }
         }
 
-        val clearSafetyGuardPreference: Preference = findPreference("pref_safety_guard_clear_last_event")!!
-        clearSafetyGuardPreference.setOnPreferenceClickListener {
-            SafetyGuard.clearLastEvent(activity!!)
-            Toast.makeText(activity, R.string.pref_safety_guard_clear_last_event_toast, Toast.LENGTH_SHORT).show()
+        val safetyGuardStatusPreference: Preference = findPreference("pref_safety_guard_status")!!
+        val safetyGuardClearPreference: Preference = findPreference("pref_safety_guard_clear")!!
+        val safetyGuard = SafetyStartupGuard(activity!!.defaultSharedPreferences)
+
+        safetyGuardStatusPreference.summary = buildSafetyGuardSummary(safetyGuard)
+
+        safetyGuardClearPreference.setOnPreferenceClickListener {
+            safetyGuard.clearFailures()
+            safetyGuard.clearSafeMode()
+            safetyGuard.clearLogs()
+            safetyGuardStatusPreference.summary = buildSafetyGuardSummary(safetyGuard)
             true
+        }
+    }
+
+    private fun buildSafetyGuardSummary(safetyGuard: SafetyStartupGuard): String {
+        val now = System.currentTimeMillis()
+        val dateFormat = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+        val safeModeUntil = safetyGuard.safeModeUntil()
+        val lastTriggerTime = safetyGuard.lastTriggerTime()
+        val lastReason = safetyGuard.lastReason()
+
+        return when {
+            safeModeUntil > now -> {
+                getString(R.string.pref_safety_guard_status_active, dateFormat.format(safeModeUntil))
+            }
+
+            lastTriggerTime > 0L -> {
+                val reason = lastReason ?: "unknown"
+                getString(
+                    R.string.pref_safety_guard_status_triggered,
+                    dateFormat.format(lastTriggerTime),
+                    reason,
+                )
+            }
+
+            else -> {
+                getString(R.string.pref_safety_guard_status_none)
+            }
         }
     }
 
