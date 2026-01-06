@@ -44,8 +44,6 @@ class AdvancedPermissionsManager(private val context: Context) {
             Manifest.permission.POST_NOTIFICATIONS,
             Manifest.permission.WAKE_LOCK,
             Manifest.permission.GET_ACCOUNTS,
-            Manifest.permission.BLUETOOTH,
-            Manifest.permission.BLUETOOTH_ADMIN,
             Manifest.permission.VIBRATE,
             Manifest.permission.FLASHLIGHT,
             Manifest.permission.CAMERA,
@@ -56,21 +54,19 @@ class AdvancedPermissionsManager(private val context: Context) {
             Manifest.permission.REQUEST_DELETE_PACKAGES,
             Manifest.permission.READ_PHONE_STATE
         ).let { perms ->
-            // Add Android 12+ Bluetooth permissions
+            // Add version-specific Bluetooth permissions
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                // Android 12+ uses new Bluetooth permissions
                 perms + arrayOf(
                     Manifest.permission.BLUETOOTH_CONNECT,
                     Manifest.permission.BLUETOOTH_SCAN
                 )
             } else {
-                perms
-            }
-        }.let { perms ->
-            // Add Android 13+ permissions
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                perms // Already added BLUETOOTH permissions above if needed
-            } else {
-                perms
+                // Android 11 and below use legacy Bluetooth permissions
+                perms + arrayOf(
+                    Manifest.permission.BLUETOOTH,
+                    Manifest.permission.BLUETOOTH_ADMIN
+                )
             }
         }.let { perms ->
             // Add Android 14+ permissions
