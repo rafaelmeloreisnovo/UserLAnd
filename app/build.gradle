@@ -408,7 +408,9 @@ dependencies {
     def lifecycle_version = '2.10.0'
     def support_library_version = '1.13.0'
     def preference_version = '1.2.1'
-    def ktx_version = '1.17.0'
+    // Core 1.16.0 is the latest compatible with AGP 8.6.0 and compileSdk 35
+    // Core 1.17.0 requires AGP 8.9.1+ and compileSdk 36
+    def ktx_version = '1.16.0'
     // Billing dependency version. Ensure the project's Kotlin version is compatible
     // with this billing-ktx release (8.3.0 is compiled with Kotlin 2.2.x).
     def billing_version = '8.3.0'
