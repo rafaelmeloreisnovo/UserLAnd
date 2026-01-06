@@ -1,5 +1,11 @@
 # UserLAnd Enhanced Stability & Debug System - Implementation Notes
 
+> **⚠️ NOTA:** Este documento foi consolidado em [PR_CONSOLIDATED.md](PR_CONSOLIDATED.md)
+> 
+> Para a documentação completa e atualizada de todos os PRs, consulte o documento consolidado.
+
+---
+
 ## Overview
 
 This document describes the crash shield, consent system, and debug panel features added to UserLAnd for enhanced stability and diagnostic capabilities.

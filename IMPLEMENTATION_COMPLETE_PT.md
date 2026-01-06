@@ -1,5 +1,11 @@
 # Implementação Completa: Android 15 + RMX3834 + androidx_RmR
 
+> **⚠️ NOTA:** Este documento foi consolidado em [PR_CONSOLIDATED.md](PR_CONSOLIDATED.md)
+> 
+> Para a documentação completa e atualizada de todos os PRs, consulte o documento consolidado.
+
+---
+
 ## Resumo Executivo
 
 Este documento descreve todas as modificações implementadas para atender aos requisitos especificados, com foco em Android 15, dispositivo RMX3834, e integração com androidx_RmR.

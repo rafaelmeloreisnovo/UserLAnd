@@ -1,5 +1,11 @@
 # UserLAnd Low-Level Optimization Summary
 
+> **⚠️ NOTA:** Este documento foi consolidado em [PR_CONSOLIDATED.md](PR_CONSOLIDATED.md)
+> 
+> Para a documentação completa e atualizada de todos os PRs, consulte o documento consolidado.
+
+---
+
 ## Overview
 This document summarizes the low-level optimizations applied to the UserLAnd codebase to reduce dependencies, minimize binary size, and improve performance.
 

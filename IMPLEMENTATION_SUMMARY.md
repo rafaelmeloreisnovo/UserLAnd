@@ -1,5 +1,11 @@
 # UserLAnd Enhanced Stability & Debug System - Implementation Summary
 
+> **⚠️ NOTA:** Este documento foi consolidado em [PR_CONSOLIDATED.md](PR_CONSOLIDATED.md)
+> 
+> Para a documentação completa e atualizada de todos os PRs, consulte o documento consolidado.
+
+---
+
 ## ✅ ALL TASKS COMPLETED
 
 This implementation addresses ALL requirements from the issue:
