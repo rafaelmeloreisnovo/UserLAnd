@@ -65,7 +65,7 @@ The following RmR-enhanced dependencies are prepared but commented out until art
 - `androidx.rmr:rmr-room:1.0.0-alpha01`
 - `androidx.rmr:rafaelia:1.0.0-alpha01`
 
-These provide high-performance alternatives with bare-metal optimizations for Android 15.
+These provide high-performance alternatives with native performance optimizations for Android 15.
 
 ## Interoperability Matrix
 
