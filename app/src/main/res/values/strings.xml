@@ -263,10 +263,11 @@
     <!-- Content descriptions -->
     <string name="desc_arrow">Image: Arrow denoting connection between session and filesystem.</string>
     <string name="desc_filesystem_type">Image: Distribution logo</string>
-    <string name="desc_default_app_icon">Image: App Icon Placeholder</string>
+    <string name="desc_default_app_icon">Image: App icon</string>
 
     <!-- Misc -->
-    <string name="placeholder">Placeholder text</string>
+    <string name="list_item_app_name_placeholder">App Name</string>
+    <string name="list_item_separator_placeholder">Category</string>
     <string name="custom_sessions">Custom Sessions</string>
     <string name="apps_sessions">Apps Sessions</string>
     <string name="info_finish_app_setup">Finish app setup to make these options available.</string>

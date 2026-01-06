@@ -235,10 +235,11 @@
     <!-- Content descriptions -->
     <string name="desc_arrow">Bild: Ein Pfeil stellt die Verbindung zwischen Sitzung und Dateisystem dar.</string>
     <string name="desc_filesystem_type">Bild: Distributionslogo</string>
-    <string name="desc_default_app_icon">Bild: App-Icon Platzhalter</string>
+    <string name="desc_default_app_icon">Bild: App-Symbol</string>
 
     <!-- Misc -->
-    <string name="placeholder">Platzhaltertext</string>
+    <string name="list_item_app_name_placeholder">App-Name</string>
+    <string name="list_item_separator_placeholder">Kategorie</string>
     <string name="custom_sessions">Benutzerdefinierte Sitzungen</string>
     <string name="apps_sessions">App-Sitzungen</string>
     <string name="info_finish_app_setup">Vervollständigen Sie die App-Einrichtung, um diese Optionen verfügbar zu machen.</string>

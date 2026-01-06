@@ -227,10 +227,11 @@
     <!-- Content descriptions -->
     <string name="desc_arrow">الصورة: السهم يشير إلى الاتصال بين الجلسة ونظام الملفات.</string>
     <string name="desc_filesystem_type">الصورة: شعار التوزيع</string>
-    <string name="desc_default_app_icon">الصورة: التطبيق أيقونة Placeholder</string>
+    <string name="desc_default_app_icon">الصورة: أيقونة التطبيق</string>
 
     <!-- Misc -->
-    <string name="placeholder">نص Placeholder</string>
+    <string name="list_item_app_name_placeholder">اسم التطبيق</string>
+    <string name="list_item_separator_placeholder">الفئة</string>
     <string name="custom_sessions">جلسات مخصصة</string>
     <string name="apps_sessions">جلسات التطبيقات</string>
     <string name="info_finish_app_setup">إنهاء إعداد التطبيق لتوفير هذه الخيارات.</string>
