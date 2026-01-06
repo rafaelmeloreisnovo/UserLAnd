@@ -45,7 +45,7 @@ class AdvancedPermissionsManager(private val context: Context) {
             Manifest.permission.WAKE_LOCK,
             Manifest.permission.GET_ACCOUNTS,
             Manifest.permission.VIBRATE,
-            Manifest.permission.FLASHLIGHT,
+            // Manifest.permission.FLASHLIGHT doesn't exist - removed
             Manifest.permission.CAMERA,
             Manifest.permission.RECORD_AUDIO,
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -138,7 +138,7 @@ class AdvancedPermissionsManager(private val context: Context) {
     fun isUsageStatsPermissionGranted(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
             try {
-                val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsService
+                val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
                 val mode = appOps.checkOpNoThrow(
                     android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
                     android.os.Process.myUid(),

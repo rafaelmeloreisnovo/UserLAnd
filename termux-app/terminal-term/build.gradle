@@ -32,7 +32,7 @@ android {
 dependencies {
     implementation "androidx.annotation:annotation:1.9.1"
     // Use core 1.15.0 for compatibility with AGP 8.6.0 and compileSdk 35
-    implementation "androidx.core:core:1.17.0"
+    implementation "androidx.core:core:1.15.0"
     implementation "androidx.drawerlayout:drawerlayout:1.2.0"
     implementation "androidx.viewpager:viewpager:1.1.0"
     implementation project(":terminal-view")
