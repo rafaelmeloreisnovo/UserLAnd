@@ -144,6 +144,7 @@ jobs:
   summary:
     needs: build-multi-arch
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     if: always()
     
     steps:
