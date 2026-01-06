@@ -234,7 +234,7 @@ class ServerService : Service() {
         failures: ArrayDeque<Long>,
         now: Long,
     ) {
-        while (failures.isNotEmpty() && now - failures.first > START_FAILURE_WINDOW_MILLIS) {
+        while (failures.isNotEmpty() && now - failures.first() > START_FAILURE_WINDOW_MILLIS) {
             failures.removeFirst()
         }
     }
@@ -375,9 +375,8 @@ class ServerService : Service() {
                 busyboxExecutor.logError(
                     "Session startup timed out after $SESSION_START_TIMEOUT_MILLIS ms for ${session.name}",
                 )
-                stopSessionInternal(session, isSafetyGuardEnabled)
                 recordStartFailure(session, "startup timeout")
-                stopSessionInternal(session)
+                stopSessionInternal(session, registerFailure = true)
                 sendDialogBroadcast("sessionTimeoutError")
                 return
             }
@@ -390,9 +389,8 @@ class ServerService : Service() {
             startClient(session)
         } catch (e: Exception) {
             busyboxExecutor.logCritical("CRITICAL ERROR in startSession for ${session.name}: ${e.message}")
-            stopSessionInternal(session, isSafetyGuardEnabled)
             recordStartFailure(session, "critical start error: ${e.message}")
-            stopSessionInternal(session)
+            stopSessionInternal(session, registerFailure = true)
             sendDialogBroadcast("criticalServiceError")
         } finally {
             startInProgress.remove(session.id)

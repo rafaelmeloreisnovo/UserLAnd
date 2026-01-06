@@ -8,7 +8,7 @@ data class SafetyActivation(
 
 class SafetyStartupGuard(
     private val prefs: SharedPreferences,
-    private val timeProvider: () -> Long = System.currentTimeMillis,
+    private val timeProvider: () -> Long = System::currentTimeMillis,
 ) {
     companion object {
         const val KEY_FAILURE_COUNT = "safety_guard_failure_count"
