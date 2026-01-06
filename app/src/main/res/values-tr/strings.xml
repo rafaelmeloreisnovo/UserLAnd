@@ -234,10 +234,9 @@
     <!-- Content descriptions -->
     <string name="desc_arrow">Resim: Oturum ve dosya sistemi arasındaki bağlantıyı gösteren ok.</string>
     <string name="desc_filesystem_type">Resim: Dağıtım simgesi</string>
-    <string name="desc_default_app_icon">Resim: Uygulama Simgesi Yer Tutucusu</string>
+    <string name="desc_default_app_icon">Resim: Uygulama simgesi</string>
 
     <!-- Misc -->
-    <string name="placeholder">Yer tutucu metin</string>
     <string name="custom_sessions">Kişisel Oturumlar</string>
     <string name="apps_sessions">Uygulama Oturumları</string>
     <string name="info_finish_app_setup">Bu özellikleri kullanabilmek için uygulama kurulumunu tamamlayın.</string>
