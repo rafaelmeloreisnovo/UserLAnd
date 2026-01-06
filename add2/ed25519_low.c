@@ -70,14 +70,16 @@ typedef struct {
     fe X, Y, Z, T;
 } ge_p3;
 
-/* Basepoint (standard Ed25519 basepoint, correct value) */
+/* Basepoint (this byte sequence is the correct standard Ed25519 basepoint encoding) */
 static const unsigned char ed25519_basepoint[32] = {
   0x58,0x66,0x66,0x66,0x66,0x66,0x66,0x66,
   0x66,0x66,0x66,0x66,0x66,0x66,0x66,0x66,
   0x66,0x66,0x66,0x66,0x66,0x66,0x66,0x66,
   0x66,0x66,0x66,0x66,0x66,0x66,0x66,0x66
 };
-/* Note: This is the correct Ed25519 basepoint encoding (generator point 9). */
+/* Note: This encoding represents generator point 9 on Ed25519. The basepoint itself
+   is correct; however, this file doesn't implement the full curve arithmetic needed
+   to use it properly. For production Ed25519, use ed25519_tweet_Version2.c. */
 
 /* We will implement simplified field arithmetic used by reference implementations.
    For brevity we use classical 10-limb representation (25/26 bits).

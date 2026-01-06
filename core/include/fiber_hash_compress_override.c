@@ -1,11 +1,13 @@
 #include <stdint.h>
 #include <string.h>
 
-/* Type definitions for fiber_hash (if fiber_hash.h doesn't exist) */
+/* Type definitions for fiber_hash (compatible with fiber_hash.h if it exists) */
+#ifndef FIBER_HASH_H
 #ifndef FIBER_HASH_TYPES_DEFINED
 #define FIBER_HASH_TYPES_DEFINED
 typedef uint64_t fiber_u64;
 typedef uint8_t fiber_u8;
+#endif
 #endif
 
 #if defined(__aarch64__)

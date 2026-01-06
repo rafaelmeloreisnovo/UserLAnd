@@ -130,7 +130,11 @@ static float _dot_prod(const Vec64 *a, const Vec64 *b) {
     return sum;
 }
 
-/* Compute an integrity tag for a node (fast + deterministic) */
+/* Compute an integrity tag for a node (fast + deterministic)
+ * Note: Includes floating-point fields (activation, bias) which may have
+ * precision differences across platforms. This is acceptable for runtime
+ * tampering detection within the same process/architecture. For cross-platform
+ * persistence, consider separate integrity checks for non-deterministic fields. */
 static uint32_t _node_crc32(const Node *n) {
     uint32_t crc = 0;
     crc = _calc_crc32(&n->id,        sizeof(n->id),        crc);
