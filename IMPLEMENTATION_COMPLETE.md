@@ -1,5 +1,11 @@
 # UserLAnd Low-Level Optimization - Implementation Complete ✅
 
+> **⚠️ NOTA:** Este documento foi consolidado em [PR_CONSOLIDATED.md](PR_CONSOLIDATED.md)
+> 
+> Para a documentação completa e atualizada de todos os PRs, consulte o documento consolidado.
+
+---
+
 ## Executive Summary
 
 This optimization project successfully transformed the UserLAnd core utilities to achieve **state-of-the-art** low-level performance, minimal dependencies, and comprehensive security hardening.

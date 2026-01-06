@@ -1,5 +1,11 @@
 # PR Completion Checklist ✅
 
+> **⚠️ NOTA:** Este documento foi consolidado em [PR_CONSOLIDATED.md](PR_CONSOLIDATED.md)
+> 
+> Para a documentação completa e atualizada de todos os PRs, consulte o documento consolidado.
+
+---
+
 ## Implementation Status: COMPLETE ✅
 
 All 5 tasks from the issue have been implemented, tested (build), and documented.
