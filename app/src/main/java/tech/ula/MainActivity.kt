@@ -20,6 +20,7 @@ import tech.ula.model.entities.App
 import tech.ula.model.entities.Session
 import tech.ula.ui.AppsListFragment
 import tech.ula.ui.SessionListFragment
+import tech.ula.utils.Android15CompatibilityHelper
 import tech.ula.utils.MemoryMonitor
 import tech.ula.utils.SafetyGuard
 import tech.ula.utils.defaultSharedPreferences
@@ -46,6 +47,22 @@ class MainActivity :
         try {
             super.onCreate(savedInstanceState)
             Log.i(TAG, "MainActivity.onCreate() starting")
+            
+            // Validate environment before proceeding
+            val environmentIssues = Android15CompatibilityHelper.validateEnvironment(this)
+            if (environmentIssues.isNotEmpty()) {
+                Log.w(TAG, "Environment validation found ${environmentIssues.size} issue(s):")
+                environmentIssues.forEach { issue -> Log.w(TAG, "  - $issue") }
+                
+                // Show warning to user if architecture is not supported (critical)
+                if (environmentIssues.any { it.contains("Unsupported architecture", ignoreCase = true) }) {
+                    Toast.makeText(
+                        this,
+                        "Warning: Device architecture may not be fully supported. Some features may not work correctly.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
             
             // Check for pending consents first
             val consentLedger = ConsentLedger(this)
