@@ -404,11 +404,11 @@ dependencies {
     def kotlinx_coroutines_version = '1.8.1'
 
     // Androidx versions
-    def room_version = '2.6.1'
-    def lifecycle_version = '2.8.7'
+    def room_version = '2.8.4'
+    def lifecycle_version = '2.10.0'
     def support_library_version = '1.13.0'
     def preference_version = '1.2.1'
-    def ktx_version = '1.15.0'
+    def ktx_version = '1.17.0'
     // Billing dependency version. Ensure the project's Kotlin version is compatible
     // with this billing-ktx release (8.3.0 is compiled with Kotlin 2.2.x).
     def billing_version = '8.3.0'
