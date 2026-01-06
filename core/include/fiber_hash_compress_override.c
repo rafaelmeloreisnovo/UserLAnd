@@ -28,6 +28,8 @@ static uint32_t _portable_crc32(const void *data, size_t n, uint32_t prev_crc) {
 }
 
 /* Portable fallback compress function for non-aarch64 architectures */
+#define ROTATION_BITS 13  /* Bit rotation for mixing diffusion */
+
 static void fiber_h_compress_block_portable(
     fiber_u64 *a, fiber_u64 *b, fiber_u64 *c, fiber_u64 *d,
     const fiber_u8 block[64]
@@ -44,7 +46,7 @@ static void fiber_h_compress_block_portable(
     /* Additional mixing for better diffusion */
     *a += *d;
     *c ^= *a;
-    *b = (*b << 13) | (*b >> (64 - 13));
+    *b = (*b << ROTATION_BITS) | (*b >> (64 - ROTATION_BITS));
 }
 
 // Override / wrapper para o core de compressão.
