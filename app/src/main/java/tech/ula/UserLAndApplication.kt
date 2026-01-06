@@ -3,6 +3,7 @@ package tech.ula
 import android.app.Application
 import android.util.Log
 import tech.ula.crash.GlobalExceptionHandler
+import tech.ula.utils.Android15CompatibilityHelper
 import tech.ula.utils.DeviceOptimizationHelper
 import tech.ula.utils.MemoryMonitor
 import tech.ula.utils.SafetyGuard
@@ -23,6 +24,14 @@ class UserLAndApplication : Application() {
         
         try {
             super.onCreate()
+            
+            // Validate Android 15 compatibility and environment
+            Android15CompatibilityHelper.logEnvironmentInfo(this)
+            val issues = Android15CompatibilityHelper.validateEnvironment(this)
+            if (issues.isNotEmpty()) {
+                Log.w(TAG, "Environment validation found ${issues.size} issue(s)")
+                issues.forEach { issue -> Log.w(TAG, "  - $issue") }
+            }
             
             // Log device optimization status for Android 15 / RMX3834
             DeviceOptimizationHelper.logOptimizationStatus()
