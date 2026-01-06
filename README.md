@@ -14,6 +14,12 @@ Features:
 
 ## 📚 Documentation
 
+### Pull Request & Implementation Documentation
+- **[📄 PR Consolidated Documentation](PR_CONSOLIDATED.md)** - ⭐ **NEW!** Complete documentation of all merged pull requests (#1-#17)
+- **[📋 Applied PRs List](APPLIED_PRS.md)** - Quick reference to applied pull requests
+- **[📖 Consolidation Summary](CONSOLIDATION_SUMMARY.md)** - How PR documentation was consolidated
+
+### Development Documentation
 - **[Development Setup Guide](docs/DEVELOPMENT_SETUP.md)** - Complete guide to set up your development environment
 - **[Compilation Guarantee](docs/COMPILATION_GUARANTEE.md)** - How to ensure successful compilation in any environment
 - **[Build Troubleshooting](docs/BUILD_TROUBLESHOOTING.md)** - Solutions to common build issues
@@ -21,6 +27,8 @@ Features:
 - **[Common Tasks](docs/COMMON_TASKS.md)** - Quick reference for everyday development tasks
 - **[Technical Documentation](docs/TECHNICAL_DOCUMENTATION.md)** - Architecture overview and component map
 - **[Workflow Checks & Validation](docs/README_checks.md)** - Documentation for running validation tools and checks locally
+
+### Project Documentation
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to UserLAnd
 - **[Governance Policies](.github/CONTRIBUTING.md)** - Ethical compliance, sign-off requirements, and file protection
 - **[Security Policy](SECURITY.md)** - Reporting vulnerabilities and security guidelines
