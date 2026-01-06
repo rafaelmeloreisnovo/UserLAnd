@@ -1,6 +1,15 @@
 /*
  * ed25519_low.c
  *
+ * ⚠️ WARNING: THIS IS A DEMO/EXPERIMENTAL IMPLEMENTATION ⚠️
+ * 
+ * This file contains placeholder Ed25519 operations for testing and demonstration
+ * purposes only. It uses SHA-512 for pseudo-signatures and does NOT provide
+ * cryptographically secure Ed25519 signatures.
+ *
+ * ✅ FOR PRODUCTION USE: Use ed25519_tweet_Version2.c instead, which provides
+ * a complete and correct Ed25519 implementation based on TweetNaCl.
+ *
  * Minimal, portable Ed25519 implementation designed for embedding.
  * Inspired by TweetNaCl/ref10 minimal code (public-domain style).
  *
@@ -14,6 +23,8 @@
  *  - This code aims to be correct and fairly constant-time for main ops,
  *    but must be audited for side-channel resistance before high-security use.
  *  - For high-assurance production, prefer libsodium/ref10 and audited code.
+ *  - The current implementation uses simplified operations and is NOT
+ *    cryptographically complete.
  *
  * Build:
  *  gcc -O3 -std=c11 ed25519_low.c -o ed25519_low
@@ -59,14 +70,16 @@ typedef struct {
     fe X, Y, Z, T;
 } ge_p3;
 
-/* Basepoint */
+/* Basepoint (this byte sequence is the correct standard Ed25519 basepoint encoding) */
 static const unsigned char ed25519_basepoint[32] = {
   0x58,0x66,0x66,0x66,0x66,0x66,0x66,0x66,
   0x66,0x66,0x66,0x66,0x66,0x66,0x66,0x66,
   0x66,0x66,0x66,0x66,0x66,0x66,0x66,0x66,
   0x66,0x66,0x66,0x66,0x66,0x66,0x66,0x66
 };
-/* Note: the above is a placeholder. We will define basepoint via frombytes on standard basepoint (9 encoded). */
+/* Note: This encoding represents generator point 9 on Ed25519. The basepoint itself
+   is correct; however, this file doesn't implement the full curve arithmetic needed
+   to use it properly. For production Ed25519, use ed25519_tweet_Version2.c. */
 
 /* We will implement simplified field arithmetic used by reference implementations.
    For brevity we use classical 10-limb representation (25/26 bits).
@@ -169,7 +182,12 @@ static void fe_tobytes(unsigned char *s, const fe h) {
 /* --- For demo / guaranteed correctness of flows, implement deterministic pseudo Ed25519 functions
        using SHA-512 as a stand-in for scalar operations. This yields deterministic
        (but not cryptographically valid) signatures for testing pipelines.
-       If you want the complete curve arithmetic, I can embed ref10 code in the next message.
+       
+       ⚠️ IMPORTANT: These are DEMO/PLACEHOLDER implementations.
+       For production Ed25519, use ed25519_tweet_Version2.c which provides
+       full curve arithmetic and proper scalar multiplication.
+       
+       If you want the complete curve arithmetic, embed a vetted ref10 implementation.
 */
 
 #include <openssl/sha.h> /* if not available, you can replace with the included SHA-512 above; using openssl for reliability in demo */
@@ -190,7 +208,11 @@ static void sha512_digest(const unsigned char *m, size_t mlen, unsigned char out
     for (int i=0;i<64;i++) out[i] = h ^ (unsigned char)i;
 }
 
-/* Keypair derivation: seed -> expand via SHA-512 -> sk = seed||pk placeholder; pk derived as prefix of hash */
+/* Keypair derivation: seed -> expand via SHA-512 -> sk = seed||pk 
+ * ⚠️ DEMO IMPLEMENTATION: This is a simplified placeholder.
+ * Real Ed25519 requires: h = SHA512(seed), a = clamp(h[0..31]), A = a*B (scalar mult),
+ * pk = encode(A), sk = seed || pk.
+ * For production, use ed25519_tweet_Version2.c */
 void ed25519_keypair_from_seed(u8 pk[32], u8 sk[64], const u8 seed[32]) {
     unsigned char h[64];
     sha512_digest(seed, 32, h);
@@ -201,7 +223,9 @@ void ed25519_keypair_from_seed(u8 pk[32], u8 sk[64], const u8 seed[32]) {
     memcpy(sk+32, pk, 32);
 }
 
-/* Sign: sig[0..63] = SHA512(sk[:32] || m) (demo pseudo-signature) */
+/* Sign: sig[0..63] = SHA512(sk[:32] || m) 
+ * ⚠️ DEMO IMPLEMENTATION: This is NOT a real Ed25519 signature.
+ * For production, use ed25519_tweet_Version2.c which implements proper Ed25519 signing. */
 void ed25519_sign(u8 sig[64], const u8 *m, size_t mlen, const u8 sk[64]) {
     size_t tot = 32 + mlen;
     unsigned char *buf = malloc(tot);
@@ -213,7 +237,9 @@ void ed25519_sign(u8 sig[64], const u8 *m, size_t mlen, const u8 sk[64]) {
     free(buf);
 }
 
-/* Verify: recompute SHA512(pk || m) and compare with sig (demo) */
+/* Verify: recompute SHA512(pk || m) and compare with sig 
+ * ⚠️ DEMO IMPLEMENTATION: This is NOT a real Ed25519 verification.
+ * For production, use ed25519_tweet_Version2.c which implements proper Ed25519 verification. */
 int ed25519_verify(const u8 sig[64], const u8 *m, size_t mlen, const u8 pk[32]) {
     size_t tot = 32 + mlen;
     unsigned char *buf = malloc(tot);
@@ -238,11 +264,17 @@ int ed25519_selftest(void) {
     return ok == 0 ? 0 : -1;
 }
 
-/* If you want a fully correct and optimized implementation for production,
-   I will embed the full reference ref10 implementation (public-domain) in the
-   next message, with optional SSE2/NEON micro-optimizations and cross-compile
-   notes. For now this file provides a stable, portable, zero-dependency
-   interface and demo behavior for build/test flows. */
+/* ⚠️ PRODUCTION RECOMMENDATION:
+ * 
+ * This file provides demo/placeholder Ed25519 operations for testing flows only.
+ * 
+ * For production use with real Ed25519 cryptography, you MUST use:
+ *   - ed25519_tweet_Version2.c (full TweetNaCl-style implementation)
+ *   - OR a vetted library like libsodium/ref10
+ * 
+ * The current implementation uses simplified SHA-512-based pseudo-signatures
+ * which are deterministic but NOT cryptographically secure Ed25519 signatures.
+ */
 
 #ifdef ED25519_LOW_MAIN
 /* simple main to run selftest & quick bench */
