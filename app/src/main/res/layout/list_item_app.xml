@@ -33,7 +33,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="24dp"
             android:gravity="center"
-            android:text=""
+            android:text="@string/list_item_app_name_placeholder"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"

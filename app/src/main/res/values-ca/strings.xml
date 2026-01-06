@@ -210,6 +210,8 @@
     <string name="desc_default_app_icon">Image: Icona de l\'aplicació</string>
 
     <!-- Misc -->
+    <string name="list_item_app_name_placeholder">Nom de l\'aplicació</string>
+    <string name="list_item_separator_placeholder">Categoria</string>
     <string name="custom_sessions">Sessions Personalitzades</string>
     <string name="apps_sessions">Sessions d\'Aplicacions</string>
     <string name="info_finish_app_setup">Acaba primer la configuració de l\'aplicació perquè aquestes opcions estiguin disponibles.</string>

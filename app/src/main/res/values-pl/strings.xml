@@ -237,6 +237,8 @@
     <string name="desc_default_app_icon">Zdjęcie: Ikona aplikacji</string>
 
     <!-- Misc -->
+    <string name="list_item_app_name_placeholder">Nazwa aplikacji</string>
+    <string name="list_item_separator_placeholder">Kategoria</string>
     <string name="custom_sessions">Sesje niestandardowe</string>
     <string name="apps_sessions">Sesje aplikacji</string>
     <string name="info_finish_app_setup">Zakończ konfigurację aplikacji, aby włączyć te opcje.</string>

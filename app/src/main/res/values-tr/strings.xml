@@ -237,6 +237,8 @@
     <string name="desc_default_app_icon">Resim: Uygulama simgesi</string>
 
     <!-- Misc -->
+    <string name="list_item_app_name_placeholder">Uygulama adı</string>
+    <string name="list_item_separator_placeholder">Kategori</string>
     <string name="custom_sessions">Kişisel Oturumlar</string>
     <string name="apps_sessions">Uygulama Oturumları</string>
     <string name="info_finish_app_setup">Bu özellikleri kullanabilmek için uygulama kurulumunu tamamlayın.</string>
