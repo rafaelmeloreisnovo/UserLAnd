@@ -1,6 +1,11 @@
 /*
  * ed25519_low.h
  *
+ * ⚠️ WARNING: THIS IS A DEMO/EXPERIMENTAL IMPLEMENTATION ⚠️
+ * 
+ * This file provides placeholder Ed25519 operations for testing only.
+ * ✅ FOR PRODUCTION USE: Use ed25519_tweet_Version2.c instead.
+ *
  * Minimal, portable Ed25519 implementation header.
  *
  * API:

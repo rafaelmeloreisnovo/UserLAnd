@@ -75,7 +75,7 @@ typedef struct {
 typedef struct {
     uint32_t id;
     uint32_t layer_idx;
-    uint32_t parity_bit;    /* ECC placeholder */
+    uint32_t parity_bit;    /* CRC32 integrity tag */
     Vec64    weights;
     float    activation;
     float    bias;
@@ -130,12 +130,25 @@ static float _dot_prod(const Vec64 *a, const Vec64 *b) {
     return sum;
 }
 
-/* ECC integrity check (simple placeholder, always OK for demo)
- * In real-world, parity_bit would be validated here (Hamming/BCH/etc).
- */
+/* Compute an integrity tag for a node (fast + deterministic) */
+static uint32_t _node_crc32(const Node *n) {
+    uint32_t crc = 0;
+    crc = _calc_crc32(&n->id,        sizeof(n->id),        crc);
+    crc = _calc_crc32(&n->layer_idx, sizeof(n->layer_idx), crc);
+    crc = _calc_crc32(&n->activation,sizeof(n->activation),crc);
+    crc = _calc_crc32(&n->bias,      sizeof(n->bias),      crc);
+    crc = _calc_crc32(&n->weights,   sizeof(n->weights),   crc);
+    return crc;
+}
+
+/* Call after init / after any update to weights/activation/bias */
+static void _seal_node(Node *n) {
+    n->parity_bit = _node_crc32(n);
+}
+
+/* ECC integrity check using CRC32 verification */
 static int _verify_node_integrity(Node *n) {
-    (void)n; /* unused param for now */
-    return 1;
+    return (n->parity_bit == _node_crc32(n));
 }
 
 /* ---------------------------------------------------------------------------
@@ -184,6 +197,8 @@ static void _genesis(void) {
             MATRIX.nodes[i].weights.values[j] =
                 ((float)(seed % 100) / 100.0f) - 0.5f;
         }
+        /* Seal node with integrity tag */
+        _seal_node(&MATRIX.nodes[i]);
     }
 
     MATRIX.state_crc = 0xFFFFFFFFu;
@@ -218,6 +233,7 @@ static void _process_signal(const char *input) {
             if (!_verify_node_integrity(n)) {
                 _audit("ERR: ECC fail at node %d. Resetting weights.", i);
                 memset(&n->weights, 0, sizeof(Vec64));
+                _seal_node(n); /* Reseal after reset */
                 continue;
             }
 
@@ -229,6 +245,7 @@ static void _process_signal(const char *input) {
             /* Simple plasticity rule: high activation → slight bias increase */
             if (n->activation > 0.8f) {
                 n->bias += CFG.learning_rate;
+                _seal_node(n); /* Reseal after bias change */
             }
         }
     }
@@ -301,7 +318,7 @@ static void _render_bbs(void) {
     printf(" > STATE HASH : " C_YEL "%08X" C_RST "\n", MATRIX.state_crc);
     printf(" > CYCLES     : %u\n", MATRIX.cycle_count);
     printf(" > NODES      : %d (Active)\n", MAX_NODES);
-    printf(" > INTEGRITY  : " C_GRN "OK (ECC placeholder)" C_RST "\n");
+    printf(" > INTEGRITY  : " C_GRN "CRC32 Enabled" C_RST "\n");
 
     printf("\n" C_BLD "AUDIT LOG:" C_RST "\n");
     for (int i = 0; i < 8; i++) {
