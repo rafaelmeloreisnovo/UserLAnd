@@ -24,6 +24,11 @@ import android.util.Log
 object Android15CompatibilityHelper {
     private const val TAG = "Android15Compat"
     
+    // Memory thresholds
+    private const val MIN_MEMORY_BYTES = 50 * 1024 * 1024L // 50MB minimum
+    private const val MEMORY_PRESSURE_WARNING_THRESHOLD = 70 // 70% usage
+    private const val MEMORY_PRESSURE_CRITICAL_THRESHOLD = 85 // 85% usage
+    
     /**
      * Check if running on Android 15 or higher
      */
@@ -69,9 +74,7 @@ object Android15CompatibilityHelper {
         val memoryInfo = ActivityManager.MemoryInfo()
         activityManager.getMemoryInfo(memoryInfo)
         
-        // Check if we have at least 50MB available
-        val minMemoryBytes = 50 * 1024 * 1024L
-        return memoryInfo.availMem > minMemoryBytes
+        return memoryInfo.availMem > MIN_MEMORY_BYTES
     }
     
     /**
@@ -150,7 +153,7 @@ object Android15CompatibilityHelper {
         // Check if running on Android 15+ with specific requirements
         if (isAndroid15Plus()) {
             val memoryPressure = getMemoryPressure(context)
-            if (memoryPressure > 85) {
+            if (memoryPressure > MEMORY_PRESSURE_CRITICAL_THRESHOLD) {
                 issues.add("High memory pressure: $memoryPressure%")
             }
             
@@ -198,7 +201,7 @@ object Android15CompatibilityHelper {
         }
         
         val memoryPressure = getMemoryPressure(context)
-        if (memoryPressure > 70) {
+        if (memoryPressure > MEMORY_PRESSURE_WARNING_THRESHOLD) {
             suggestions.add("Close other apps to free up memory")
         }
         
