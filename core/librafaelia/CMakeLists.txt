@@ -21,12 +21,12 @@ target_include_directories(rafaelia PRIVATE
 )
 
 target_compile_options(rafaelia PRIVATE
-  -O3
-  -ffast-math
+  -O2
   -fno-exceptions
   -fvisibility=hidden
   -Wall
   -Wextra
+  -Wno-unused-parameter
 )
 
 find_library(log-lib log)
