@@ -1,0 +1,205 @@
+package tech.ula.utils
+
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.LinkProperties
+import android.net.NetworkCapabilities
+import android.os.Build
+import android.util.Log
+import java.io.File
+import java.net.InetAddress
+
+/**
+ * DnsConfigHelper
+ *
+ * Addresses BUG: DNS_LEAK - Privacy issue with hardcoded DNS servers.
+ *
+ * This helper extracts DNS server configuration from the Android system
+ * (respecting VPN settings) and generates a resolv.conf file for use
+ * inside Linux containers.
+ *
+ * This ensures:
+ * 1. Privacy: User's VPN DNS settings are respected
+ * 2. Consistency: DNS configuration matches the Android system
+ * 3. No Leaks: Avoids hardcoded DNS (like 8.8.8.8) that bypass VPN
+ *
+ * Implementation Notes (2025, Rafael Melo Reis – ∆RafaelVerboΩ):
+ * - Requires API 21+ for LinkProperties API
+ * - Falls back to safe defaults if system DNS cannot be determined
+ * - Logs all DNS configuration for debugging
+ */
+class DnsConfigHelper(
+    private val context: Context,
+    private val logger: Logger = SentryLogger(),
+) {
+    companion object {
+        private const val TAG = "DnsConfigHelper"
+
+        // Fallback DNS servers (used only if system DNS cannot be determined)
+        // Using Cloudflare and Quad9 as privacy-focused alternatives
+        private val FALLBACK_DNS_SERVERS = listOf(
+            "1.1.1.1", // Cloudflare
+            "9.9.9.9", // Quad9
+        )
+    }
+
+    /**
+     * Get DNS servers from the Android system.
+     * Returns a list of DNS server IP addresses as strings.
+     *
+     * On Android 9+ (API 28+), this respects VPN DNS settings through the
+     * active network's LinkProperties.
+     */
+    fun getSystemDnsServers(): List<String> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            Log.w(TAG, "DNS discovery requires API 23+, using fallback DNS")
+            return FALLBACK_DNS_SERVERS
+        }
+
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                ?: run {
+                    Log.e(TAG, "ConnectivityManager not available")
+                    return FALLBACK_DNS_SERVERS
+                }
+
+        try {
+            // Get the active network (respects VPN)
+            val activeNetwork = connectivityManager.activeNetwork
+            if (activeNetwork == null) {
+                Log.w(TAG, "No active network, using fallback DNS")
+                return FALLBACK_DNS_SERVERS
+            }
+
+            // Get network capabilities to check for VPN
+            val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+            val isVpn = capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true
+            Log.i(TAG, "Active network is VPN: $isVpn")
+
+            // Get link properties which contain DNS servers
+            val linkProperties = connectivityManager.getLinkProperties(activeNetwork)
+            if (linkProperties == null) {
+                Log.w(TAG, "LinkProperties not available, using fallback DNS")
+                return FALLBACK_DNS_SERVERS
+            }
+
+            val dnsServers = extractDnsServers(linkProperties)
+
+            if (dnsServers.isEmpty()) {
+                Log.w(TAG, "No DNS servers found in LinkProperties, using fallback DNS")
+                return FALLBACK_DNS_SERVERS
+            }
+
+            Log.i(
+                TAG,
+                "Extracted ${dnsServers.size} DNS server(s) from system${if (isVpn) " (VPN)" else ""}: $dnsServers",
+            )
+            return dnsServers
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting system DNS servers: ${e.message}", e)
+            logError("getSystemDnsServers", e.message ?: "Unknown error")
+            return FALLBACK_DNS_SERVERS
+        }
+    }
+
+    /**
+     * Extract DNS server addresses from LinkProperties.
+     */
+    private fun extractDnsServers(linkProperties: LinkProperties): List<String> {
+        val dnsServers = mutableListOf<String>()
+
+        try {
+            for (dns in linkProperties.dnsServers) {
+                val address = dns.hostAddress
+                if (address != null && address.isNotEmpty()) {
+                    dnsServers.add(address)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error extracting DNS servers: ${e.message}", e)
+        }
+
+        return dnsServers
+    }
+
+    /**
+     * Generate a resolv.conf file content for the Linux container.
+     *
+     * @param dnsServers List of DNS server IP addresses
+     * @param searchDomains Optional list of search domains
+     * @return Content for resolv.conf file
+     */
+    fun generateResolvConf(
+        dnsServers: List<String> = getSystemDnsServers(),
+        searchDomains: List<String> = emptyList(),
+    ): String {
+        val sb = StringBuilder()
+
+        // Header comment
+        sb.appendLine("# /etc/resolv.conf")
+        sb.appendLine("# Generated by UserLAnd DnsConfigHelper")
+        sb.appendLine("# Respects Android system DNS and VPN settings")
+        sb.appendLine()
+
+        // Search domains (if any)
+        if (searchDomains.isNotEmpty()) {
+            sb.appendLine("search ${searchDomains.joinToString(" ")}")
+        }
+
+        // DNS servers
+        for (dns in dnsServers) {
+            sb.appendLine("nameserver $dns")
+        }
+
+        return sb.toString()
+    }
+
+    /**
+     * Write resolv.conf to a specific filesystem's support directory.
+     *
+     * @param filesystemId The filesystem ID
+     * @param filesDir The app's files directory
+     * @return true if successful, false otherwise
+     */
+    fun writeResolvConfToFilesystem(
+        filesystemId: Long,
+        filesDir: File,
+    ): Boolean {
+        try {
+            val supportDir = File(filesDir, "${filesystemId}/support")
+            if (!supportDir.exists()) {
+                Log.w(TAG, "Support directory does not exist: ${supportDir.absolutePath}")
+                return false
+            }
+
+            val resolvConfFile = File(supportDir, "resolv.conf")
+            val content = generateResolvConf()
+
+            resolvConfFile.writeText(content)
+            Log.i(TAG, "resolv.conf written to ${resolvConfFile.absolutePath}")
+            Log.d(TAG, "resolv.conf content:\n$content")
+
+            return true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error writing resolv.conf: ${e.message}", e)
+            logError("writeResolvConfToFilesystem", e.message ?: "Unknown error")
+            return false
+        }
+    }
+
+    /**
+     * Log error through the logger infrastructure.
+     */
+    private fun logError(
+        function: String,
+        message: String,
+    ) {
+        val breadcrumb =
+            UlaBreadcrumb(
+                "DnsConfigHelper",
+                BreadcrumbType.RuntimeError,
+                "func: $function err: $message",
+            )
+        logger.addBreadcrumb(breadcrumb)
+    }
+}

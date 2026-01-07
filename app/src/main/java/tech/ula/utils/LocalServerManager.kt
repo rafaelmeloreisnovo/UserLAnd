@@ -1,5 +1,6 @@
 package tech.ula.utils
 
+import android.content.Context
 import tech.ula.model.entities.ServiceType
 import tech.ula.model.entities.Session
 import java.io.File
@@ -15,11 +16,14 @@ import java.io.File
  * - Centralized error logging with function tags.
  * - Shared USERLAND_* environment contract for better interoperability inside the container.
  * - More defensive behavior on invalid sessions / invalid PIDs.
+ * - BUG FIX: DNS_LEAK - Configures DNS from Android system (respects VPN).
  */
 class LocalServerManager(
     private val applicationFilesDirPath: String,
     private val busyboxExecutor: BusyboxExecutor,
     private val logger: Logger = SentryLogger(),
+    private val context: Context? = null,
+    private val dnsConfigHelper: DnsConfigHelper? = null,
 ) {
     private val vncDisplayNumber = 51
 
@@ -106,6 +110,8 @@ class LocalServerManager(
     /**
      * Start the server associated with the session type.
      * Returns the PID of the newly started process, or <= 0 on failure.
+     *
+     * Before starting the server, configures DNS from Android system to respect VPN settings.
      */
     fun startServer(session: Session): Long {
         // Basic sanity: invalid entries should not attempt to start anything.
@@ -116,6 +122,9 @@ class LocalServerManager(
             )
             return -1L
         }
+
+        // BUG FIX: DNS_LEAK - Configure DNS from Android system (respects VPN)
+        configureDnsForFilesystem(session.filesystemId)
 
         return when (session.serviceType) {
             ServiceType.Ssh -> startSSHServer(session)
@@ -189,6 +198,45 @@ class LocalServerManager(
                 false
             }
             else -> false
+        }
+    }
+
+    /**
+     * Configure DNS for a filesystem from Android system settings.
+     * BUG FIX: DNS_LEAK - Respects VPN and system DNS configuration.
+     */
+    private fun configureDnsForFilesystem(filesystemId: Long) {
+        try {
+            // Only configure if we have the necessary dependencies
+            if (context == null || dnsConfigHelper == null) {
+                android.util.Log.d(
+                    "LocalServerManager",
+                    "DNS configuration skipped (context or helper not available) for filesystem $filesystemId",
+                )
+                return
+            }
+
+            val filesDir = File(applicationFilesDirPath)
+            val success = dnsConfigHelper.writeResolvConfToFilesystem(filesystemId, filesDir)
+
+            if (success) {
+                android.util.Log.i(
+                    "LocalServerManager",
+                    "DNS configured successfully for filesystem $filesystemId (respects VPN settings)",
+                )
+            } else {
+                android.util.Log.w(
+                    "LocalServerManager",
+                    "DNS configuration failed for filesystem $filesystemId, will use defaults",
+                )
+            }
+        } catch (e: Exception) {
+            android.util.Log.e(
+                "LocalServerManager",
+                "Error configuring DNS for filesystem $filesystemId: ${e.message}",
+                e,
+            )
+            logRuntimeError("configureDnsForFilesystem", e.message ?: "Unknown error")
         }
     }
 

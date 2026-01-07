@@ -84,8 +84,17 @@ class ServerService : Service() {
         SafetyStartupGuard(this.defaultSharedPreferences)
     }
 
+    private val dnsConfigHelper by lazy {
+        DnsConfigHelper(this)
+    }
+
     private val localServerManager by lazy {
-        LocalServerManager(this.filesDir.path, busyboxExecutor)
+        LocalServerManager(
+            applicationFilesDirPath = this.filesDir.path,
+            busyboxExecutor = busyboxExecutor,
+            context = this,
+            dnsConfigHelper = dnsConfigHelper,
+        )
     }
 
     override fun onCreate() {
