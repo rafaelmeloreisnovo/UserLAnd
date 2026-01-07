@@ -169,8 +169,13 @@
         <service
             android:name=".ServerService"
             android:stopWithTask="true"
-            android:foregroundServiceType="dataSync"
-            android:exported="false" />
+            android:foregroundServiceType="dataSync|specialUse"
+            android:exported="false"
+            android:process=":userland_server">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="linux_container_runtime" />
+        </service>
 
         <provider
             android:name="tech.ula.provider.UlaDocProvider"

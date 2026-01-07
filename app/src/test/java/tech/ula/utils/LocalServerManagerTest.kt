@@ -56,7 +56,7 @@ class LocalServerManagerTest {
     fun setup() {
         whenever(mockProcess.toString()).thenReturn("pid=$fakePid],")
 
-        localServerManager = LocalServerManager(tempFolder.root.path, mockBusyboxExecutor, mockLogger)
+        localServerManager = LocalServerManager(tempFolder.root.path, mockBusyboxExecutor, mockLogger, null, null)
     }
 
     @Test

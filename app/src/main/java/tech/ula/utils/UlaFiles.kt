@@ -99,21 +99,29 @@ class UlaFiles(
                 // Try to create symlink with the project's Symlinker
                 symlinker.createSymlink(libFile.path, linkFile.path)
             } catch (symlinkErr: Exception) {
-                // Fallbacks: android.system.Os.symlink (API21+) or copy file
+                // BUG FIX: SYMLINK_HELL - Enhanced fallback mechanism for filesystems that don't support symlinks
+                // Android filesystems (especially emulated storage) may not support symbolic links.
+                // This fallback ensures reliability by copying files physically when symlinks fail.
+                android.util.Log.w("UlaFiles", "Symlink creation failed for ${libFile.name}: ${symlinkErr.message}. Attempting fallback...")
                 try {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                         try {
                             Os.symlink(libFile.path, linkFile.path)
+                            android.util.Log.d("UlaFiles", "Symlink created successfully using Os.symlink for ${libFile.name}")
                         } catch (osErr: Exception) {
-                            // Last resort: copy the file
+                            // Last resort: copy the file physically
+                            // This costs disk space but guarantees functionality
+                            android.util.Log.w("UlaFiles", "Os.symlink also failed for ${libFile.name}: ${osErr.message}. Copying file physically...")
                             libFile.copyTo(linkFile, overwrite = true)
+                            android.util.Log.i("UlaFiles", "File copied successfully as fallback for ${libFile.name}")
                         }
                     } else {
                         libFile.copyTo(linkFile, overwrite = true)
+                        android.util.Log.i("UlaFiles", "File copied (API < 21) for ${libFile.name}")
                     }
                 } catch (fallbackErr: Exception) {
-                    // If all fails, log and continue (don't throw to avoid interrupting init)
-                    android.util.Log.w("UlaFiles", "setupLinks: fallback failed for ${libFile.path}: ${fallbackErr.message}")
+                    // If all fails, log detailed error and continue (don't throw to avoid interrupting init)
+                    android.util.Log.e("UlaFiles", "CRITICAL: All symlink fallback methods failed for ${libFile.path}. File: ${libFile.name}, Error: ${fallbackErr.message}", fallbackErr)
                 }
             }
 
