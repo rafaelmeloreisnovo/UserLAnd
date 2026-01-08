@@ -3,6 +3,13 @@ set -euo pipefail
 # Σ_log_manager.sh — RAFAELIA LOGS + BitRAF integrado
 
 root="$HOME/RAFAELIA_LOGS"
+
+# Safety check before creating directories
+if [[ -z "$root" || ! "$root" =~ RAFAELIA_LOGS || ${#root} -lt 10 ]]; then
+  echo "[ERROR] Invalid root path: $root" >&2
+  exit 1
+fi
+
 mkdir -p "$root"/{syslog,contextos,indices,maps}
 
 # Atualiza índice JSON simples para um diretório

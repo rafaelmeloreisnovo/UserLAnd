@@ -10,7 +10,11 @@ LOGDIR="$HOME/RAFAELIA_LOGS/contextos"
 LOGFILE="$LOGDIR/bitraf_commits.log"
 BIN="$HOME/rafaelia_bitraf_hash"
 
-# Garante diretório
+# Safety check and create directory
+if [[ -z "$LOGDIR" || ! "$LOGDIR" =~ RAFAELIA_LOGS || ${#LOGDIR} -lt 10 ]]; then
+  echo "[BITRAF_COMMIT] [ERROR] Invalid LOGDIR path: $LOGDIR" >&2
+  exit 1
+fi
 mkdir -p "$LOGDIR"
 
 # Verifica binario

@@ -3,7 +3,7 @@
 # Auto-detects architecture and compiles with optimal settings
 # Supports: x86_64, ARM, ARM64, RISC-V, MIPS, PowerPC, SPARC, s390x, and more
 
-set -e
+set -euo pipefail
 
 # Colors for output
 RED='\033[0;31m'
