@@ -68,7 +68,15 @@ fi
 
 # temp dir & cleanup
 TMPDIR="$(mktemp -d)"
-trap 'rm -rf "${TMPDIR:-/tmp/empty}"; exit' INT TERM EXIT
+# Safety cleanup function
+cleanup_tmpdir() {
+  # Ensure TMPDIR is valid before removal
+  if [[ -n "${TMPDIR:-}" && "$TMPDIR" =~ ^/tmp/ && ${#TMPDIR} -gt 5 && -d "$TMPDIR" ]]; then
+    rm -rf "$TMPDIR"
+  fi
+  exit
+}
+trap 'cleanup_tmpdir' INT TERM EXIT
 
 # dependency probes
 have_cmd() { command -v "$1" >/dev/null 2>&1; }

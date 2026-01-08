@@ -1,4 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
 
 # BITRAF_COMMIT — proximos passos operacionais do bitraf
 #  - Roda o binario rafaelia_bitraf_hash

@@ -169,7 +169,12 @@ if [[ "$SKIP_SDK" == false ]]; then
     mkdir -p "$SDK_DIR/cmdline-tools"
     mv cmdline-tools "$TOOLS_DIR"
     popd >/dev/null
-    rm -rf "$tmpdir"
+    # Safety check before removing tmpdir
+    if [[ -n "$tmpdir" && "$tmpdir" =~ ^/tmp/ && ${#tmpdir} -gt 5 && -d "$tmpdir" ]]; then
+      rm -rf "$tmpdir"
+    else
+      echo "Warning: Skipped tmpdir removal due to safety check: $tmpdir" >&2
+    fi
   fi
 
   export ANDROID_SDK_ROOT="$SDK_DIR"

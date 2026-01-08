@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # ==============================================================================
 # SISTEMA: RANOVO BATCH COMMANDER (FZF INTEGRATED)

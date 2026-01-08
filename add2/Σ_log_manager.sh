@@ -1,4 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
 # Σ_log_manager.sh — RAFAELIA LOGS + BitRAF integrado
 
 root="$HOME/RAFAELIA_LOGS"

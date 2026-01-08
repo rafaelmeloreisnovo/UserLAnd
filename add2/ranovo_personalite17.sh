@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # ==============================================================================
 # PROJECT: RANOVO PERSONALITÉ 17 [HYBRID EDITION]
