@@ -455,7 +455,7 @@ dependencies {
     implementation "com.android.billingclient:billing-ktx:$billing_version"
     implementation "com.google.android.gms:play-services-base:18.9.0"
 
-    def mockito_version = '5.15.2'
+    def mockito_version = '5.2.0'
     def mockito_kotlin_version = '5.4.0'
     def core_testing_version = '2.2.0'
     def androidx_test_version = '1.6.1'
