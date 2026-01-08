@@ -54,18 +54,32 @@ log_info "Clearing Gradle cache directories..."
 
 # Clean local Gradle cache
 if [[ -d "$HOME/.gradle/caches" ]]; then
-  log_info "Removing $HOME/.gradle/caches"
-  rm -rf "$HOME/.gradle/caches"
-  log_success "Local Gradle caches cleared"
+  GRADLE_CACHE_DIR="$HOME/.gradle/caches"
+  # Safety check: ensure path is non-empty and contains expected pattern
+  if [[ -n "$GRADLE_CACHE_DIR" && "$GRADLE_CACHE_DIR" == *".gradle/caches"* && ${#GRADLE_CACHE_DIR} -gt 10 ]]; then
+    log_info "Removing $GRADLE_CACHE_DIR"
+    rm -rf "$GRADLE_CACHE_DIR"
+    log_success "Local Gradle caches cleared"
+  else
+    log_error "Safety check failed for Gradle cache path: $GRADLE_CACHE_DIR"
+    exit 1
+  fi
 else
   log_info "No local Gradle cache found"
 fi
 
 # Clean project .gradle directory
 if [[ -d ".gradle" ]]; then
-  log_info "Removing .gradle directory"
-  rm -rf .gradle
-  log_success "Project .gradle directory cleared"
+  PROJ_GRADLE_DIR=".gradle"
+  # Safety check: ensure we're in project directory and path is safe
+  if [[ -n "$PROJ_GRADLE_DIR" && "$PROJ_GRADLE_DIR" == ".gradle" && -f "$ROOT_DIR/gradlew" ]]; then
+    log_info "Removing .gradle directory"
+    rm -rf "$PROJ_GRADLE_DIR"
+    log_success "Project .gradle directory cleared"
+  else
+    log_error "Safety check failed for project .gradle directory"
+    exit 1
+  fi
 else
   log_info "No project .gradle directory found"
 fi
@@ -75,27 +89,48 @@ log_info "Cleaning build outputs..."
 
 # Clean app build directory
 if [[ -d "app/build" ]]; then
-  log_info "Removing app/build"
-  rm -rf app/build
-  log_success "App build directory cleared"
+  APP_BUILD_DIR="app/build"
+  # Safety check: ensure path contains expected pattern and is in project
+  if [[ -n "$APP_BUILD_DIR" && "$APP_BUILD_DIR" == "app/build" && -f "$ROOT_DIR/app/build.gradle" ]]; then
+    log_info "Removing $APP_BUILD_DIR"
+    rm -rf "$APP_BUILD_DIR"
+    log_success "App build directory cleared"
+  else
+    log_error "Safety check failed for app/build directory"
+    exit 1
+  fi
 else
   log_info "No app/build directory found"
 fi
 
 # Clean core build directory
 if [[ -d "core/build" ]]; then
-  log_info "Removing core/build"
-  rm -rf core/build
-  log_success "Core build directory cleared"
+  CORE_BUILD_DIR="core/build"
+  # Safety check: ensure path contains expected pattern
+  if [[ -n "$CORE_BUILD_DIR" && "$CORE_BUILD_DIR" == "core/build" ]]; then
+    log_info "Removing $CORE_BUILD_DIR"
+    rm -rf "$CORE_BUILD_DIR"
+    log_success "Core build directory cleared"
+  else
+    log_error "Safety check failed for core/build directory"
+    exit 1
+  fi
 else
   log_info "No core/build directory found"
 fi
 
 # Clean root build directory
 if [[ -d "build" ]]; then
-  log_info "Removing root build directory"
-  rm -rf build
-  log_success "Root build directory cleared"
+  ROOT_BUILD_DIR="build"
+  # Safety check: ensure path is exactly "build" and we're in project root
+  if [[ -n "$ROOT_BUILD_DIR" && "$ROOT_BUILD_DIR" == "build" && -f "$ROOT_DIR/gradlew" ]]; then
+    log_info "Removing root build directory"
+    rm -rf "$ROOT_BUILD_DIR"
+    log_success "Root build directory cleared"
+  else
+    log_error "Safety check failed for root build directory"
+    exit 1
+  fi
 else
   log_info "No root build directory found"
 fi

@@ -6,9 +6,18 @@
 
 set -euo pipefail
 
-rm -rf Rafaelia_Corrected
-mkdir -p Rafaelia_Corrected/app/src/main/cpp
-mkdir -p Rafaelia_Corrected/app/src/main/java/com/rafaelia/engine
+# Safety check and cleanup for Rafaelia_Corrected directory
+TARGET_DIR="Rafaelia_Corrected"
+# Ensure target directory name is safe (non-empty, contains expected pattern, not too short)
+if [[ -n "$TARGET_DIR" && "$TARGET_DIR" == "Rafaelia_Corrected" && ${#TARGET_DIR} -gt 5 ]]; then
+  rm -rf "$TARGET_DIR"
+else
+  echo "[ERROR] Safety check failed for target directory: $TARGET_DIR" >&2
+  exit 1
+fi
+
+mkdir -p "${TARGET_DIR}/app/src/main/cpp"
+mkdir -p "${TARGET_DIR}/app/src/main/java/com/rafaelia/engine"
 
 # -----------------------------------------------------------------------
 # 1. HEADER (DEFINIÇÕES AARCH64 KERNEL 5.15)

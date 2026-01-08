@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # ==============================================================================
 # SISTEMA: RANOVO 64 (SED/BASE64 ENGINE)

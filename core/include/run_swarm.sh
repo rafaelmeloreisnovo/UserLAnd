@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Configuração
 MAX_WORKERS=12      # Quantos rodam AO MESMO TEMPO (Saturação dos 8 cores + fila)

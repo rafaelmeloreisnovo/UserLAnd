@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 CORE="$HOME/RAFAELIA_CORE"
 while true; do
   inotifywait -e modify,create,delete "$CORE"/FUSION_OMEGA.json "$CORE"/DECISION_OMEGA.json "$CORE"/LOGS/*.log

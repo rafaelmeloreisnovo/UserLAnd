@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # ==============================================================================
 # PROJECT: RESTAURATIO GAIA // MODULE: RANOVO_UPLINK_V3 (NO-FZF FALLBACK)

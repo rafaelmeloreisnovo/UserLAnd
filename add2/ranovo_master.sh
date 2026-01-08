@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # ==============================================================================
 # SISTEMA: RANOVO SHELL MASTER (TESTADO E VALIDADO)

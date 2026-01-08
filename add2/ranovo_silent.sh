@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # ==============================================================================
 # PROJECT: RANOVO SILENT (BUFFERED FULLSCREEN)

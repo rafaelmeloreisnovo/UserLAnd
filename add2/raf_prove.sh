@@ -1,4 +1,5 @@
-set -eu
+#!/usr/bin/env bash
+set -euo pipefail
 
 F="${1:-}"
 if [ -z "$F" ]; then
