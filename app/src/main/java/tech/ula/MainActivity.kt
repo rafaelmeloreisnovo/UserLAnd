@@ -12,6 +12,9 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.navigation.NavController
+import androidx.navigation.fragment.NavHostFragment
+import androidx.navigation.ui.setupWithNavController
 import tech.ula.consent.ConsentLedger
 import tech.ula.consent.ConsentReviewActivity
 import tech.ula.databinding.ActivityMainBinding
@@ -41,6 +44,7 @@ class MainActivity :
 
     companion object {
         private const val TAG = "MainActivity"
+        private const val PREF_DEFAULT_NAV_LOCATION = "pref_default_nav_location"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -90,6 +94,9 @@ class MainActivity :
                 Log.e(TAG, "Error setting up toolbar", e)
             }
 
+            // Set up navigation
+            setupNavigation()
+
             setupSafetyIndicator()
             
             Log.i(TAG, "MainActivity initialized successfully")
@@ -126,6 +133,44 @@ class MainActivity :
     override fun onDestroy() {
         super.onDestroy()
         Log.i(TAG, "MainActivity.onDestroy()")
+    }
+
+    private fun setupNavigation() {
+        try {
+            // Get the NavHostFragment and NavController
+            val navHostFragment = supportFragmentManager
+                .findFragmentById(R.id.nav_host_fragment) as? NavHostFragment
+            
+            if (navHostFragment == null) {
+                Log.e(TAG, "NavHostFragment not found")
+                return
+            }
+            
+            val navController = navHostFragment.navController
+            
+            // Get the navigation graph
+            val navGraph = navController.navInflater.inflate(R.navigation.nav_graph)
+            
+            // Determine the start destination based on user preference
+            val prefs = defaultSharedPreferences
+            val defaultLandingPage = prefs.getString(PREF_DEFAULT_NAV_LOCATION, getString(R.string.apps))
+            
+            // Set the start destination based on preference
+            val startDestination = when (defaultLandingPage) {
+                getString(R.string.sessions) -> R.id.session_list_fragment
+                else -> R.id.app_list_fragment // Default to Apps
+            }
+            
+            navGraph.setStartDestination(startDestination)
+            navController.graph = navGraph
+            
+            // Set up bottom navigation with NavController
+            binding.bottomNavView.setupWithNavController(navController)
+            
+            Log.i(TAG, "Navigation setup completed with start destination: $defaultLandingPage")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting up navigation", e)
+        }
     }
 
     private fun setupSafetyIndicator() {
