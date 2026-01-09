@@ -44,6 +44,7 @@ class MainActivity :
 
     companion object {
         private const val TAG = "MainActivity"
+        private const val PREF_DEFAULT_NAV_LOCATION = "pref_default_nav_location"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -152,7 +153,7 @@ class MainActivity :
             
             // Determine the start destination based on user preference
             val prefs = defaultSharedPreferences
-            val defaultLandingPage = prefs.getString("pref_default_nav_location", getString(R.string.apps))
+            val defaultLandingPage = prefs.getString(PREF_DEFAULT_NAV_LOCATION, getString(R.string.apps))
             
             // Set the start destination based on preference
             val startDestination = when (defaultLandingPage) {
