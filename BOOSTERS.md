@@ -1,56 +1,56 @@
 # RAFAELIA Performance Boosters - Documentação Completa
 
-## 📋 Índice
+## 📋 Table of Contents
 
-1. [Visão Geral](#visão-geral)
-2. [Tipos de Boosters](#tipos-de-boosters)
+1. [Overview](#overview)
+2. [Booster Types](#booster-types)
 3. [Hardware Boosters](#hardware-boosters)
 4. [Algorithm Boosters](#algorithm-boosters)
 5. [Compiler Boosters](#compiler-boosters)
 6. [Architecture-Specific Boosters](#architecture-specific-boosters)
-7. [Benchmarks e Métricas](#benchmarks-e-métricas)
-8. [Como Usar](#como-usar)
-9. [Referências](#referências)
+7. [Benchmarks and Metrics](#benchmarks-and-metrics)
+8. [How to Use](#how-to-use)
+9. [References](#references)
 
 ---
 
-## Visão Geral
+## Overview
 
-Os **Boosters RAFAELIA** são um conjunto integrado de otimizações de performance aplicadas em múltiplas camadas do sistema UserLAnd. Estas otimizações visam maximizar o desempenho, minimizar o footprint de memória e melhorar a eficiência energética em dispositivos Android.
+The **RAFAELIA Boosters** are an integrated set of performance optimizations applied across multiple layers of the UserLAnd system. These optimizations aim to maximize performance, minimize memory footprint, and improve energy efficiency on Android devices.
 
-### Princípios Fundamentais
+### Core Principles
 
-- **Zero-malloc em hot paths**: Evitar alocações dinâmicas em caminhos críticos
-- **Cache-awareness**: Estruturas de dados alinhadas para otimizar uso de cache
-- **SIMD-first**: Priorizar operações vetorizadas quando disponíveis
-- **Inline-aggressive**: Eliminar overhead de chamadas de função
-- **Profile-guided**: Otimizações baseadas em dados de profiling real
+- **Zero-malloc in hot paths**: Avoid dynamic allocations in critical paths
+- **Cache-awareness**: Aligned data structures to optimize cache usage
+- **SIMD-first**: Prioritize vectorized operations when available
+- **Inline-aggressive**: Eliminate function call overhead
+- **Profile-guided**: Optimizations based on real profiling data
 
-### Ganhos Estimados
+### Estimated Gains
 
-| Categoria | Ganho Médio | Intervalo |
-|-----------|-------------|-----------|
-| **Tamanho de Binário** | -20% | -15% a -25% |
-| **Velocidade de Parsing** | +30% | +25% a +35% |
-| **Consumo de Memória** | -15% | -10% a -20% |
-| **Latência de I/O** | +25% | +20% a +30% |
-| **Throughput Geral** | +40% | +30% a +50% |
+| Category | Average Gain | Range |
+|----------|--------------|-------|
+| **Binary Size** | -20% | -15% to -25% |
+| **Parsing Speed** | +30% | +25% to +35% |
+| **Memory Consumption** | -15% | -10% to -20% |
+| **I/O Latency** | +25% | +20% to +30% |
+| **Overall Throughput** | +40% | +30% to +50% |
 
 ---
 
-## Tipos de Boosters
+## Booster Types
 
 ### 1. Hardware Boosters
-Otimizações que aproveitam recursos de hardware específicos.
+Optimizations that leverage specific hardware resources.
 
 ### 2. Algorithm Boosters
-Melhorias algorítmicas e estruturas de dados otimizadas.
+Algorithmic improvements and optimized data structures.
 
 ### 3. Compiler Boosters
-Flags e diretivas de compilação para otimização máxima.
+Compilation flags and directives for maximum optimization.
 
 ### 4. Architecture-Specific Boosters
-Otimizações específicas para ARM64, x86_64, etc.
+Optimizations specific to ARM64, x86_64, etc.
 
 ---
 
@@ -482,7 +482,7 @@ for (int i = 0; i < n; i++) {
 
 ---
 
-## Benchmarks e Métricas
+## Benchmarks and Metrics
 
 ### RAFAELIA Benchmark Suite
 
@@ -550,25 +550,25 @@ for (int i = 0; i < n; i++) {
 - ARM64 tem melhor eficiência energética (~2x ops/watt)
 - Ambos escalam linearmente com cores (testado até 8 cores)
 
-### Métricas de Qualidade
+### Quality Metrics
 
-**Cobertura de Código**:
-- Core utilities: 95%+ cobertura
-- RAFAELIA kernels: 85%+ cobertura
-- Scripts: 90%+ cobertura
+**Code Coverage**:
+- Core utilities: 95%+ coverage
+- RAFAELIA kernels: 85%+ coverage
+- Scripts: 90%+ coverage
 
-**Warnings de Compilação**:
-- **Zero warnings** com `-Wall -Wextra -Werror`
-- Validado em GCC 11, Clang 14, Android NDK r25
+**Compilation Warnings**:
+- **Zero warnings** with `-Wall -Wextra -Werror`
+- Validated on GCC 11, Clang 14, Android NDK r25
 
-**Análise Estática**:
+**Static Analysis**:
 - CodeQL: Zero alertas críticos/altos
 - Cppcheck: Zero issues
 - Clang Static Analyzer: Limpo
 
 ### Performance Tracking
 
-**Integração CI**:
+**CI Integration**:
 ```yaml
 - name: Run RAFAELIA Benchmarks
   run: ./RAFAELIA_BENCH_ALL.sh
@@ -581,15 +581,15 @@ for (int i = 0; i < n; i++) {
 ```
 
 **Baseline Storage**:
-- Resultados armazenados em `build/bench_baseline/`
-- Atualizado a cada release
-- Histórico mantido para análise de tendências
+- Results stored in `build/bench_baseline/`
+- Updated with each release
+- History maintained for trend analysis
 
 ---
 
-## Como Usar
+## How to Use
 
-### 1. Build com Boosters Habilitados (Padrão)
+### 1. Build with Boosters Enabled (Default)
 
 ```bash
 # Build otimizado para produção
@@ -673,28 +673,28 @@ CFLAGS="-Os -flto" LDFLAGS="-Wl,--gc-sections -Wl,-s" \
 
 ---
 
-## Referências
+## References
 
-### Documentação Interna
+### Internal Documentation
 
-- **[OPTIMIZATION_SUMMARY.md](OPTIMIZATION_SUMMARY.md)**: Sumário de otimizações de baixo nível
-- **[VANTAGENS_E_GANHOS.md](docs/VANTAGENS_E_GANHOS.md)**: Análise de ganhos quantitativos
-- **[RAFAELIA_SUMMARY.md](RAFAELIA_SUMMARY.md)**: Visão geral do módulo RAFAELIA
-- **[RAFAELIA_ROADMAP.md](RAFAELIA_ROADMAP.md)**: Plano de integração UserLAnd
-- **[README.md](README.md)**: Documentação principal do projeto
+- **[OPTIMIZATION_SUMMARY.md](OPTIMIZATION_SUMMARY.md)**: Low-level optimization summary
+- **[VANTAGENS_E_GANHOS.md](docs/VANTAGENS_E_GANHOS.md)**: Quantitative gains analysis
+- **[RAFAELIA_SUMMARY.md](RAFAELIA_SUMMARY.md)**: RAFAELIA module overview
+- **[RAFAELIA_ROADMAP.md](RAFAELIA_ROADMAP.md)**: UserLAnd integration plan
+- **[README.md](README.md)**: Main project documentation
 
-### Arquivos de Código Principais
+### Main Code Files
 
-- `add2/rafaelia_omega.c`: Sistema multi-camada com turbo_boost
-- `core/include/rafaelia_hyper_core_v800.c`: Hyper-core com energy injection
-- `raf_cpu_core.c`, `raf_mem_core.c`, `raf_disk_core.c`: Core utilities otimizados
-- `rafaelia/rafaelia_arch_probe.c`: Detecção de features de hardware
-- `scripts/build_static.sh`: Build system com flags otimizados
-- `RAFAELIA_BENCH_ALL.sh`: Suite de benchmarks
+- `add2/rafaelia_omega.c`: Multi-layer system with turbo_boost
+- `core/include/rafaelia_hyper_core_v800.c`: Hyper-core with energy injection
+- `raf_cpu_core.c`, `raf_mem_core.c`, `raf_disk_core.c`: Optimized core utilities
+- `rafaelia/rafaelia_arch_probe.c`: Hardware feature detection
+- `scripts/build_static.sh`: Build system with optimized flags
+- `RAFAELIA_BENCH_ALL.sh`: Complete benchmark suite
 
-### Recursos Externos
+### External Resources
 
-**Compiladores e Otimização**:
+**Compilers and Optimization**:
 - [GCC Optimization Options](https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html)
 - [Clang Optimization Flags](https://clang.llvm.org/docs/CommandGuide/clang.html#code-generation-options)
 
@@ -721,10 +721,10 @@ CFLAGS="-Os -flto" LDFLAGS="-Wl,--gc-sections -Wl,-s" \
 
 ---
 
-**Autor**: Rafael Melo Reis Novo (∆RafaelVerboΩ)  
-**Projeto**: UserLAnd / RAFAELIA  
-**Licença**: Ver [LICENSE](LICENSE)  
+**Author**: Rafael Melo Reis Novo (∆RafaelVerboΩ)  
+**Project**: UserLAnd / RAFAELIA  
+**License**: See [LICENSE](LICENSE)  
 
 ---
 
-*Para questões ou sugestões sobre boosters, abra uma issue no [repositório](https://github.com/CypherpunkArmory/UserLAnd/issues).*
+*For questions or suggestions about boosters, open an issue in the [repository](https://github.com/CypherpunkArmory/UserLAnd/issues).*
