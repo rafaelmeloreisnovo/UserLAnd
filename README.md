@@ -28,6 +28,10 @@ Features:
 - **[Technical Documentation](docs/TECHNICAL_DOCUMENTATION.md)** - Architecture overview and component map
 - **[Workflow Checks & Validation](docs/README_checks.md)** - Documentation for running validation tools and checks locally
 
+### Performance & Optimization Documentation
+- **[⚡ Performance Boosters](BOOSTERS.md)** - ⭐ **NEW!** Complete guide to RAFAELIA performance boosters, types, benchmarks, and optimization techniques
+- **[⚡ Performance Boosters (PT-BR)](BOOSTERS_PT.md)** - ⭐ **NOVO!** Guia completo dos boosters RAFAELIA, tipos, benchmarks e técnicas de otimização (Português)
+
 ### Project Documentation
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to UserLAnd
 - **[Governance Policies](.github/CONTRIBUTING.md)** - Ethical compliance, sign-off requirements, and file protection
