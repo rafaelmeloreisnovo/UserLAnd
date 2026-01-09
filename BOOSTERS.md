@@ -58,7 +58,7 @@ Optimizations specific to ARM64, x86_64, etc.
 
 ### Turbo Boost Mode
 
-**Localização**: `add2/rafaelia_omega.c`, linha 42
+**Location**: `add2/rafaelia_omega.c`, line 42
 
 ```c
 typedef struct {
@@ -69,27 +69,27 @@ typedef struct {
 } LayerPhysics;
 ```
 
-**Descrição**: Flag que habilita modo de aceleração de hardware, permitindo ao sistema operar em frequências mais altas quando a temperatura e consumo permitem.
+**Description**: Hardware acceleration flag that enables the system to operate at higher frequencies when temperature and power consumption allow.
 
-**Características**:
+**Characteristics**:
 - Monitoramento de temperatura em tempo real
 - Ajuste dinâmico baseado em thermal throttling
 - Integração com IRQ latency monitoring
 - Safe defaults com fallback automático
 
-**Uso**:
+**Usage**:
 ```c
 sys->phys.turbo_boost = true;  // Habilita modo turbo
 ```
 
-**Impacto**:
-- ⚡ **Performance**: +15-25% em operações CPU-bound
-- 🔋 **Energia**: Aumento de ~10-15% no consumo
-- 🌡️ **Temperatura**: Monitoramento contínuo para segurança
+**Impact**:
+- ⚡ **Performance**: +15-25% in CPU-bound operations
+- 🔋 **Energy**: ~10-15% increase in consumption
+- 🌡️ **Temperature**: Continuous monitoring for safety
 
 ### Energy Boost Injection
 
-**Localização**: `core/include/rafaelia_hyper_core_v800.c`, linhas 199-201
+**Location**: `core/include/rafaelia_hyper_core_v800.c`, lines 199-201
 
 ```c
 uint32_t idx = MATRIX.state_crc % (uint32_t) TOTAL_CELLS;
@@ -97,22 +97,22 @@ float energy_boost = (float) (buffer[0] % 10u) * 0.5f;
 MATRIX.tensor[idx] += energy_boost;
 ```
 
-**Descrição**: Sistema de injeção de energia no tensor 3D baseado em dados de entrada, criando pontos de ativação dinâmicos para propagação de avalanche.
+**Description**: Energy injection system in 3D tensor based on input data, creating dynamic activation points for avalanche propagation.
 
-**Características**:
+**Characteristics**:
 - Entrada baseada em CRC para distribuição uniforme
 - Valores modulados (0.0 a 4.5) para estabilidade
 - Atualização em-place sem alocação
 - Integração com Self-Organized Criticality (SOC)
 
-**Impacto**:
-- 📊 **Throughput**: +40% em processamento de streams
-- 💾 **Memória**: Zero overhead adicional
-- 🎯 **Precisão**: Distribuição estatisticamente uniforme
+**Impact**:
+- 📊 **Throughput**: +40% in stream processing
+- 💾 **Memory**: Zero additional overhead
+- 🎯 **Precision**: Statistically uniform distribution
 
 ### Cycle Counter (Hardware Timing)
 
-**Arquiteturas Suportadas**:
+**Supported Architectures**:
 
 #### ARM64 (AArch64)
 ```c
@@ -126,14 +126,14 @@ uint64_t counter;
 asm volatile("rdtsc" : "=A"(counter));
 ```
 
-**Descrição**: Acesso direto a contadores de ciclo de hardware para timing de precisão nanosegundo.
+**Description**: Direct access to hardware cycle counters for nanosecond precision timing.
 
-**Uso em**:
+**Used in**:
 - `rafaelia_arch_probe.c`: Detecção de arquitetura
 - Benchmarking de operações críticas
 - Profiling de hot paths
 
-**Precisão**:
+**Precision**:
 - ARM64: ~1-2ns por leitura
 - x86_64: <1ns por leitura
 
@@ -143,11 +143,11 @@ asm volatile("rdtsc" : "=A"(counter));
 
 ### 1. Self-Organized Criticality (SOC)
 
-**Localização**: `core/include/rafaelia_hyper_core_v800.c`, função `_op_soc_physics()`
+**Location**: `core/include/rafaelia_hyper_core_v800.c`, function `_op_soc_physics()`
 
-**Descrição**: Modelo físico inspirado em avalanches que propaga energia através de um tensor 3D (100×100×100 = 1M células).
+**Description**: Physics model inspired by avalanches that propagates energy through a 3D tensor (100×100×100 = 1M cells).
 
-**Algoritmo**:
+**Algorithm**:
 ```c
 if (val > MATRIX.threshold_dynamic) {
     float excess = val * 0.5f;
@@ -161,7 +161,7 @@ if (val > MATRIX.threshold_dynamic) {
 val *= 0.98f;  // Dissipação natural
 ```
 
-**Características**:
+**Characteristics**:
 - Limiar dinâmico adaptativo
 - Propagação local (vizinhos imediatos)
 - Dissipação exponencial (2% por ciclo)
@@ -174,11 +174,11 @@ val *= 0.98f;  // Dissipação natural
 
 ### 2. ZIPRAF Compression
 
-**Localização**: `core/include/rafaelia_hyper_core_v800.c`, função `_op_zipraf()`
+**Location**: `core/include/rafaelia_hyper_core_v800.c`, function `_op_zipraf()`
 
-**Descrição**: Compressão lossy de tensor 1M → vetor 64D para assinatura e transmissão.
+**Description**: Lossy compression of 1M tensor → 64D vector for signature and transmission.
 
-**Algoritmo**:
+**Algorithm**:
 ```c
 int stride = TOTAL_CELLS / VEC_DIM;  // 1,000,000 / 64 = 15,625
 
@@ -192,27 +192,27 @@ for (int v = 0; v < VEC_DIM; v++) {
 }
 ```
 
-**Taxa de Compressão**:
+**Compression Ratio**:
 - Input: 1,000,000 floats (4MB)
 - Output: 64 floats (256 bytes)
 - **Razão: 15,625:1** (99.994% de redução)
 
-**Uso**:
+**Usage**:
 - Transmissão de estado via JSON
 - Fingerprinting de configurações
 - Comparação de estados
 
 ### 3. Fibonacci Rafael (Atemporal)
 
-**Localização**: `add2/rafaelia_omega.c`, função `fibonacci_rafael()`
+**Location**: `add2/rafaelia_omega.c`, function `fibonacci_rafael()`
 
-**Fórmula**:
+**Formula**:
 ```
 F_Rafael(n+1) = F(n) × (√3/2) + π × sin(θ₉₉₉)
 onde θ₉₉₉ = 999Hz × n × π / 180°
 ```
 
-**Implementação**:
+**Implementation**:
 ```c
 double fibonacci_rafael(int n) {
     static double prev = 1.0;
@@ -223,21 +223,21 @@ double fibonacci_rafael(int n) {
 }
 ```
 
-**Características**:
+**Characteristics**:
 - Sequência não-linear com oscilação harmônica
-- Memória de estado (prev)
+- State memory (prev)
 - Convergência para ~2.72 (número de Euler)
 
 ### 4. Inline Number Parsing
 
-**Localização**: `raf_cpu_core.c`, `raf_mem_core.c`, `raf_disk_core.c`
+**Location**: `raf_cpu_core.c`, `raf_mem_core.c`, `raf_disk_core.c`
 
-**Antes (stdlib.h)**:
+**Before (stdlib.h)**:
 ```c
 unsigned long long value = strtoull(cursor, &endptr, 10);
 ```
 
-**Depois (inline com overflow protection)**:
+**After (inline with overflow protection)**:
 ```c
 uint64_t value = 0;
 while (*cursor >= '0' && *cursor <= '9') {
@@ -250,14 +250,14 @@ while (*cursor >= '0' && *cursor <= '9') {
 }
 ```
 
-**Vantagens**:
+**Advantages**:
 - ✅ **+30% mais rápido** que strtoull()
 - ✅ Zero overhead de chamada de função
 - ✅ Melhor inlining pelo compilador
 - ✅ Proteção contra overflow explícita
 - ✅ Sem dependência de stdlib.h
 
-**Impacto no Tamanho**:
+**Size Impact**:
 - Redução de ~15-20% no tamanho do binário
 - Eliminação de dependência dinâmica
 
@@ -267,7 +267,7 @@ while (*cursor >= '0' && *cursor <= '9') {
 
 ### Flags de Otimização Padrão
 
-**Localização**: `scripts/build_static.sh`, `RAFAELIA_BENCH_ALL.sh`
+**Location**: `scripts/build_static.sh`, `RAFAELIA_BENCH_ALL.sh`
 
 ```bash
 CFLAGS="-O3 -march=native -pipe -fvisibility=hidden \
@@ -294,7 +294,7 @@ LDFLAGS="-Wl,--gc-sections -Wl,--as-needed -Wl,-s"
 | Flag | Descrição | Ganho |
 |------|-----------|-------|
 | **-fvisibility=hidden** | Oculta símbolos internos | -5-10% size |
-| **-ffunction-sections** | Cada função em seção separada | Habilita GC |
+| **-ffunction-sections** | Cada function em seção separada | Habilita GC |
 | **-fdata-sections** | Cada dado em seção separada | Habilita GC |
 | **-fno-asynchronous-unwind-tables** | Remove tabelas de unwinding | -3-5% size |
 | **-Wl,--gc-sections** | Garbage collection de seções não usadas | -10-15% size |
@@ -335,7 +335,7 @@ CFLAGS="-O3 -march=x86-64-v3 -mtune=generic \
 
 **Performance** (10M operações de parsing):
 
-| Configuração | Tempo | Speedup |
+| Configuração | Time | Speedup |
 |--------------|-------|---------|
 | -O2 | 350ms | baseline |
 | -O3 | 280ms | 1.25x |
@@ -349,9 +349,9 @@ CFLAGS="-O3 -march=x86-64-v3 -mtune=generic \
 
 #### NEON SIMD
 
-**Localização**: `raf_neon_stacker.c`
+**Location**: `raf_neon_stacker.c`
 
-**Descrição**: Instruções SIMD vetorizadas para processamento paralelo de dados.
+**Description**: Instruções SIMD vetorizadas para processamento paralelo de dados.
 
 **Exemplo de Uso**:
 ```c
@@ -383,7 +383,7 @@ void vector_add_neon(float *a, float *b, float *result, int n) {
 
 **Flags**: `-march=armv8-a+crc`
 
-**Uso em**: `rafaelia_hyper_core_v800.c` (função `_fast_crc`)
+**Used in**: `rafaelia_hyper_core_v800.c` (function `_fast_crc`)
 
 **Performance**:
 - Hardware: ~0.5 ciclos/byte
@@ -419,7 +419,7 @@ void vector_add_neon(float *a, float *b, float *result, int n) {
 - AVX2: 256-bit (8× float32 ou 4× float64)
 - AVX-512: 512-bit (16× float32 ou 8× float64)
 
-**Throughput Teórico**:
+**Theoretical Throughput**:
 - SSE: 4 FLOPS/ciclo
 - AVX2: 8 FLOPS/ciclo
 - AVX-512: 16 FLOPS/ciclo
@@ -430,18 +430,18 @@ void vector_add_neon(float *a, float *b, float *result, int n) {
 
 **Operação**: `result = (a * b) + c` em 1 instrução
 
-**Uso em**: Loops de produto escalar, transformações lineares
+**Used in**: Loops de produto escalar, transformações lineares
 
 **Performance**:
 - Latência: 3-4 ciclos
-- Throughput: 2 ops/ciclo
+- Throughput: 2 ops/cycle
 - **2x speedup** vs multiply + add separados
 
 #### Cache Prefetching
 
 **Instrução**: `__builtin_prefetch()`
 
-**Uso**:
+**Usage**:
 ```c
 for (int i = 0; i < n; i++) {
     __builtin_prefetch(&data[i + 64], 0, 3);
@@ -453,13 +453,13 @@ for (int i = 0; i < n; i++) {
 - `0`: Prefetch para leitura
 - `3`: Alta localidade temporal
 
-**Impacto**:
+**Impact**:
 - Reduz cache misses em ~30-40%
 - Melhoria de 10-15% em loops memory-bound
 
 ### Detecção de Features em Runtime
 
-**Localização**: `rafaelia/rafaelia_arch_probe.c`
+**Location**: `rafaelia/rafaelia_arch_probe.c`
 
 **JSON Output**:
 ```json
@@ -475,7 +475,7 @@ for (int i = 0; i < n; i++) {
 }
 ```
 
-**Uso**:
+**Usage**:
 - Seleção de código path otimizado
 - Fallback automático se feature não disponível
 - Logging para debugging
@@ -486,7 +486,7 @@ for (int i = 0; i < n; i++) {
 
 ### RAFAELIA Benchmark Suite
 
-**Localização**: `RAFAELIA_BENCH_ALL.sh`
+**Location**: `RAFAELIA_BENCH_ALL.sh`
 
 **Componentes Testados**:
 
@@ -527,7 +527,7 @@ for (int i = 0; i < n; i++) {
 
 #### ARM64 (Snapdragon 888, 2.84GHz)
 
-| Teste | Operações | Tempo | Throughput |
+| Teste | Operações | Time | Throughput |
 |-------|-----------|-------|------------|
 | Toroidal SOC | 10 ciclos | 45ms | 222 cycles/s |
 | Matrix SOC | 20 ciclos | 120ms | 167 cycles/s |
@@ -537,7 +537,7 @@ for (int i = 0; i < n; i++) {
 
 #### x86_64 (Intel i7-10700, 2.9GHz)
 
-| Teste | Operações | Tempo | Throughput |
+| Teste | Operações | Time | Throughput |
 |-------|-----------|-------|------------|
 | Toroidal SOC | 10 ciclos | 32ms | 312 cycles/s |
 | Matrix SOC | 20 ciclos | 95ms | 211 cycles/s |
@@ -654,7 +654,7 @@ objdump -d raf_cpu_core | grep -E '(addps|mulps|movaps)' # SSE
 CFLAGS="-O0 -g -fsanitize=address,undefined" ./scripts/build_static.sh
 ```
 
-**Uso**:
+**Usage**:
 - Debugging com GDB
 - Análise com sanitizers
 - Verificação de memória
