@@ -79,7 +79,7 @@ typedef struct {
 
 **Usage**:
 ```c
-sys->phys.turbo_boost = true;  // Habilita modo turbo
+sys->phys.turbo_boost = true;  // Enable turbo mode
 ```
 
 **Impact**:
@@ -158,7 +158,7 @@ if (val > MATRIX.threshold_dynamic) {
     if (i > 0)               t[i - 1] += give;
     avalanches++;
 }
-val *= 0.98f;  // Dissipação natural
+val *= 0.98f;  // Natural dissipation
 ```
 
 **Characteristics**:
