@@ -109,7 +109,14 @@ extern "C" {
 #define RAF_ARCH_PPC64 1
 #define RAF_ARCH_NAME "ppc64"
 #define RAF_ARCH_BITS 64
-#if defined(__LITTLE_ENDIAN__)
+/* Check for little-endian PPC64 (ppc64le) using standard macros */
+#if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__)
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define RAF_ARCH_LITTLE_ENDIAN 1
+#else
+#define RAF_ARCH_BIG_ENDIAN 1
+#endif
+#elif defined(_LITTLE_ENDIAN) || defined(__LITTLE_ENDIAN__)
 #define RAF_ARCH_LITTLE_ENDIAN 1
 #else
 #define RAF_ARCH_BIG_ENDIAN 1
@@ -465,7 +472,14 @@ extern "C" {
 /* Compile-time assertion macro */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 #define RAF_STATIC_ASSERT(expr, msg) _Static_assert(expr, msg)
+#elif defined(__COUNTER__)
+/* Use __COUNTER__ for unique names when available (GCC, Clang, MSVC) */
+#define RAF_STATIC_ASSERT_JOIN_(a, b) a##b
+#define RAF_STATIC_ASSERT_JOIN(a, b) RAF_STATIC_ASSERT_JOIN_(a, b)
+#define RAF_STATIC_ASSERT(expr, msg) \
+    typedef char RAF_STATIC_ASSERT_JOIN(raf_static_assert_, __COUNTER__)[(expr) ? 1 : -1]
 #else
+/* Fallback using __LINE__ - may have issues with multiple assertions on same line */
 #define RAF_STATIC_ASSERT(expr, msg) \
     typedef char RAF_STATIC_ASSERT_##__LINE__[(expr) ? 1 : -1]
 #endif

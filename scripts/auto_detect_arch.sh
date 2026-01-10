@@ -418,6 +418,15 @@ output_json() {
     local android_arch
     android_arch=$(get_android_arch_for_host "$host_arch")
     
+    # Determine Android 15 compatibility based on NDK version
+    local android_15_compat="false"
+    if [[ -n "$ndk_version" ]]; then
+        local major_version="${ndk_version%%.*}"
+        if [[ -n "$major_version" ]] && [[ "$major_version" =~ ^[0-9]+$ ]] && [[ "$major_version" -ge 27 ]]; then
+            android_15_compat="true"
+        fi
+    fi
+    
     cat <<EOF
 {
   "version": "$SCRIPT_VERSION",
@@ -433,7 +442,7 @@ output_json() {
     "target_arch": "${android_arch:-null}",
     "min_api_level": 21,
     "target_api_level": 35,
-    "android_15_compatible": $([ "${ndk_version%%.*}" -ge 27 ] 2>/dev/null && echo "true" || echo "false")
+    "android_15_compatible": $android_15_compat
   },
   "toolchain": {
     "c_compiler": "${cc:-null}",

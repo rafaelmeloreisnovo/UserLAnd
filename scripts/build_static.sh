@@ -157,11 +157,9 @@ choose_ndk_toolchain() {
       fi
       ;;
     Darwin)
-      if [[ "$host_arch" == "arm64" ]]; then
-        host_tag="darwin-x86_64"  # NDK uses Rosetta or universal binaries
-      else
-        host_tag="darwin-x86_64"
-      fi
+      # NDK prebuilt binaries for macOS are always x86_64
+      # On Apple Silicon (arm64), they run via Rosetta 2 translation
+      host_tag="darwin-x86_64"
       ;;
     *)
       echo "[WARN] Unsupported host OS '$host_os' for NDK autodiscovery." >&2
