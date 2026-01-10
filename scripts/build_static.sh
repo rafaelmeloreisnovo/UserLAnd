@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# ==============================================================================
+# build_static.sh - Cross-Architecture Static Binary Builder
+# ==============================================================================
+#
+# This script builds low-level helper binaries with support for:
+# - Native compilation for the host platform
+# - Cross-compilation for Android using NDK
+# - Automatic architecture detection and configuration
+#
+# Supported architectures:
+# - Android: arm64-v8a, armeabi-v7a, x86_64, x86
+# - Linux: x86_64, aarch64, arm, i386
+# - macOS: arm64, x86_64
+# ==============================================================================
+
 # Repository root (one level above scripts/)
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -8,6 +23,11 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 if [[ -f "$SCRIPT_DIR/path_validator.sh" ]]; then
   source "$SCRIPT_DIR/path_validator.sh"
+fi
+
+# Source auto-detection if available
+if [[ -f "$SCRIPT_DIR/auto_detect_arch.sh" ]]; then
+  source "$SCRIPT_DIR/auto_detect_arch.sh"
 fi
 
 normalize_and_warn() {
@@ -88,48 +108,119 @@ LDFLAGS="${LDFLAGS:-"-Wl,--gc-sections -Wl,--as-needed -Wl,-s"}"
 # checked-in placeholder directory at ./ndk.
 choose_ndk_toolchain() {
   local host_tag
-  local ndk_dir="${NDK_DIR:-${ANDROID_NDK_HOME:-${NDK_HOME:-}}}"
+  local ndk_dir="${NDK_DIR:-${ANDROID_NDK_HOME:-${NDK_HOME:-${ANDROID_NDK:-}}}}"
 
-  if [[ -z "$ndk_dir" && -d "$ROOT_DIR/ndk" ]]; then
-    ndk_dir="$ROOT_DIR/ndk"
+  # Auto-detect NDK from common locations
+  if [[ -z "$ndk_dir" ]]; then
+    local possible_ndk_paths=(
+      "$ROOT_DIR/ndk"
+      "$HOME/Android/Sdk/ndk"
+      "$HOME/Library/Android/sdk/ndk"
+      "/usr/local/android-sdk/ndk"
+      "/opt/android-sdk/ndk"
+      "/usr/local/lib/android/sdk/ndk"
+    )
+    
+    for path in "${possible_ndk_paths[@]}"; do
+      if [[ -d "$path" ]]; then
+        # Find the latest NDK version in the directory
+        local latest_ndk
+        latest_ndk=$(find "$path" -maxdepth 1 -type d -name '[0-9]*' 2>/dev/null | sort -V | tail -1)
+        if [[ -n "$latest_ndk" ]] && [[ -d "$latest_ndk/toolchains" ]]; then
+          ndk_dir="$latest_ndk"
+          break
+        elif [[ -d "$path/toolchains" ]]; then
+          ndk_dir="$path"
+          break
+        fi
+      fi
+    done
   fi
 
   if [[ -z "$ndk_dir" ]]; then
+    echo "[INFO] No NDK found; using host compiler for native builds." >&2
     return 0
   fi
 
-  case "$(uname -s)" in
-    Linux) host_tag="linux-x86_64" ;;
-    Darwin) host_tag="darwin-x86_64" ;;
+  # Detect host OS and architecture for NDK prebuilt binaries
+  local host_os host_arch
+  host_os="$(uname -s)"
+  host_arch="$(uname -m)"
+  
+  case "$host_os" in
+    Linux)
+      if [[ "$host_arch" == "x86_64" ]] || [[ "$host_arch" == "amd64" ]]; then
+        host_tag="linux-x86_64"
+      else
+        echo "[WARN] Unsupported host architecture '$host_arch' for NDK on Linux." >&2
+        return 0
+      fi
+      ;;
+    Darwin)
+      # NDK prebuilt binaries for macOS are always x86_64
+      # On Apple Silicon (arm64), they run via Rosetta 2 translation
+      host_tag="darwin-x86_64"
+      ;;
     *)
-      echo "Unsupported host OS for NDK autodiscovery." >&2
+      echo "[WARN] Unsupported host OS '$host_os' for NDK autodiscovery." >&2
       return 0
       ;;
   esac
 
   local toolchain_base="$ndk_dir/toolchains/llvm/prebuilt/${NDK_HOST_TAG:-$host_tag}"
   if [[ ! -x "$toolchain_base/bin/clang" ]]; then
-    echo "NDK toolchain not found at $toolchain_base; falling back to host compiler." >&2
+    echo "[WARN] NDK toolchain not found at $toolchain_base; falling back to host compiler." >&2
     return 0
   fi
 
+  # API level: use NDK_API_LEVEL or default to 21 (Android 5.0 - minSdk)
   local api="${NDK_API_LEVEL:-21}"
-  local arch="${NDK_ARCH:-arm64}"
+  
+  # Architecture: use NDK_ARCH or auto-detect from host
+  local arch="${NDK_ARCH:-}"
+  if [[ -z "$arch" ]]; then
+    # Auto-detect target architecture based on host
+    case "$host_arch" in
+      x86_64|amd64) arch="x86_64" ;;
+      aarch64|arm64) arch="arm64" ;;
+      armv7l|arm) arch="arm" ;;
+      i686|i386) arch="x86" ;;
+      *) arch="arm64" ;;  # Default to ARM64 for Android devices
+    esac
+  fi
+  
   local target_triple
   case "$arch" in
-    arm64) target_triple="aarch64-linux-android${api}" ;;
-    arm) target_triple="armv7a-linux-androideabi${api}" ;;
+    arm64|aarch64) target_triple="aarch64-linux-android${api}" ;;
+    arm|armeabi-v7a) target_triple="armv7a-linux-androideabi${api}" ;;
     x86_64) target_triple="x86_64-linux-android${api}" ;;
-    x86) target_triple="i686-linux-android${api}" ;;
+    x86|i686) target_triple="i686-linux-android${api}" ;;
     *)
-      echo "Unsupported NDK_ARCH '$arch'; valid values: arm, arm64, x86, x86_64." >&2
+      echo "[ERROR] Unsupported NDK_ARCH '$arch'; valid values: arm, arm64, x86, x86_64." >&2
       return 1
       ;;
   esac
 
   CC="$toolchain_base/bin/clang"
   TARGET="--target=$target_triple"
-  echo "Using NDK toolchain at $toolchain_base for $target_triple" >&2
+  
+  # Add architecture-specific compiler flags
+  case "$arch" in
+    arm64|aarch64)
+      CFLAGS="$CFLAGS -march=armv8-a"
+      ;;
+    arm|armeabi-v7a)
+      CFLAGS="$CFLAGS -march=armv7-a -mthumb -mfpu=neon"
+      ;;
+  esac
+  
+  # Add Android 15 16KB page alignment for API 35+
+  if [[ "$api" -ge 35 ]]; then
+    LDFLAGS="$LDFLAGS -Wl,-z,max-page-size=16384"
+    echo "[INFO] Android 15+ detected; enabling 16KB page alignment." >&2
+  fi
+  
+  echo "[INFO] Using NDK toolchain at $toolchain_base for $target_triple" >&2
 }
 
 if ! choose_ndk_toolchain; then
@@ -164,9 +255,11 @@ build() {
 }
 
 echo "RAFAELIA static/dynamic builder"
+echo "Architecture: ${NDK_ARCH:-host}"
+echo "Target: ${TARGET:-native}"
 
 if ! command -v "$CC" >/dev/null 2>&1; then
-  echo "Compiler '$CC' not found (set CC or install gcc/clang)" >&2
+  echo "[ERROR] Compiler '$CC' not found (set CC or install gcc/clang)" >&2
   exit 1
 fi
 
@@ -180,3 +273,14 @@ build raf_arch_probe.c raf_arch_probe
 if [[ -f "$SRC_DIR/rafaelia/rafaelia_arch_probe.c" ]]; then
   build rafaelia/rafaelia_arch_probe.c rafaelia_arch_probe_v2
 fi
+
+echo "[SUCCESS] All binaries built to: $OUT_DIR" >&2
+
+# ==============================================================================
+# Multi-Architecture Build Support
+# ==============================================================================
+# To build for all Android architectures, run:
+#   for arch in arm64 arm x86_64 x86; do
+#     NDK_ARCH=$arch OUT_DIR=build/bin/$arch ./scripts/build_static.sh
+#   done
+# ==============================================================================
