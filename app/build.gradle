@@ -39,6 +39,14 @@ def localNdkDir = localProperties.getProperty('ndk.dir')
         ?: System.getenv('NDK_HOME')
 def resolvedNdkVersion = project.findProperty('ndkVersion')
 def abiFiltersProperty = project.findProperty('abiFilters') ?: project.findProperty('userlandAbiFilters')
+def abiFiltersList = abiFiltersProperty
+        ? abiFiltersProperty
+                .toString()
+                .split(',')
+                .collect { it.trim() }
+                .findAll { it }
+        : []
+def resolvedAbiFilters = abiFiltersList.isEmpty() ? architectures : abiFiltersList
 
 android {
     namespace 'tech.ula'
@@ -58,19 +66,6 @@ android {
         versionCode vcode
         versionName "2.8.3"
 
-        if (abiFiltersProperty) {
-            def abiFiltersList = abiFiltersProperty
-                    .toString()
-                    .split(',')
-                    .collect { it.trim() }
-                    .findAll { it }
-            if (!abiFiltersList.isEmpty()) {
-                ndk {
-                    abiFilters(*abiFiltersList)
-                }
-            }
-        }
-        
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments clearPackageData: 'true'
 
@@ -78,7 +73,7 @@ android {
         buildConfigField 'boolean', 'ENABLE_PLAY_SERVICES', 'true'
 
         ndk {
-            abiFilters(*architectures)
+            abiFilters(*resolvedAbiFilters)
         }
 
         //these are used to help determine the resolution
