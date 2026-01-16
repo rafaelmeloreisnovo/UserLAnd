@@ -38,6 +38,11 @@ All necessary changes for Android 15 compatibility have been implemented in the 
 - Password sanitization in logs
 - FileProvider configured for secure file sharing
 
+#### Process Limit & Threading Strategy
+- Android 15 enforces stricter limits on background/phantom processes (effectively ~32 processes).
+- UserLAnd is designed to avoid spawning excessive subprocesses; concurrency is achieved with threads.
+- Native and background workloads use thread pools/Pthreads to scale work without breaching the process limit.
+
 ## Device Compatibility
 
 ### Target Device (from issue)
