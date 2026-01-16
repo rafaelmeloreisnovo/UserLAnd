@@ -228,8 +228,5 @@ fi
 if [[ -n "$ARCHITECTURES" ]]; then
   GRADLE_ARGS+=("-Parchitectures=$ARCHITECTURES")
 fi
-if [[ -n "$ABI_FILTERS" ]]; then
-  GRADLE_ARGS+=("-PabiFilters=$ABI_FILTERS")
-fi
 
 "$ROOT_DIR/gradlew" "$BUILD_TASK" ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"}
