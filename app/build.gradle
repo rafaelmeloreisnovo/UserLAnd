@@ -58,16 +58,20 @@ android {
         versionCode vcode
         versionName "2.8.3"
 
+        def abiFiltersList = []
         if (abiFiltersProperty) {
-            def abiFiltersList = abiFiltersProperty
+            abiFiltersList = abiFiltersProperty
                     .toString()
                     .split(',')
                     .collect { it.trim() }
                     .findAll { it }
-            if (!abiFiltersList.isEmpty()) {
-                ndk {
-                    abiFilters(*abiFiltersList)
-                }
+        }
+        if (abiFiltersList.isEmpty()) {
+            abiFiltersList = architectures
+        }
+        if (!abiFiltersList.isEmpty()) {
+            ndk {
+                abiFilters(*abiFiltersList)
             }
         }
         
@@ -76,10 +80,6 @@ android {
 
         vectorDrawables.useSupportLibrary = true
         buildConfigField 'boolean', 'ENABLE_PLAY_SERVICES', 'true'
-
-        ndk {
-            abiFilters(*architectures)
-        }
 
         //these are used to help determine the resolution
         buildConfigField 'boolean', 'FORCE_PORTRAIT_GEOMETRY', 'true'
