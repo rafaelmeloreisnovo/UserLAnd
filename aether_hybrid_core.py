@@ -18,6 +18,7 @@ import os
 import sys
 import time
 from io import BytesIO
+from typing import BinaryIO, Dict
 
 # -----------------------
 # 1) Núcleo AETHER (Python puro, para payload pequeno)
@@ -48,7 +49,7 @@ def aether_update(state: int, chunk: bytes) -> int:
         h = (h * PRIME) & MASK64
     return h
 
-def aether_small_stream(stream, width_bits: int = 256, chunk_size: int = 4 * 1024 * 1024):
+def aether_small_stream(stream: BinaryIO, width_bits: int = 256, chunk_size: int = 4 * 1024 * 1024) -> Dict:
     """
     AETHER puro em Python – usar apenas para payload até alguns MB.
     width_bits <= 1024 (saída concatenando lanes de 64 bits).
@@ -85,7 +86,7 @@ def aether_small_stream(stream, width_bits: int = 256, chunk_size: int = 4 * 102
 # 2) Fallback AETHER TURBO (BLAKE2b por baixo)
 # -----------------------
 
-def aether_big_stream(stream, width_bits: int = 256, chunk_size: int = 4 * 1024 * 1024):
+def aether_big_stream(stream: BinaryIO, width_bits: int = 256, chunk_size: int = 4 * 1024 * 1024) -> Dict:
     """
     AETHER_TURBO: implementado em cima de BLAKE2b (hashlib),
     para payload grande (dezenas/centenas de MB).
@@ -148,7 +149,7 @@ def aether_big_stream(stream, width_bits: int = 256, chunk_size: int = 4 * 1024 
 # 3) IRON (SHA-256) e BLAKE puros
 # -----------------------
 
-def hash_iron_stream(stream, chunk_size: int = 4 * 1024 * 1024):
+def hash_iron_stream(stream: BinaryIO, chunk_size: int = 4 * 1024 * 1024) -> Dict:
     h = hashlib.sha256()
     total_bytes = 0
     t0 = time.time()
@@ -172,7 +173,7 @@ def hash_iron_stream(stream, chunk_size: int = 4 * 1024 * 1024):
         "mb_per_s": speed,
     }
 
-def hash_blake_stream(stream, chunk_size: int = 4 * 1024 * 1024):
+def hash_blake_stream(stream: BinaryIO, chunk_size: int = 4 * 1024 * 1024) -> Dict:
     h = hashlib.blake2b(digest_size=32)
     total_bytes = 0
     t0 = time.time()
@@ -202,40 +203,61 @@ def hash_blake_stream(stream, chunk_size: int = 4 * 1024 * 1024):
 
 SMALL_THRESHOLD_BYTES = 8 * 1024 * 1024  # 8 MB
 
+def validate_width_bits(width_bits: int) -> int:
+    if width_bits < 64 or width_bits > 1024:
+        raise ValueError("largura inválida: use 64..1024 bits")
+    if width_bits % 64 != 0:
+        raise ValueError("largura inválida: use múltiplos de 64 bits")
+    return width_bits
+
+def validate_engine(engine: str) -> str:
+    allowed = {"aether", "iron", "blake"}
+    if engine not in allowed:
+        raise ValueError(f"engine inválido: {engine}")
+    return engine
+
+def open_binary_stream(path: str) -> BinaryIO:
+    if not os.path.exists(path):
+        raise FileNotFoundError(path)
+    if not os.path.isfile(path):
+        raise IsADirectoryError(path)
+    return open(path, "rb")
+
 def hash_text(text: str, engine: str = "aether", width_bits: int = 256):
-    b = text.encode("utf-8")
+    engine = validate_engine(engine)
+    width_bits = validate_width_bits(width_bits)
+    try:
+        b = text.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ValueError("falha ao codificar texto em UTF-8") from exc
     stream = BytesIO(b)
     if engine == "aether":
         # texto normalmente é pequeno → AETHER_PY
         return aether_small_stream(stream, width_bits=width_bits)
-    elif engine == "iron":
+    if engine == "iron":
         return hash_iron_stream(stream)
-    elif engine == "blake":
-        return hash_blake_stream(stream)
-    else:
-        raise ValueError("engine inválido")
+    return hash_blake_stream(stream)
 
 def hash_file(path: str, engine: str = "aether", width_bits: int = 256):
-    if not os.path.exists(path):
-        raise FileNotFoundError(path)
-    size = os.path.getsize(path)
+    engine = validate_engine(engine)
+    width_bits = validate_width_bits(width_bits)
+    try:
+        size = os.path.getsize(path)
+    except OSError as exc:
+        raise OSError(f"falha ao ler tamanho do arquivo: {path}") from exc
 
     if engine == "aether":
         # Se for pequeno: AETHER_PY; se for grande: AETHER_TURBO_BLAKE2B
         if size <= SMALL_THRESHOLD_BYTES:
-            with open(path, "rb") as f:
+            with open_binary_stream(path) as f:
                 return aether_small_stream(f, width_bits=width_bits)
-        else:
-            with open(path, "rb") as f:
-                return aether_big_stream(f, width_bits=width_bits)
-    elif engine == "iron":
-        with open(path, "rb") as f:
+        with open_binary_stream(path) as f:
+            return aether_big_stream(f, width_bits=width_bits)
+    if engine == "iron":
+        with open_binary_stream(path) as f:
             return hash_iron_stream(f)
-    elif engine == "blake":
-        with open(path, "rb") as f:
-            return hash_blake_stream(f)
-    else:
-        raise ValueError("engine inválido")
+    with open_binary_stream(path) as f:
+        return hash_blake_stream(f)
 
 # -----------------------
 # 5) CLI
@@ -249,6 +271,19 @@ def print_human(res: dict):
     print(f"Speed      : {res['mb_per_s']:.2f} MB/s")
     print(f"Hex digest : {res['hex']}")
 
+def _positive_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("use um inteiro válido") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("use um inteiro positivo")
+    return parsed
+
+def _exit_error(message: str, code: int = 1) -> None:
+    print(f"[ERROR] {message}", file=sys.stderr)
+    sys.exit(code)
+
 def _main():
     parser = argparse.ArgumentParser()
     parser.add_argument("target", help="arquivo ou texto")
@@ -260,7 +295,7 @@ def _main():
     )
     parser.add_argument(
         "-w", "--width",
-        type=int,
+        type=_positive_int,
         default=256,
         help="largura em bits (AETHER): 64..1024",
     )
@@ -278,21 +313,28 @@ def _main():
     # Heurística simples: se existe arquivo com esse nome → arquivo; senão → texto literal
     try_file = os.path.exists(target)
 
-    if try_file:
-        try:
+    try:
+        if try_file:
             res = hash_file(target, engine=engine, width_bits=width)
-        except FileNotFoundError as e:
-            print(f"[ERROR] Arquivo não encontrado: {e}", file=sys.stderr)
-            sys.exit(1)
-    else:
-        # Tratar sempre como texto se não for arquivo
-        res = hash_text(target, engine=engine, width_bits=width)
+        else:
+            # Tratar sempre como texto se não for arquivo
+            res = hash_text(target, engine=engine, width_bits=width)
 
-    if args.formatted:
-        print_human(res)
-    else:
-        # saída compacta, fácil de grepar/parsing
-        print(res)
+        if args.formatted:
+            print_human(res)
+        else:
+            # saída compacta, fácil de grepar/parsing
+            print(res)
+    except (FileNotFoundError, IsADirectoryError):
+        _exit_error(f"arquivo inválido ou inexistente: {target}")
+    except PermissionError:
+        _exit_error(f"sem permissão para ler: {target}")
+    except ValueError as exc:
+        _exit_error(str(exc))
+    except OSError as exc:
+        _exit_error(f"erro de I/O: {exc}")
+    except BrokenPipeError:
+        sys.exit(0)
 
 if __name__ == "__main__":
     _main()
