@@ -39,6 +39,13 @@ class UlaFiles(
         containingDirectoryPath: String,
         filename: String,
     ) {
+        if (!ProcessLimiter.acquirePermit("makePermissionsUsable", 10_000L)) {
+            android.util.Log.w(
+                "UlaFiles",
+                "Process limit reached while setting permissions; skipping chmod for $filename",
+            )
+            return
+        }
         val commandToRun = arrayListOf("chmod", "0777", filename)
 
         val containingDirectory = File(containingDirectoryPath)
@@ -47,8 +54,12 @@ class UlaFiles(
         val pb = ProcessBuilder(commandToRun)
         pb.directory(containingDirectory)
 
-        val process = pb.start()
-        process.waitFor()
+        try {
+            val process = pb.start()
+            process.waitFor()
+        } finally {
+            ProcessLimiter.releasePermit("makePermissionsUsable")
+        }
     }
 
     private fun resolveSdCardScopedStorage(context: Context): File? {

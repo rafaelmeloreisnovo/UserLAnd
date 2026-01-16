@@ -36,6 +36,9 @@ class BusyboxExecutor(
         // Timeout padrão para comandos PROOT que "devem terminar"
         // (evita travamentos infinitos / zumbis em scripts de bootstrap).
         private const val PROOT_TERMINATING_TIMEOUT_MILLIS: Long = 300_000L // 5 minutos
+
+        // Timeout para aguardar vaga no limite de processos do Android 15+.
+        private const val PROCESS_LIMIT_TIMEOUT_MILLIS: Long = 30_000L
     }
 
     private val discardOutput: (String) -> Any = { Log.d(TAG, it) }
@@ -95,6 +98,11 @@ class BusyboxExecutor(
 
         processBuilder.environment().putAll(env)
 
+        val permitOwner = "runCommand"
+        if (!ProcessLimiter.acquirePermit(permitOwner, PROCESS_LIMIT_TIMEOUT_MILLIS)) {
+            return FailedExecution("Process limit reached; try again later.")
+        }
+
         return try {
             Log.d(TAG, "runCommand(): $command, env=${sanitizeEnvForLogging(env)}")
             val process = processBuilder.start()
@@ -103,6 +111,8 @@ class BusyboxExecutor(
         } catch (err: Exception) {
             Log.e(TAG, "runCommand() failed: $err")
             FailedExecution("runCommand failed: ${err.message ?: err.toString()}")
+        } finally {
+            ProcessLimiter.releasePermit(permitOwner)
         }
     }
 
@@ -155,6 +165,18 @@ class BusyboxExecutor(
 
         processBuilder.environment().putAll(mergedEnv)
 
+        val permitOwner =
+            if (commandShouldTerminate) {
+                "executeProotCommand(terminating)"
+            } else {
+                "executeProotCommand(ongoing)"
+            }
+        if (!ProcessLimiter.acquirePermit(permitOwner, PROCESS_LIMIT_TIMEOUT_MILLIS)) {
+            return FailedExecution("Process limit reached; try again later.")
+        }
+        var permitReleased = false
+        var releaseManagedByExitWatcher = false
+
         return try {
             Log.d(
                 TAG,
@@ -168,29 +190,60 @@ class BusyboxExecutor(
                 prootDebugEnabled && commandShouldTerminate -> {
                     listener("Output redirecting to proot debug log")
                     prootDebugLogger.logStream(process.inputStream, coroutineScope)
-                    waitForProcessWithTimeout(process, PROOT_TERMINATING_TIMEOUT_MILLIS)
+                    waitForProcessWithTimeout(process, PROOT_TERMINATING_TIMEOUT_MILLIS).also {
+                        ProcessLimiter.releasePermit(permitOwner)
+                        permitReleased = true
+                    }
                 }
 
                 prootDebugEnabled && !commandShouldTerminate -> {
                     listener("Output redirecting to proot debug log")
                     prootDebugLogger.logStream(process.inputStream, coroutineScope)
+                    releasePermitOnExit(process, permitOwner)
+                    releaseManagedByExitWatcher = true
                     OngoingExecution(process)
                 }
 
                 commandShouldTerminate -> {
                     collectOutput(process.inputStream, listener)
-                    waitForProcessWithTimeout(process, PROOT_TERMINATING_TIMEOUT_MILLIS)
+                    waitForProcessWithTimeout(process, PROOT_TERMINATING_TIMEOUT_MILLIS).also {
+                        ProcessLimiter.releasePermit(permitOwner)
+                        permitReleased = true
+                    }
                 }
 
                 else -> {
                     // Não consome saída aqui; chamador deverá cuidar disso via process.
+                    releasePermitOnExit(process, permitOwner)
+                    releaseManagedByExitWatcher = true
                     OngoingExecution(process)
                 }
             }
         } catch (err: Exception) {
             Log.e(TAG, "executeProotCommand() failed: $err")
             FailedExecution("executeProotCommand failed: ${err.message ?: err.toString()}")
+        } finally {
+            if (!permitReleased && !releaseManagedByExitWatcher) {
+                ProcessLimiter.releasePermit(permitOwner)
+            }
         }
+    }
+
+    private fun releasePermitOnExit(
+        process: Process,
+        permitOwner: String,
+    ) {
+        Thread {
+            try {
+                process.waitFor()
+            } catch (_: Exception) {
+            } finally {
+                ProcessLimiter.releasePermit(permitOwner)
+            }
+        }.apply {
+            isDaemon = true
+            name = "ProcessPermitRelease-$permitOwner"
+        }.start()
     }
 
     /**
