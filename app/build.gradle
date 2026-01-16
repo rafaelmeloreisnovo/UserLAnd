@@ -39,6 +39,14 @@ def localNdkDir = localProperties.getProperty('ndk.dir')
         ?: System.getenv('NDK_HOME')
 def resolvedNdkVersion = project.findProperty('ndkVersion')
 def abiFiltersProperty = project.findProperty('abiFilters') ?: project.findProperty('userlandAbiFilters')
+def abiFiltersList = abiFiltersProperty
+        ? abiFiltersProperty
+                .toString()
+                .split(',')
+                .collect { it.trim() }
+                .findAll { it }
+        : []
+def resolvedAbiFilters = abiFiltersList.isEmpty() ? architectures : abiFiltersList
 
 android {
     namespace 'tech.ula'
@@ -80,6 +88,10 @@ android {
 
         vectorDrawables.useSupportLibrary = true
         buildConfigField 'boolean', 'ENABLE_PLAY_SERVICES', 'true'
+
+        ndk {
+            abiFilters(*resolvedAbiFilters)
+        }
 
         //these are used to help determine the resolution
         buildConfigField 'boolean', 'FORCE_PORTRAIT_GEOMETRY', 'true'
