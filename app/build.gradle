@@ -66,6 +66,23 @@ android {
         versionCode vcode
         versionName "2.8.3"
 
+        def abiFiltersList = []
+        if (abiFiltersProperty) {
+            abiFiltersList = abiFiltersProperty
+                    .toString()
+                    .split(',')
+                    .collect { it.trim() }
+                    .findAll { it }
+        }
+        if (abiFiltersList.isEmpty()) {
+            abiFiltersList = architectures
+        }
+        if (!abiFiltersList.isEmpty()) {
+            ndk {
+                abiFilters(*abiFiltersList)
+            }
+        }
+        
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments clearPackageData: 'true'
 
