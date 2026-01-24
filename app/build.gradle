@@ -413,14 +413,15 @@ dependencies {
     def sentry_version = '8.29.0'
     def slf4j_version = '2.0.9'
 
-    def kotlinx_coroutines_version = '1.10.2'
+    // Coroutines aligned with Kotlin 1.9.24 for stability and compatibility.
+    def kotlinx_coroutines_version = '1.8.1'
 
     // Androidx versions compatible with AGP 8.6.0, Kotlin 1.9.24, and compileSdk 35
     def room_version = '2.8.4'
     def lifecycle_version = '2.10.0'
     def support_library_version = '1.13.0'
     def preference_version = '1.2.1'
-    // Use core-ktx 1.15.0 for compatibility with AGP 8.6.0 and compileSdk 35
+    // Use core-ktx 1.17.0 for compatibility with AGP 8.6.0 and compileSdk 35
     def ktx_version = '1.17.0'
     // Billing dependency version compatible with Kotlin 1.9.24
     // (7.1.1 is compiled with Kotlin 1.9.x for compatibility)

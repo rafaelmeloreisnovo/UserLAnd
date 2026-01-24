@@ -8,11 +8,11 @@ buildscript {
     }
 
     ext {
-        // Kotlin 1.9.24 for compatibility with Moshi, Room 2.6.1, and AGP 8.6.0
-        kotlin_version = '2.3.0'
+        // Kotlin 1.9.24 for compatibility with AGP 8.6.0 and AndroidX baselines
+        kotlin_version = '1.9.24'
         android_plugin = '8.6.0'
         jacoco_version = '0.8.14'
-        // Navigation 2.8.5 for compatibility with AGP 8.6.0 and Kotlin 1.9.24
+        // Navigation 2.9.6 compatible with AGP 8.6.0 and Kotlin 1.9.24
         navigation_version = '2.9.6'
     }
 

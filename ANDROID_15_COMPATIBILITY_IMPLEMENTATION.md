@@ -21,6 +21,7 @@ This PR solves the Android 15 compatibility issue across all processor architect
 3. **Environment validation** - New `Android15CompatibilityHelper` detects issues before they cause crashes
 4. **Enhanced timeouts** - Existing timeout mechanisms in `ServerService` prevent infinite loops
 5. **Circuit breaker** - Protection against repeated startup failures (max 3 failures in 2 minutes)
+6. **Process cap for stability** - Subprocess concurrency limited to 16 with threading preferred beyond this limit
 
 ## Arquiteturas Suportadas / Supported Architectures
 
@@ -105,6 +106,13 @@ Se uma sessão falha em iniciar 3 vezes em 2 minutos, o circuit breaker bloqueia
 - 📊 Salva informações do dispositivo
 - 🛡️ Ativa modo seguro automaticamente
 - 🖥️ Mostra tela de relatório de erro
+
+### 6. Limite de Processos e Anti-Zumbi / Process Cap & Zombie Avoidance
+
+Para evitar instabilidade no Android 15, o número de subprocessos é limitado a 16. Esse teto reduz
+pressão de processos fantasma e incentiva o uso de threading para paralelismo leve. O `ProcessLimiter`
+coordena a aquisição de permissões de processo e os watchers de saída liberam permissões quando os
+processos terminam, evitando vazamentos e processos zumbis.
 
 ## Como Testar / How to Test
 
@@ -194,3 +202,8 @@ Se encontrar problemas:
 1. Verifique os logs com `adb logcat`
 2. Use o recurso de diagnóstico no app (Settings → Diagnostics)
 3. Reporte issues com informações do dispositivo e logs
+
+## Normas e Interoperabilidade / Standards & Interoperability
+
+Para refatorações e interoperabilidade alinhadas a ISO 8000/9001, RFC, IEEE e NIST
+(entre outras), consulte `docs/STANDARDS_ALIGNMENT.md`.
