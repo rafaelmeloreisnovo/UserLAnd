@@ -202,3 +202,8 @@ Se encontrar problemas:
 1. Verifique os logs com `adb logcat`
 2. Use o recurso de diagnóstico no app (Settings → Diagnostics)
 3. Reporte issues com informações do dispositivo e logs
+
+## Normas e Interoperabilidade / Standards & Interoperability
+
+Para refatorações e interoperabilidade alinhadas a ISO 8000/9001, RFC, IEEE e NIST
+(entre outras), consulte `docs/STANDARDS_ALIGNMENT.md`.
