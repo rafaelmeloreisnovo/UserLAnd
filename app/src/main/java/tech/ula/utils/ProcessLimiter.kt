@@ -11,9 +11,9 @@ import java.util.concurrent.TimeUnit
 object ProcessLimiter {
     private const val TAG = "ProcessLimiter"
 
-    // Android 15+ enforces tighter background/phantom process limits (effectively ~32).
-    // Keep a safety margin to avoid system-side pressure.
-    private const val MAX_CONCURRENT_PROCESSES = 28
+    // Android 15+ enforces tighter background/phantom process limits.
+    // Keep a safety margin and cap subprocesses to 16, pushing scaling to threads instead.
+    private const val MAX_CONCURRENT_PROCESSES = 16
     private val semaphore = Semaphore(MAX_CONCURRENT_PROCESSES, true)
 
     fun acquirePermit(
