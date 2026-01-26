@@ -15,6 +15,8 @@
 #include <string.h>
 #include <time.h>
 #include <inttypes.h>
+#include <errno.h>
+#include <limits.h>
 
 // Timer em segundos (double)
 static double raf_now_seconds(void) {
@@ -23,6 +25,23 @@ static double raf_now_seconds(void) {
         return 0.0;
     }
     return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
+}
+
+static int parse_uint32_arg(const char *value, uint32_t *out) {
+    if (value == NULL || out == NULL) {
+        return 0;
+    }
+    errno = 0;
+    char *end = NULL;
+    unsigned long parsed = strtoul(value, &end, 10);
+    if (errno != 0 || end == value || *end != '\0') {
+        return 0;
+    }
+    if (parsed > UINT32_MAX) {
+        return 0;
+    }
+    *out = (uint32_t)parsed;
+    return 1;
 }
 
 static int raf_run_bench(uint32_t steps, uint32_t inj_per_step) {
@@ -84,8 +103,13 @@ static int raf_run_bench(uint32_t steps, uint32_t inj_per_step) {
 
 int main(int argc, char *argv[]) {
     if (argc == 4 && strcmp(argv[1], "--bench") == 0) {
-        uint32_t steps = (uint32_t) strtoul(argv[2], NULL, 10);
-        uint32_t inj   = (uint32_t) strtoul(argv[3], NULL, 10);
+        uint32_t steps = 0u;
+        uint32_t inj   = 0u;
+
+        if (!parse_uint32_arg(argv[2], &steps) || !parse_uint32_arg(argv[3], &inj)) {
+            fprintf(stderr, "Invalid bench args.\n");
+            return 1;
+        }
 
         if (steps == 0u || inj == 0u) {
             fprintf(stderr, "Invalid bench args.\n");

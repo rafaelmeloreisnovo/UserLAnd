@@ -4,6 +4,7 @@
 #include <string.h>
 #include <math.h>
 #include <unistd.h>
+#include <errno.h>
 
 /* Deterministic matrix-style aggregator for debug metrics. */
 struct metric_row {
@@ -39,6 +40,24 @@ static const char *sample_matrix[] = {
     "99.0, 3900, 1200, 600",
 };
 
+static int parse_double_field(const char *cursor, double *out, const char **next) {
+    if (cursor == NULL || out == NULL || next == NULL) {
+        return 0;
+    }
+    errno = 0;
+    char *endptr = NULL;
+    double value = strtod(cursor, &endptr);
+    if (errno != 0 || endptr == cursor) {
+        return 0;
+    }
+    if (!isfinite(value)) {
+        return 0;
+    }
+    *out = value;
+    *next = endptr;
+    return 1;
+}
+
 /* Reset accumulator with neutral bounds. */
 static void accum_init(struct accum_state *s) {
     s->cpu_sum = s->mem_sum = s->io_sum = s->thr_sum = 0.0;
@@ -59,44 +78,40 @@ static struct metric_row parse_line(const char *line) {
     }
 
     const char *cursor = line;
-    char *endptr = NULL;
+    const char *next = NULL;
 
     while (*cursor == ' ' || *cursor == '\t' || *cursor == ',') {
         cursor++;
     }
 
-    row.cpu = strtod(cursor, &endptr);
-    if (endptr == cursor) {
+    if (!parse_double_field(cursor, &row.cpu, &next)) {
         return row;
     }
-    cursor = endptr;
+    cursor = next;
 
     while (*cursor == ' ' || *cursor == '\t' || *cursor == ',') {
         cursor++;
     }
 
-    row.mem = strtod(cursor, &endptr);
-    if (endptr == cursor) {
+    if (!parse_double_field(cursor, &row.mem, &next)) {
         return row;
     }
-    cursor = endptr;
+    cursor = next;
 
     while (*cursor == ' ' || *cursor == '\t' || *cursor == ',') {
         cursor++;
     }
 
-    row.io = strtod(cursor, &endptr);
-    if (endptr == cursor) {
+    if (!parse_double_field(cursor, &row.io, &next)) {
         return row;
     }
-    cursor = endptr;
+    cursor = next;
 
     while (*cursor == ' ' || *cursor == '\t' || *cursor == ',') {
         cursor++;
     }
 
-    row.thr = strtod(cursor, &endptr);
-    if (endptr == cursor) {
+    if (!parse_double_field(cursor, &row.thr, &next)) {
         return row;
     }
 

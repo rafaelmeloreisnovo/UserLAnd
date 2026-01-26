@@ -16,6 +16,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <errno.h>
+#include <limits.h>
 
 #define MAX_CORES 128
 #define CACHE_LINE 64
@@ -35,6 +37,23 @@ typedef struct {
     float idle_factor;       // % de Ócio usado
     float decay_rate;        // Decaimento térmico
 } RafConfig;
+
+static int parse_positive_int(const char *value, int *out) {
+    if (value == NULL || out == NULL) {
+        return 0;
+    }
+    errno = 0;
+    char *end = NULL;
+    long parsed = strtol(value, &end, 10);
+    if (errno != 0 || end == value || *end != '\0') {
+        return 0;
+    }
+    if (parsed <= 0 || parsed > INT_MAX) {
+        return 0;
+    }
+    *out = (int)parsed;
+    return 1;
+}
 
 typedef struct {
     // Tensor Físico dinâmico (heap alinhado)
@@ -276,8 +295,12 @@ int main(int argc, char *argv[]) {
     if (argc > 1 && strcmp(argv[1], "--bench") == 0) {
         int steps = 5000;
         int inj   = 8;
-        if (argc > 2) steps = atoi(argv[2]);
-        if (argc > 3) inj   = atoi(argv[3]);
+        if (argc > 2) {
+            (void)parse_positive_int(argv[2], &steps);
+        }
+        if (argc > 3) {
+            (void)parse_positive_int(argv[3], &inj);
+        }
         _run_bench(steps, inj);
         if (MATRIX.tensor) free(MATRIX.tensor);
         return 0;

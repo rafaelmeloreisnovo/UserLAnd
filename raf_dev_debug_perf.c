@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>
+#include <limits.h>
 
 // -------------------------------
 // Constants and scoped limits
@@ -31,6 +33,23 @@ typedef struct {
     uint64_t threshold_ns;   // hard limit for internal overhead
     uint64_t last_overhead;  // measured overhead for diagnostics
 } ProfileMode;
+
+static int parse_uint64_arg(const char *value, uint64_t *out) {
+    if (value == NULL || out == NULL) {
+        return 0;
+    }
+    errno = 0;
+    char *end = NULL;
+    unsigned long long parsed = strtoull(value, &end, 10);
+    if (errno != 0 || end == value || *end != '\0') {
+        return 0;
+    }
+    if (parsed > UINT64_MAX) {
+        return 0;
+    }
+    *out = (uint64_t)parsed;
+    return 1;
+}
 
 static uint64_t nsec_now(void) {
     struct timespec ts;
@@ -618,7 +637,10 @@ int main(int argc, char **argv) {
         } else if (strcmp(argv[i], "--microbench") == 0) {
             run_bench = 1;
         } else if (strncmp(argv[i], "--profile-threshold=", 21) == 0) {
-            profile.threshold_ns = (uint64_t)strtoull(argv[i] + 21, NULL, 10);
+            if (!parse_uint64_arg(argv[i] + 21, &profile.threshold_ns)) {
+                fprintf(stderr, "[RAF_DEVPERF] invalid profile threshold\n");
+                return 2;
+            }
         }
     }
 

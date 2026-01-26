@@ -15,6 +15,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <errno.h>
+#include <limits.h>
 #include <inttypes.h>
 
 #define VERSION "v888"
@@ -265,13 +267,36 @@ void run_bench(int steps, int inj_per_step) {
     printf("[BENCH] Hash            : %08X\n", MATRIX.state_crc);
 }
 
+static int parse_positive_int(const char *value, int *out) {
+    if (value == NULL || out == NULL) {
+        return 0;
+    }
+    errno = 0;
+    char *end = NULL;
+    long parsed = strtol(value, &end, 10);
+    if (errno != 0 || end == value || *end != '\0') {
+        return 0;
+    }
+    if (parsed <= 0 || parsed > INT_MAX) {
+        return 0;
+    }
+    *out = (int)parsed;
+    return 1;
+}
+
 // --- 7. MAIN ---
 
 int main(int argc, char *argv[]) {
     // MODO BENCHMARK
     if(argc > 1 && strcmp(argv[1], "--bench") == 0) {
-        int steps        = (argc > 2) ? atoi(argv[2]) : 5000;
-        int inj_per_step = (argc > 3) ? atoi(argv[3]) : 8;
+        int steps        = 5000;
+        int inj_per_step = 8;
+        if (argc > 2) {
+            (void)parse_positive_int(argv[2], &steps);
+        }
+        if (argc > 3) {
+            (void)parse_positive_int(argv[3], &inj_per_step);
+        }
         run_bench(steps, inj_per_step);
         return 0;
     }

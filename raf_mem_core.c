@@ -62,20 +62,23 @@ static int parse_meminfo_line(const char *line, mem_field *out) {
   // Parse number inline with overflow protection
   uint64_t value = 0;
   const char *start = cursor;
+  int overflow = 0;
   while (*cursor >= '0' && *cursor <= '9') {
     uint64_t digit = *cursor - '0';
     // Check for overflow
     if (value > UINT64_MAX / 10) {
-      break;  // overflow would occur
+      overflow = 1;
+      break;
     }
     uint64_t new_value = value * 10;
     if (new_value > UINT64_MAX - digit) {
-      break;  // overflow would occur
+      overflow = 1;
+      break;
     }
     value = new_value + digit;
     cursor++;
   }
-  if (cursor == start) {
+  if (cursor == start || overflow) {
     return 0;
   }
 
