@@ -17,9 +17,9 @@
 # ==============================================================================
 
 # Build tools and plugins
-kotlin = "2.3.0"
-androidGradlePlugin = "8.7.3"
-jacoco = "0.8.12"
+kotlin = "1.9.24"
+androidGradlePlugin = "8.6.0"
+jacoco = "0.8.14"
 
 # NDK configuration for cross-architecture builds
 # NDK r27.3 supports: arm64-v8a, armeabi-v7a, x86_64, x86
@@ -34,8 +34,8 @@ java = "17"
 
 # AndroidX libraries (compatible with minSdk 21)
 androidx-core-ktx = "1.17.0"
-androidx-room = "2.8.5"
-androidx-lifecycle = "2.10.1"
+androidx-room = "2.8.4"
+androidx-lifecycle = "2.10.0"
 androidx-navigation = "2.9.6"
 androidx-constraintlayout = "2.2.1"
 androidx-preference = "1.2.1"
@@ -52,7 +52,7 @@ androidx-test-espresso = "3.7.0"
 material = "1.13.0"
 
 # Kotlin libraries
-kotlinx-coroutines = "1.10.3"
+kotlinx-coroutines = "1.8.1"
 
 # Network and serialization
 okhttp = "4.12.0"
@@ -62,12 +62,12 @@ gson = "2.11.0"
 # Utilities
 # jarchivelib 1.2.0 supports minSdk 21 (avoid 2.x which requires API 26+)
 jarchivelib = "1.2.0"
-sentry = "7.20.1"
-slf4j = "2.0.16"
+sentry = "8.29.0"
+slf4j = "2.0.9"
 
 # Google Play Services
-billing = "8.3.0"
-play-services-base = "18.5.0"
+billing = "7.1.1"
+play-services-base = "18.9.0"
 
 # Code quality
 ktlint-cli = "1.5.0"
@@ -75,7 +75,7 @@ gradle-download-task = "5.6.0"
 
 # Testing
 junit = "4.13.2"
-mockito = "5.15.2"
+mockito = "5.2.0"
 mockito-kotlin = "6.1.0"
 barista = "4.3.0"
 core-testing = "2.2.0"

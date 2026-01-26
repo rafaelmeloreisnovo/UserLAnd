@@ -25,6 +25,36 @@ buildscript {
     }
 }
 
+ext {
+    androidx_core_version = '1.17.0'
+    androidx_annotation_version = '1.9.1'
+    androidx_room_version = '2.8.4'
+    androidx_lifecycle_version = '2.10.0'
+    androidx_constraintlayout_version = '2.2.1'
+    androidx_preference_version = '1.2.1'
+    androidx_swiperefreshlayout_version = '1.2.0'
+    androidx_localbroadcastmanager_version = '1.1.0'
+    androidx_drawerlayout_version = '1.2.0'
+    androidx_viewpager_version = '1.1.0'
+    androidx_test_version = '1.6.1'
+    androidx_test_ext_version = '1.3.0'
+    androidx_test_espresso_version = '3.7.0'
+    material_version = '1.13.0'
+    kotlinx_coroutines_version = '1.8.1'
+    okhttp_version = '4.12.0'
+    moshi_version = '1.15.2'
+    gson_version = '2.11.0'
+    jarchivelib_version = '1.2.0'
+    sentry_version = '8.29.0'
+    slf4j_version = '2.0.9'
+    billing_version = '7.1.1'
+    play_services_base_version = '18.9.0'
+    ktlint_version = '1.5.0'
+    mockito_version = '5.2.0'
+    mockito_kotlin_version = '6.1.0'
+    core_testing_version = '2.2.0'
+}
+
 allprojects {
     repositories {
         google()

@@ -408,24 +408,24 @@ task checkIfAssetsMissing {
 preBuild.dependsOn checkIfAssetsMissing
 
 dependencies {
-    def moshi_version = '1.15.2'
-    def okhttp_version = '4.12.0'
-    def sentry_version = '8.29.0'
-    def slf4j_version = '2.0.9'
+    def moshi_version = rootProject.ext.moshi_version
+    def okhttp_version = rootProject.ext.okhttp_version
+    def sentry_version = rootProject.ext.sentry_version
+    def slf4j_version = rootProject.ext.slf4j_version
 
     // Coroutines aligned with Kotlin 1.9.24 for stability and compatibility.
-    def kotlinx_coroutines_version = '1.8.1'
+    def kotlinx_coroutines_version = rootProject.ext.kotlinx_coroutines_version
 
     // Androidx versions compatible with AGP 8.6.0, Kotlin 1.9.24, and compileSdk 35
-    def room_version = '2.8.4'
-    def lifecycle_version = '2.10.0'
-    def support_library_version = '1.13.0'
-    def preference_version = '1.2.1'
+    def room_version = rootProject.ext.androidx_room_version
+    def lifecycle_version = rootProject.ext.androidx_lifecycle_version
+    def support_library_version = rootProject.ext.material_version
+    def preference_version = rootProject.ext.androidx_preference_version
     // Use core-ktx 1.17.0 for compatibility with AGP 8.6.0 and compileSdk 35
-    def ktx_version = '1.17.0'
+    def ktx_version = rootProject.ext.androidx_core_version
     // Billing dependency version compatible with Kotlin 1.9.24
     // (7.1.1 is compiled with Kotlin 1.9.x for compatibility)
-    def billing_version = '7.1.1'
+    def billing_version = rootProject.ext.billing_version
     
     // RmR (Rafael Melo Reis) androidx enhancements - optimized matrix-based implementations
     // Note: These provide high-performance alternatives to standard androidx components
@@ -451,13 +451,13 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:$lifecycle_version"
     implementation "androidx.navigation:navigation-fragment-ktx:$navigation_version"
     implementation "androidx.navigation:navigation-ui-ktx:$navigation_version"
-    implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
+    implementation "androidx.constraintlayout:constraintlayout:${rootProject.ext.androidx_constraintlayout_version}"
     implementation "androidx.preference:preference-ktx:$preference_version"
-    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.2.0'
-    implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
+    implementation "androidx.swiperefreshlayout:swiperefreshlayout:${rootProject.ext.androidx_swiperefreshlayout_version}"
+    implementation "androidx.localbroadcastmanager:localbroadcastmanager:${rootProject.ext.androidx_localbroadcastmanager_version}"
 
     implementation "com.google.android.material:material:$support_library_version"
-    ktlint "com.pinterest.ktlint:ktlint-cli:1.5.0"
+    ktlint "com.pinterest.ktlint:ktlint-cli:${rootProject.ext.ktlint_version}"
     implementation "com.squareup.okhttp3:okhttp:$okhttp_version"
     implementation "com.squareup.moshi:moshi:$moshi_version"
     kapt "com.squareup.moshi:moshi-kotlin-codegen:$moshi_version"
@@ -466,13 +466,13 @@ dependencies {
     implementation "org.slf4j:slf4j-nop:$slf4j_version"
 
     implementation "com.android.billingclient:billing-ktx:$billing_version"
-    implementation "com.google.android.gms:play-services-base:18.9.0"
+    implementation "com.google.android.gms:play-services-base:${rootProject.ext.play_services_base_version}"
 
-    def mockito_version = '5.2.0'
-    def mockito_kotlin_version = '6.1.0'
-    def core_testing_version = '2.2.0'
-    def androidx_test_version = '1.6.1'
-    def androidx_test_ext_version = '1.3.0'
+    def mockito_version = rootProject.ext.mockito_version
+    def mockito_kotlin_version = rootProject.ext.mockito_kotlin_version
+    def core_testing_version = rootProject.ext.core_testing_version
+    def androidx_test_version = rootProject.ext.androidx_test_version
+    def androidx_test_ext_version = rootProject.ext.androidx_test_ext_version
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation "org.mockito:mockito-core:$mockito_version"
@@ -486,13 +486,13 @@ dependencies {
     androidTestImplementation "androidx.test:rules:$androidx_test_version"
     androidTestImplementation "androidx.test.ext:junit:$androidx_test_ext_version"
     // Barista packages espresso-core and espresso-contrib
-    androidTestImplementation 'androidx.test.espresso:espresso-intents:3.7.0'
+    androidTestImplementation "androidx.test.espresso:espresso-intents:${rootProject.ext.androidx_test_espresso_version}"
     androidTestImplementation('com.github.SchibstedSpain:Barista:4.3.0') {
         exclude group: 'com.android.support'
         exclude group: 'org.jetbrains.kotlin'
     }
     androidTestUtil "androidx.test:orchestrator:$androidx_test_version"
 
-    implementation 'com.google.code.gson:gson:2.11.0'
+    implementation "com.google.code.gson:gson:${rootProject.ext.gson_version}"
 
 }

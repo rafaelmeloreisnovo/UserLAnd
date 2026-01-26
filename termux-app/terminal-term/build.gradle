@@ -30,11 +30,11 @@ android {
 }
 
 dependencies {
-    implementation "androidx.annotation:annotation:1.9.1"
-    // Use core 1.15.0 for compatibility with AGP 8.6.0 and compileSdk 35
-    implementation "androidx.core:core:1.17.0"
-    implementation "androidx.drawerlayout:drawerlayout:1.2.0"
-    implementation "androidx.viewpager:viewpager:1.1.0"
+    implementation "androidx.annotation:annotation:${rootProject.ext.androidx_annotation_version}"
+    // Use core 1.17.0 for compatibility with AGP 8.6.0 and compileSdk 35
+    implementation "androidx.core:core:${rootProject.ext.androidx_core_version}"
+    implementation "androidx.drawerlayout:drawerlayout:${rootProject.ext.androidx_drawerlayout_version}"
+    implementation "androidx.viewpager:viewpager:${rootProject.ext.androidx_viewpager_version}"
     implementation project(":terminal-view")
     testImplementation 'junit:junit:4.13.2'
 }
