@@ -14,6 +14,7 @@
 #include <string.h>
 #include <limits.h>
 #include <errno.h>
+#include <ctype.h>
 
 #define VEC_DIM 6
 #define PHI 1.6180339887498948482
@@ -73,7 +74,11 @@ static int parse_pos_int(const char *s, int fallback) {
     char *end = NULL;
     errno = 0;
     long v = strtol(s, &end, 10);
-    if (errno == ERANGE || end == s || v <= 0 || v > (long)INT_MAX) return fallback;
+    if (errno != 0 || end == s || v <= 0 || v > (long)INT_MAX) return fallback;
+    while (*end && isspace((unsigned char)*end)) {
+        end++;
+    }
+    if (*end != '\0') return fallback;
     return (int)v;
 }
 
@@ -82,7 +87,11 @@ static uint32_t parse_seed(const char *s, uint32_t fallback) {
     char *end = NULL;
     errno = 0;
     unsigned long v = strtoul(s, &end, 10);
-    if (errno == ERANGE || end == s || v > (unsigned long)UINT32_MAX) return fallback;
+    if (errno != 0 || end == s || v > (unsigned long)UINT32_MAX) return fallback;
+    while (*end && isspace((unsigned char)*end)) {
+        end++;
+    }
+    if (*end != '\0') return fallback;
     return (uint32_t)v;
 }
 

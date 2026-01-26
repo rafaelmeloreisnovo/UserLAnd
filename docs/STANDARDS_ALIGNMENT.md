@@ -83,6 +83,31 @@ confiabilidade e manutenção do projeto, com foco em Android 15 e estabilidade 
 - **Segurança:** controles e engenharia (ISO/IEC 27001/27002, NIST 800-53/160).
 - **Compatibilidade:** aderência a RFCs/IEEE/Posix para parsers, rede e matemática.
 
+### ISO 8000/9001 aplicados à correção de bugs lógicos e erros
+
+Direcionamento prático para tratar correções como itens de qualidade e melhoria contínua:
+
+1. **Registro e classificação (ISO 8000/9001):**
+   - Identificar o bug como defeito de qualidade de dados/lógica e registrar o impacto.
+   - Garantir consistência de nomenclatura, rastreio e evidências (ISO 8000).
+2. **Análise de causa raiz (ISO 9001):**
+   - Diagnóstico técnico do fluxo afetado e das pré-condições do erro.
+3. **Ação corretiva/preventiva (ISO 9001):**
+   - Definir correção mínima e validar regressões.
+   - Padronizar a lição aprendida como checklist/tarefa de qualidade.
+4. **Validação e retenção de evidências (ISO 8000/9001):**
+   - Evidenciar testes, logs e validações de consistência do dado.
+
+### Onde empregar low-level sem dependências externas
+
+Áreas do repositório que já favorecem implementação low-level (C puro, sem abstrações externas),
+adequadas para otimizações e correções de bugs lógicos com controle explícito de memória e CPU:
+
+- **Núcleo e computação:** `aether.c`, `aether_hyper.c`, `raf_cpu_core.c`, `raf_flop_max.c`.
+- **Memória e I/O:** `raf_mem_core.c`, `raf_disk_core.c`, `raf_bitraf_store.c`.
+- **Vetores e matemática:** `raf_bitraf_vector.c`, `raf_complex.c`.
+- **Kernel/OS low-level:** `rafaelia_kernel_v22.c`, `rafaelia_os_low.c`.
+
 ---
 
 ## Próximos Passos / Next Steps

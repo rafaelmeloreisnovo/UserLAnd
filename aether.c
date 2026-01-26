@@ -18,6 +18,8 @@
 #include <string.h>
 #include <time.h>
 #include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 
 // --- MACROS & PLATFORM ---
 #if defined(_WIN32)
@@ -47,6 +49,29 @@ typedef struct {
 // Default Settings
 AetherConfig g_config = { 256, 64, 1 }; 
 
+static int parse_config_int(const char *value, int *out) {
+    if (value == NULL || out == NULL) {
+        return 0;
+    }
+    while (*value == ' ' || *value == '\t') {
+        value++;
+    }
+    errno = 0;
+    char *end = NULL;
+    long parsed = strtol(value, &end, 10);
+    if (errno != 0 || end == value) {
+        return 0;
+    }
+    while (*end == ' ' || *end == '\t' || *end == '\r' || *end == '\n') {
+        end++;
+    }
+    if (*end != '\0' || parsed < INT_MIN || parsed > INT_MAX) {
+        return 0;
+    }
+    *out = (int)parsed;
+    return 1;
+}
+
 // --- 1. PERSISTENCE LAYER (Save/Load) ---
 
 void save_config() {
@@ -68,9 +93,16 @@ void load_config() {
     if (f) {
         char line[128];
         while (fgets(line, sizeof(line), f)) {
-            if (strstr(line, "BUFFER_MB=")) g_config.buffer_mb = atoi(line + 10);
-            if (strstr(line, "HASH_WIDTH=")) g_config.hash_width = atoi(line + 11);
-            if (strstr(line, "SHOW_ART=")) g_config.show_art = atoi(line + 9);
+            int value = 0;
+            if (strstr(line, "BUFFER_MB=") && parse_config_int(line + 10, &value)) {
+                g_config.buffer_mb = value;
+            }
+            if (strstr(line, "HASH_WIDTH=") && parse_config_int(line + 11, &value)) {
+                g_config.hash_width = value;
+            }
+            if (strstr(line, "SHOW_ART=") && parse_config_int(line + 9, &value)) {
+                g_config.show_art = value;
+            }
         }
         fclose(f);
     }

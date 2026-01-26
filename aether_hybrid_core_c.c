@@ -6,6 +6,7 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
+#include <limits.h>
 
 #define MAX_WIDTH_BITS 512
 #define MAX_LANES (MAX_WIDTH_BITS/64)
@@ -85,6 +86,23 @@ static double now_seconds(void) {
     return (double)ts.tv_sec + ((double)ts.tv_nsec / 1e9);
 }
 
+static int parse_uint_arg(const char *value, unsigned *out) {
+    if (value == NULL || out == NULL) {
+        return 0;
+    }
+    errno = 0;
+    char *end = NULL;
+    unsigned long parsed = strtoul(value, &end, 10);
+    if (errno != 0 || end == value || *end != '\0') {
+        return 0;
+    }
+    if (parsed > UINT_MAX) {
+        return 0;
+    }
+    *out = (unsigned)parsed;
+    return 1;
+}
+
 int main(int argc, char **argv) {
     const char *path = NULL;
     unsigned width_bits = 256;
@@ -99,7 +117,10 @@ int main(int argc, char **argv) {
     /* minimal argument parsing to stay POSIX-compatible */
     for (i = 1; i < (unsigned)argc; ++i) {
         if (strcmp(argv[i], "-w") == 0 && (i + 1) < (unsigned)argc) {
-            width_bits = (unsigned)strtoul(argv[i + 1], NULL, 10);
+            if (!parse_uint_arg(argv[i + 1], &width_bits)) {
+                fprintf(stderr, "error: invalid width '%s'\n", argv[i + 1]);
+                return 1;
+            }
             ++i;
         } else {
             path = argv[i];

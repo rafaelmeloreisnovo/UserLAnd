@@ -1,13 +1,35 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <errno.h>
+#include <limits.h>
 
 #define N 512 
 // Matriz menor para o processo ser rápido e leve.
 // Objetivo: Ciclos rápidos de nascimento e morte de processos.
 
+static int parse_positive_int(const char *value, int *out) {
+    if (value == NULL || out == NULL) {
+        return 0;
+    }
+    errno = 0;
+    char *end = NULL;
+    long parsed = strtol(value, &end, 10);
+    if (errno != 0 || end == value || *end != '\0') {
+        return 0;
+    }
+    if (parsed <= 0 || parsed > INT_MAX) {
+        return 0;
+    }
+    *out = (int)parsed;
+    return 1;
+}
+
 int main(int argc, char *argv[]) {
-    int id = atoi(argv[1]);
+    int id = 0;
+    if (argc > 1) {
+        (void)parse_positive_int(argv[1], &id);
+    }
     double *A = (double*)malloc(N*N*sizeof(double));
     double *B = (double*)malloc(N*N*sizeof(double));
     double *C = (double*)malloc(N*N*sizeof(double));

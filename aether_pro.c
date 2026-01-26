@@ -27,6 +27,8 @@
 #include <string.h>
 #include <time.h>
 #include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 
 /* --- MACROS & PLATFORM DETECTION --- */
 
@@ -58,6 +60,46 @@ typedef struct {
 /* Defaults */
 static AetherConfig g_config = { 256, 64, 1 };
 
+static int parse_config_int(const char *value, int *out) {
+    if (value == NULL || out == NULL) {
+        return 0;
+    }
+    while (*value == ' ' || *value == '\t') {
+        value++;
+    }
+    errno = 0;
+    char *end = NULL;
+    long parsed = strtol(value, &end, 10);
+    if (errno != 0 || end == value) {
+        return 0;
+    }
+    while (*end == ' ' || *end == '\t' || *end == '\r' || *end == '\n') {
+        end++;
+    }
+    if (*end != '\0' || parsed < INT_MIN || parsed > INT_MAX) {
+        return 0;
+    }
+    *out = (int)parsed;
+    return 1;
+}
+
+static int parse_arg_int(const char *value, int *out) {
+    if (value == NULL || out == NULL) {
+        return 0;
+    }
+    errno = 0;
+    char *end = NULL;
+    long parsed = strtol(value, &end, 10);
+    if (errno != 0 || end == value || *end != '\0') {
+        return 0;
+    }
+    if (parsed < INT_MIN || parsed > INT_MAX) {
+        return 0;
+    }
+    *out = (int)parsed;
+    return 1;
+}
+
 /* --- PERSISTENCE LAYER (Save/Load) --- */
 
 static void save_config(void) {
@@ -79,12 +121,14 @@ static void load_config(void) {
     if (!f) return;
     char line[128];
     while (fgets(line, sizeof(line), f)) {
-        if (strncmp(line, "BUFFER_MB=", 10) == 0)
-            g_config.buffer_mb = atoi(line + 10);
-        else if (strncmp(line, "HASH_WIDTH=", 11) == 0)
-            g_config.hash_width = atoi(line + 11);
-        else if (strncmp(line, "SHOW_ART=", 9) == 0)
-            g_config.show_art = atoi(line + 9);
+        int value = 0;
+        if (strncmp(line, "BUFFER_MB=", 10) == 0 && parse_config_int(line + 10, &value)) {
+            g_config.buffer_mb = value;
+        } else if (strncmp(line, "HASH_WIDTH=", 11) == 0 && parse_config_int(line + 11, &value)) {
+            g_config.hash_width = value;
+        } else if (strncmp(line, "SHOW_ART=", 9) == 0 && parse_config_int(line + 9, &value)) {
+            g_config.show_art = value;
+        }
     }
     fclose(f);
 }
@@ -381,7 +425,10 @@ int main(int argc, char **argv) {
         }
 
         if (strcmp(argv[argi], "-w") == 0 && argi + 2 <= argc) {
-            width = atoi(argv[argi + 1]);
+            if (!parse_arg_int(argv[argi + 1], &width)) {
+                fprintf(stderr, "[ERROR] invalid width '%s'\n", argv[argi + 1]);
+                return 1;
+            }
             argi += 2;
         }
 

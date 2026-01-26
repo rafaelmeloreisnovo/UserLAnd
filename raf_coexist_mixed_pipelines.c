@@ -4,6 +4,8 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include <errno.h>
+#include <limits.h>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -40,6 +42,23 @@ typedef struct {
     uint64_t timestamp;
     uint32_t flags;
 } ZipHeader;
+
+static int parse_positive_int(const char *value, int *out) {
+    if (value == NULL || out == NULL) {
+        return 0;
+    }
+    errno = 0;
+    char *end = NULL;
+    long parsed = strtol(value, &end, 10);
+    if (errno != 0 || end == value || *end != '\0') {
+        return 0;
+    }
+    if (parsed <= 0 || parsed > INT_MAX) {
+        return 0;
+    }
+    *out = (int)parsed;
+    return 1;
+}
 
 // ===================== NÓ DE COEXISTÊNCIA (MISTO) =====================
 typedef struct HyperNode {
@@ -561,8 +580,10 @@ static void run_pipeline_random(const HyperNode *nodes, const int *hard_idx, int
 int main(int argc, char **argv) {
     int depth = 1000000; // 100x mais nós (padrão)
     if (argc > 1) {
-        int tmp = atoi(argv[1]);
-        if (tmp > 0) depth = tmp;
+        int tmp = 0;
+        if (parse_positive_int(argv[1], &tmp)) {
+            depth = tmp;
+        }
     }
 
     printf("=== RAFAELIA COEXISTENCE ENGINE (MIXED + PIPELINES) ===\n");
