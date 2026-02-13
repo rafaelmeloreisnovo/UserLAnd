@@ -62,7 +62,7 @@ machine:
   you only want to bootstrap the SDK without running Gradle.
 
 The native helpers and terminal emulator JNI sources are built against Android
-NDK `21.4.7075529`, pinned in `gradle.properties` for reproducibility across CI
+NDK `27.3.13750724`, pinned in `gradle.properties` for reproducibility across CI
 and local machines. If you already have that NDK locally, point `ANDROID_NDK_HOME`
 or `ndk.dir` in `local.properties` to the install location. To test a newer NDK
 release, invoke Gradle with `-PndkVersion=<version>`; builds stay unsigned when
