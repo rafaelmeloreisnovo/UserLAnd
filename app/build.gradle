@@ -66,23 +66,6 @@ android {
         versionCode vcode
         versionName "2.8.3"
 
-        def abiFiltersList = []
-        if (abiFiltersProperty) {
-            abiFiltersList = abiFiltersProperty
-                    .toString()
-                    .split(',')
-                    .collect { it.trim() }
-                    .findAll { it }
-        }
-        if (abiFiltersList.isEmpty()) {
-            abiFiltersList = architectures
-        }
-        if (!abiFiltersList.isEmpty()) {
-            ndk {
-                abiFilters(*abiFiltersList)
-            }
-        }
-        
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments clearPackageData: 'true'
 
@@ -440,7 +423,7 @@ dependencies {
 
     implementation project(':terminal-term')
 
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinx_coroutines_version"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlinx_coroutines_version"
 
@@ -461,7 +444,7 @@ dependencies {
     implementation "com.squareup.okhttp3:okhttp:$okhttp_version"
     implementation "com.squareup.moshi:moshi:$moshi_version"
     kapt "com.squareup.moshi:moshi-kotlin-codegen:$moshi_version"
-    implementation 'org.rauschig:jarchivelib:1.2.0' // v1.0.0+ requires API 26+, keep 1.2.0 for minSdk 21 compatibility
+    implementation 'org.rauschig:jarchivelib:1.2.0' // v1.0.0+ requires API 26+, keep 1.2.0 for minSdk 23 compatibility
     implementation "io.sentry:sentry-android:$sentry_version"
     implementation "org.slf4j:slf4j-nop:$slf4j_version"
 
