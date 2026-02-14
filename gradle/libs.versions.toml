@@ -33,10 +33,10 @@ cmake = "3.22.1"
 java = "17"
 
 # AndroidX libraries (compatible with minSdk 21)
-androidx-core-ktx = "1.17.0"
-androidx-room = "2.8.4"
-androidx-lifecycle = "2.10.0"
-androidx-navigation = "2.9.6"
+androidx-core-ktx = "1.15.0"
+androidx-room = "2.6.1"
+androidx-lifecycle = "2.7.0"
+androidx-navigation = "2.7.7"
 androidx-constraintlayout = "2.2.1"
 androidx-preference = "1.2.1"
 androidx-swiperefreshlayout = "1.2.0"
@@ -52,7 +52,7 @@ androidx-test-espresso = "3.7.0"
 material = "1.13.0"
 
 # Kotlin libraries
-kotlinx-coroutines = "1.8.1"
+kotlinx-coroutines = "1.7.3"
 
 # Network and serialization
 okhttp = "4.12.0"
