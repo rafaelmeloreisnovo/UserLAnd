@@ -120,15 +120,23 @@ endif()
 # ==============================================================================
 
 # RAFCODE-Φ Engine: Core native sources
-add_library(rafaelia SHARED
+set(RAF_CORE_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/impl/raf_cpu_parser.c
   ${CMAKE_CURRENT_SOURCE_DIR}/raf_crc_ecc.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../add2/bitstack_Version2.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../app/src/main/cpp/rafaelia_jni.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../app/src/main/cpp/lowlevel/tensor_core.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../app/src/main/cpp/baremetal_asm.S
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../app/src/main/cpp/modules/crypto/voynich_cipher.S
 )
+
+# ARM64-only sources use AArch64 assembly/NEON instructions.
+if(ANDROID_ABI STREQUAL "arm64-v8a" OR RAF_ARCH STREQUAL "arm64")
+  list(APPEND RAF_CORE_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../app/src/main/cpp/lowlevel/tensor_core.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../app/src/main/cpp/baremetal_asm.S
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../app/src/main/cpp/modules/crypto/voynich_cipher.S
+  )
+endif()
+
+add_library(rafaelia SHARED ${RAF_CORE_SOURCES})
 
 # ==============================================================================
 # Include Directories

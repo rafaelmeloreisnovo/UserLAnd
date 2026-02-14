@@ -26,10 +26,10 @@ buildscript {
 }
 
 ext {
-    androidx_core_version = '1.17.0'
+    androidx_core_version = '1.15.0'
     androidx_annotation_version = '1.9.1'
-    androidx_room_version = '2.8.4'
-    androidx_lifecycle_version = '2.10.0'
+    androidx_room_version = '2.6.1'
+    androidx_lifecycle_version = '2.7.0'
     androidx_constraintlayout_version = '2.2.1'
     androidx_preference_version = '1.2.1'
     androidx_swiperefreshlayout_version = '1.2.0'
@@ -40,7 +40,7 @@ ext {
     androidx_test_ext_version = '1.3.0'
     androidx_test_espresso_version = '3.7.0'
     material_version = '1.13.0'
-    kotlinx_coroutines_version = '1.8.1'
+    kotlinx_coroutines_version = '1.7.3'
     okhttp_version = '4.12.0'
     moshi_version = '1.15.2'
     gson_version = '2.11.0'
@@ -66,6 +66,14 @@ allprojects {
             url "https://github.com/rafaelmeloreisnovo/androidx_RmR"
             // For local development, you can use a local path:
             // url "/path/to/local/androidx_RmR"
+        }
+    }
+
+    configurations.configureEach {
+        resolutionStrategy {
+            force "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+            force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+            force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
         }
     }
 }
