@@ -49,6 +49,10 @@
 #include <string.h>
 #include <time.h>
 
+#if defined(RAFAELIA_ENABLE_HW_MAP)
+#include "rafaelia_hw_map.h"
+#endif
+
 #if defined(__linux__)
 #include <elf.h>
 #include <sys/auxv.h>
@@ -61,7 +65,7 @@
 #define BITS_PER_BYTE 8u
 #define ENDIANNESS_PROBE 0x01020304u
 #define NANOSECONDS_PER_SECOND 1000000000ull
-#define JSON_BUFFER_SIZE 2304u
+#define JSON_BUFFER_SIZE 4096u
 
 typedef struct runtime_caps_s {
     const char *arch_runtime;
@@ -544,6 +548,19 @@ static int generate_json_output(char *buffer, size_t buffer_size) {
     written = snprintf(buffer + pos, buffer_size - pos, "\"timestamp_ns\":%" PRIu64, counter);
     if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
     pos += written;
+
+#if defined(RAFAELIA_ENABLE_HW_MAP)
+    {
+        char hw_map_json[1536];
+        if (rafaelia_hw_map_generate_json(hw_map_json, sizeof(hw_map_json)) == 0) {
+            written = snprintf(buffer + pos, buffer_size - pos, ",\"hw_map\":%s", hw_map_json);
+        } else {
+            written = snprintf(buffer + pos, buffer_size - pos, ",\"hw_map\":{\"registers_detected\":[],\"gpio_pinctrl_detected\":[],\"access_level\":\"userland_safe\"}");
+        }
+        if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
+        pos += written;
+    }
+#endif
     
     /* JSON closing brace and newline */
     written = snprintf(buffer + pos, buffer_size - pos, "}\n");
