@@ -18,19 +18,30 @@ The Rafaelia module consists of:
 ### Hardware-Aware Architecture Probe
 
 #### Purpose
-The `rafaelia_arch_probe` provides comprehensive hardware architecture detection and capability reporting through a standardized JSON interface.
+The architecture probes now use one canonical core at `core/librafaelia/impl/raf_arch_probe_core.c`. `raf_arch_probe` is the compact wrapper and `rafaelia_arch_probe` is the extended wrapper, both exposing one stable JSON interface.
 
 #### JSON Contract (RFC 8259 Compliant)
+
+Both wrappers emit the same canonical schema; only `profile` changes:
+
+- `raf_arch_probe` → `"profile":"compact"`
+- `rafaelia_arch_probe` → `"profile":"extended"`
 
 **Output Format:**
 ```json
 {
+  "profile": "compact|extended",
   "arch": "string",
+  "arch_compiled_for": "string",
+  "arch_runtime": "string",
   "word_bits": number,
   "endianness": "string",
   "simd": "string",
+  "simd_runtime": "string",
   "fpu": "string",
+  "fpu_runtime": "string",
   "crypto": boolean,
+  "crypto_runtime": boolean,
   "cycle_counter": number,
   "used_inline_asm": boolean,
   "timestamp_ns": number
@@ -39,17 +50,23 @@ The `rafaelia_arch_probe` provides comprehensive hardware architecture detection
 
 **Field Specifications:**
 
-| Field | Type | Description | Possible Values |
-|-------|------|-------------|-----------------|
-| `arch` | string | CPU architecture | `"aarch64"`, `"arm"`, `"x86_64"`, `"x86"`, `"riscv64"`, `"riscv32"`, `"ppc64"`, `"ppc"`, `"mips64"`, `"mips"`, `"s390x"`, `"alpha"`, `"sparc"`, `"unknown"` |
-| `word_bits` | number | Pointer size in bits | `32`, `64`, or architecture-specific |
-| `endianness` | string | Byte order | `"little"`, `"big"`, `"mixed"` |
-| `simd` | string | SIMD instruction set | `"neon"`, `"avx512"`, `"avx2"`, `"avx"`, `"sse4.2"`, `"sse4.1"`, `"ssse3"`, `"sse3"`, `"sse2"`, `"sse"`, `"rvv"`, `"altivec"`, `"none"` |
-| `fpu` | string | Floating-point unit | `"arm_vfp"`, `"present"`, `"x87_sse"`, `"riscv_f"`, `"soft"` |
-| `crypto` | boolean | Hardware crypto support | `true` or `false` |
-| `cycle_counter` | number | Hardware cycle counter value | 64-bit unsigned integer |
-| `used_inline_asm` | boolean | Whether inline ASM was used | `true` or `false` |
-| `timestamp_ns` | number | Timestamp in nanoseconds | 64-bit unsigned integer |
+| Field | Type | Description |
+|-------|------|-------------|
+| `profile` | string | Probe mode: `compact` or `extended` |
+| `arch` | string | Canonical architecture identifier |
+| `arch_compiled_for` | string | Architecture selected at compile time |
+| `arch_runtime` | string | Runtime architecture detection result |
+| `word_bits` | number | Pointer size in bits |
+| `endianness` | string | Byte order (`little`, `big`, `mixed`) |
+| `simd` | string | SIMD capability detected at compile time |
+| `simd_runtime` | string | SIMD capability detected at runtime |
+| `fpu` | string | FPU capability detected at compile time |
+| `fpu_runtime` | string | FPU capability detected at runtime |
+| `crypto` | boolean | Compile-time crypto extension availability |
+| `crypto_runtime` | boolean | Runtime crypto extension availability |
+| `cycle_counter` | number | Hardware counter or monotonic fallback |
+| `used_inline_asm` | boolean | `true` when architecture counter ASM was used |
+| `timestamp_ns` | number | Probe timestamp in nanoseconds |
 
 **Standards Compliance:**
 - RFC 8259 (JSON Data Interchange Format)
@@ -62,7 +79,7 @@ The `rafaelia_arch_probe` provides comprehensive hardware architecture detection
 **Command Line:**
 ```bash
 $ ./rafaelia_arch_probe
-{"arch":"aarch64","word_bits":64,"endianness":"little","simd":"neon","fpu":"arm_vfp","crypto":true,"cycle_counter":1234567890,"used_inline_asm":true,"timestamp_ns":1234567890}
+{"profile":"extended","arch":"aarch64","arch_compiled_for":"aarch64","arch_runtime":"aarch64","word_bits":64,"endianness":"little","simd":"neon","simd_runtime":"neon","fpu":"arm_vfp","fpu_runtime":"present","crypto":true,"crypto_runtime":true,"cycle_counter":1234567890,"used_inline_asm":true,"timestamp_ns":1234567890}
 ```
 
 **From Shell Script:**
@@ -125,21 +142,15 @@ Errors are written to stderr with the prefix `[ERROR]`:
 
 ```bash
 # From repository root
-cd rafaelia
+./scripts/build_static.sh
 
-# Using GCC
-gcc -std=c11 -O2 -Wall -Wextra -o rafaelia_arch_probe rafaelia_arch_probe.c
+# Manual build from repo root: compact wrapper + shared core
+gcc -std=c11 -O2 -Wall -Wextra     -o raf_arch_probe     raf_arch_probe.c core/librafaelia/impl/raf_arch_probe_core.c
 
-# Using Clang
-clang -std=c11 -O2 -Wall -Wextra -o rafaelia_arch_probe rafaelia_arch_probe.c
-
-# Cross-compile for Android ARM64
-${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang \
-    -std=c11 -O2 -o rafaelia_arch_probe rafaelia_arch_probe.c
-
-# Static linking (for distribution)
-gcc -std=c11 -O2 -static -o rafaelia_arch_probe rafaelia_arch_probe.c
+# Manual build from repo root: extended wrapper + shared core
+gcc -std=c11 -O2 -Wall -Wextra     -o rafaelia_arch_probe     rafaelia/rafaelia_arch_probe.c core/librafaelia/impl/raf_arch_probe_core.c
 ```
+
 
 ## Standards Compliance
 

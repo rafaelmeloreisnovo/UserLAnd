@@ -232,6 +232,7 @@ mkdir -p "$OUT_DIR"
 build() {
   local src="$1"
   local bin_name="$2"
+  shift 2
   local out="$OUT_DIR/$bin_name"
   
   # Construct source path
@@ -247,10 +248,10 @@ build() {
 
   if [[ -n "$TARGET" ]]; then
     # Cross or special target (e.g. MUSL)
-    "$CC" $TARGET $CFLAGS "$src_path" -o "$out" $LDFLAGS
+    "$CC" $TARGET $CFLAGS "$src_path" "$@" -o "$out" $LDFLAGS
   else
     # Native build (glibc / default system toolchain)
-    "$CC" $CFLAGS "$src_path" -o "$out" $LDFLAGS
+    "$CC" $CFLAGS "$src_path" "$@" -o "$out" $LDFLAGS
   fi
 }
 
@@ -267,11 +268,11 @@ fi
 build raf_cpu_core.c raf_cpu_core
 build raf_mem_core.c raf_mem_core
 build raf_disk_core.c raf_disk_core
-build raf_arch_probe.c raf_arch_probe
+build raf_arch_probe.c raf_arch_probe core/librafaelia/impl/raf_arch_probe_core.c
 
 # Build Rafaelia module components
 if [[ -f "$SRC_DIR/rafaelia/rafaelia_arch_probe.c" ]]; then
-  build rafaelia/rafaelia_arch_probe.c rafaelia_arch_probe_v2
+  build rafaelia/rafaelia_arch_probe.c rafaelia_arch_probe_v2 core/librafaelia/impl/raf_arch_probe_core.c
 fi
 
 echo "[SUCCESS] All binaries built to: $OUT_DIR" >&2
