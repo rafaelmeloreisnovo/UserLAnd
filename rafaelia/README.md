@@ -114,6 +114,30 @@ int main() {
 }
 ```
 
+
+### Hardware Map (`rafaelia_hw_map`)
+
+The optional `rafaelia_hw_map` path emits a separate JSON scope under `hw_map` with:
+
+```json
+{
+  "registers_detected": ["..."],
+  "gpio_pinctrl_detected": ["..."],
+  "access_level": "userland_safe"
+}
+```
+
+Collection routes:
+- `safe_userland`: data from `/proc`, `/sys`, and `auxv` without privileged MMIO reads.
+- `privileged_mmio`: optional read-only MMIO probes of known regions, only when compiled and explicitly enabled.
+
+Objective limitation: **complete physical pin mapping requires kernel/firmware/board-specific context**; userland-only probing can report only what sysfs/devicetree and safe interfaces expose.
+
+Build toggles:
+- `RAFAELIA_ENABLE_HW_MAP=1` (default) enables `hw_map` in output.
+- `RAFAELIA_ENABLE_HW_MAP=0` keeps minimal build with only `rafaelia_arch_probe.c`.
+- `RAFAELIA_ENABLE_PRIVILEGED_MMIO=1` compiles privileged MMIO route; runtime also requires `RAFAELIA_MMIO_ENABLE=1`.
+
 #### Exit Codes
 
 | Code | Meaning |
