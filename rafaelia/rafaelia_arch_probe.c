@@ -49,6 +49,10 @@
 #include <string.h>
 #include <time.h>
 
+#if defined(__x86_64__) || defined(__i386__)
+#include <cpuid.h>
+#endif
+
 #if defined(__linux__)
 #include <elf.h>
 #include <sys/auxv.h>
@@ -251,6 +255,8 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
 
 #if defined(__x86_64__) || defined(__i386__)
     uint32_t eax, ebx, ecx, edx;
+    unsigned int cpuid_max = 0u;
+    bool probe_confirmed = false;
     bool has_fpu = false;
     bool has_sse = false;
     bool has_sse2 = false;
@@ -264,25 +270,28 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
     bool has_osxsave = false;
     uint64_t xcr0 = 0;
 
-    caps->arch_runtime = detect_arch();
+    cpuid_max = __get_cpuid_max(0u, NULL);
+    if (cpuid_max >= 1u) {
+        probe_confirmed = true;
 
-    eax = 1u;
-    __asm__ volatile(
-        "cpuid"
-        : "+a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
-        :
-        : "cc");
+        eax = 1u;
+        __asm__ volatile(
+            "cpuid"
+            : "+a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
+            :
+            : "cc");
 
-    has_fpu = (edx & (1u << 0)) != 0u;
-    has_sse = (edx & (1u << 25)) != 0u;
-    has_sse2 = (edx & (1u << 26)) != 0u;
-    has_sse3 = (ecx & (1u << 0)) != 0u;
-    has_ssse3 = (ecx & (1u << 9)) != 0u;
-    has_sse41 = (ecx & (1u << 19)) != 0u;
-    has_sse42 = (ecx & (1u << 20)) != 0u;
-    has_aes = (ecx & (1u << 25)) != 0u;
-    has_avx = (ecx & (1u << 28)) != 0u;
-    has_osxsave = (ecx & (1u << 27)) != 0u;
+        has_fpu = (edx & (1u << 0)) != 0u;
+        has_sse = (edx & (1u << 25)) != 0u;
+        has_sse2 = (edx & (1u << 26)) != 0u;
+        has_sse3 = (ecx & (1u << 0)) != 0u;
+        has_ssse3 = (ecx & (1u << 9)) != 0u;
+        has_sse41 = (ecx & (1u << 19)) != 0u;
+        has_sse42 = (ecx & (1u << 20)) != 0u;
+        has_aes = (ecx & (1u << 25)) != 0u;
+        has_avx = (ecx & (1u << 28)) != 0u;
+        has_osxsave = (ecx & (1u << 27)) != 0u;
+    }
 
     if (has_osxsave) {
         uint32_t xcr0_lo = 0;
@@ -291,14 +300,16 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
         xcr0 = ((uint64_t)xcr0_hi << 32) | xcr0_lo;
     }
 
-    eax = 7u;
-    ecx = 0u;
-    __asm__ volatile(
-        "cpuid"
-        : "+a"(eax), "=b"(ebx), "+c"(ecx), "=d"(edx)
-        :
-        : "cc");
-    has_avx2 = (ebx & (1u << 5)) != 0u;
+    if (cpuid_max >= 7u) {
+        eax = 7u;
+        ecx = 0u;
+        __asm__ volatile(
+            "cpuid"
+            : "+a"(eax), "=b"(ebx), "+c"(ecx), "=d"(edx)
+            :
+            : "cc");
+        has_avx2 = (ebx & (1u << 5)) != 0u;
+    }
 
     if (has_avx && ((xcr0 & 0x6u) != 0x6u)) {
         has_avx = false;
@@ -307,18 +318,22 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
         has_avx2 = false;
     }
 
-    caps->fpu_runtime = has_fpu ? "present" : "soft";
-    caps->crypto_runtime = has_aes ? "aes" : "none";
+    if (probe_confirmed) {
+        caps->arch_runtime = detect_arch();
+        caps->crypto_runtime = has_aes ? "aes" : "none";
 
-    if (has_avx2) caps->simd_runtime = "avx2";
-    else if (has_avx) caps->simd_runtime = "avx";
-    else if (has_sse42) caps->simd_runtime = "sse4.2";
-    else if (has_sse41) caps->simd_runtime = "sse4.1";
-    else if (has_ssse3) caps->simd_runtime = "ssse3";
-    else if (has_sse3) caps->simd_runtime = "sse3";
-    else if (has_sse2) caps->simd_runtime = "sse2";
-    else if (has_sse) caps->simd_runtime = "sse";
-    else caps->simd_runtime = "none";
+        if (has_avx2) caps->simd_runtime = "avx2";
+        else if (has_avx) caps->simd_runtime = "avx";
+        else if (has_sse42) caps->simd_runtime = "sse4.2";
+        else if (has_sse41) caps->simd_runtime = "sse4.1";
+        else if (has_ssse3) caps->simd_runtime = "ssse3";
+        else if (has_sse3) caps->simd_runtime = "sse3";
+        else if (has_sse2) caps->simd_runtime = "sse2";
+        else if (has_sse) caps->simd_runtime = "sse";
+        else caps->simd_runtime = "none";
+
+        caps->fpu_runtime = has_fpu ? "present" : "soft";
+    }
 
 #elif defined(__aarch64__) || defined(__arm__)
 #if defined(__linux__) && defined(AT_HWCAP)
@@ -415,11 +430,11 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
     {
         FILE *f = fopen("/proc/cpuinfo", "r");
         char line[512];
+        bool probe_confirmed = false;
         bool found_line = false;
         bool has_v = false;
         bool has_zk = false;
 
-        caps->arch_runtime = detect_arch();
         if (f) {
             while (fgets(line, sizeof(line), f) != NULL) {
                 if (str_contains_ci(line, "isa") || str_contains_ci(line, "features")) {
@@ -435,11 +450,9 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
             fclose(f);
         }
 
-        if (!f || !found_line) {
-            caps->simd_runtime = "unknown";
-            caps->crypto_runtime = "unknown";
-            caps->fpu_runtime = "unknown";
-        } else {
+        probe_confirmed = found_line;
+        if (probe_confirmed) {
+            caps->arch_runtime = detect_arch();
             caps->simd_runtime = has_v ? "rvv" : "none";
             caps->crypto_runtime = has_zk ? "zk" : "none";
             caps->fpu_runtime = "unknown";
