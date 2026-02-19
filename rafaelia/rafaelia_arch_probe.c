@@ -60,7 +60,7 @@
 #define BITS_PER_BYTE 8u
 #define ENDIANNESS_PROBE 0x01020304u
 #define NANOSECONDS_PER_SECOND 1000000000ull
-#define JSON_BUFFER_SIZE 2048u
+#define JSON_BUFFER_SIZE 2304u
 
 typedef struct runtime_caps_s {
     const char *arch_runtime;
@@ -441,7 +441,7 @@ static int generate_json_output(char *buffer, size_t buffer_size) {
 
     bool used_asm = false;
     uint64_t counter = read_timing_counter(&used_asm);
-    const char *arch = detect_arch();
+    const char *arch_compiled_for = detect_arch();
     const char *endianness = detect_endianness();
     const char *simd = detect_simd();
     const char *fpu = detect_fpu();
@@ -460,7 +460,11 @@ static int generate_json_output(char *buffer, size_t buffer_size) {
     pos += written;
     
     /* Architecture field */
-    written = snprintf(buffer + pos, buffer_size - pos, "\"arch\":\"%s\",", arch);
+    written = snprintf(buffer + pos, buffer_size - pos, "\"arch\":\"%s\",", arch_compiled_for);
+    if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
+    pos += written;
+
+    written = snprintf(buffer + pos, buffer_size - pos, "\"arch_compiled_for\":\"%s\",", arch_compiled_for);
     if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
     pos += written;
 
