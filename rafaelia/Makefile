@@ -111,17 +111,28 @@ BIN_DIR = bin
 OBJ_DIR = obj
 TARGETS = $(BIN_DIR)/rafaelia_arch_probe
 
+# Optional features (keep minimal build by default)
+RAFAELIA_ENABLE_HW_MAP ?= 1
+RAFAELIA_ENABLE_PRIVILEGED_MMIO ?= 0
+
 # Source files
 SOURCES = rafaelia_arch_probe.c
+ifeq ($(RAFAELIA_ENABLE_HW_MAP),1)
+	SOURCES += rafaelia_hw_map.c
+	CFLAGS += -DRAFAELIA_ENABLE_HW_MAP=1
+	ifeq ($(RAFAELIA_ENABLE_PRIVILEGED_MMIO),1)
+		CFLAGS += -DRAFAELIA_ENABLE_PRIVILEGED_MMIO=1
+	endif
+endif
 OBJECTS = $(SOURCES:%.c=$(OBJ_DIR)/%.o)
 
 .PHONY: all clean install uninstall test help
 
 all: $(TARGETS)
 
-$(BIN_DIR)/rafaelia_arch_probe: $(OBJ_DIR)/rafaelia_arch_probe.o | $(BIN_DIR)
+$(BIN_DIR)/rafaelia_arch_probe: $(OBJECTS) | $(BIN_DIR)
 	@echo "[LINK] $@"
-	@$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
+	@$(CC) $(CFLAGS) $(OBJECTS) -o $@ $(LDFLAGS)
 
 $(OBJ_DIR)/%.o: %.c | $(OBJ_DIR)
 	@echo "[CC] $<"

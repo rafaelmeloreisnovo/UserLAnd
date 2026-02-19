@@ -238,19 +238,32 @@ All helpers emit stable JSON payloads so monitoring tools can parse the same sch
   }
   ```
 
-* `raf_arch_probe` emits a compact snapshot of the target toolchain architecture,
-  endianness, word size, and a monotonic cycle counter sourced from inline
-  assembly when available:
+* `raf_arch_probe` and `rafaelia_arch_probe_v2` now share a single source of truth
+  in `core/librafaelia/impl/raf_arch_probe_core.c`. Both emit the same canonical
+  JSON contract and differ only by `profile` (`compact` vs `extended`):
 
   ```json
   {
+    "profile": "compact",
     "arch": "aarch64",
+    "arch_compiled_for": "aarch64",
+    "arch_runtime": "aarch64",
     "word_bits": 64,
     "endianness": "little",
+    "simd": "neon",
+    "simd_runtime": "neon",
+    "fpu": "arm_vfp",
+    "fpu_runtime": "present",
+    "crypto": true,
+    "crypto_runtime": true,
     "cycle_counter": 123456789,
-    "used_inline_asm": true
+    "used_inline_asm": true,
+    "timestamp_ns": 123456789
   }
   ```
+
+  In `compact`, runtime capability fields stay stable but default to compile-time
+  values; in `extended`, runtime probing is enabled for deeper detection.
 
 * `raf_bitraf_store` absorbs a raw byte vector (or synthetic gradient), applies
   a programmable verb (`pass`, `shift`, `fractalize`, or `bitwise`), derives

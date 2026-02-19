@@ -1,43 +1,4 @@
-/*
- * rafaelia_arch_probe.c - Hardware-Aware Architecture Probe Helper
- * 
- * Copyright (c) 2024 Rafael Melo Reis
- * Licensed under RAFAELIA MODULE LICENSE (see LICENSE file)
- *
- * This module provides low-level hardware architecture detection with
- * comprehensive JSON output conforming to W3C and IETF standards.
- *
- * Function blocks:
- * - Architecture detection (aarch64, arm, x86_64, x86, riscv, etc.)
- * - Endianness detection (big-endian, little-endian)
- * - Word size detection (32-bit, 64-bit, 128-bit capable)
- * - Hardware capability detection (SIMD, FPU, crypto extensions)
- * - Timing counter access (TSC, CNTVCT, fallback to CLOCK_MONOTONIC)
- * - JSON output generation (RFC 8259 compliant)
- *
- * Mitigations:
- * - Buffer overflow protection via bounded writes
- * - Invalid pointer handling
- * - Architecture-specific fallbacks for unsupported features
- * - Graceful degradation when hardware features unavailable
- *
- * Adaptations:
- * - Compile-time architecture detection
- * - Runtime capability probing
- * - Cross-platform compatibility (Linux, Android, *BSD)
- * - Minimal dependencies (C11 standard library only)
- *
- * Interoperability:
- * - JSON output format (RFC 8259)
- * - Standard exit codes (0 = success, non-zero = error)
- * - Pipe-friendly output (stdout for data, stderr for errors)
- *
- * Standards compliance:
- * - ISO/IEC 9899:2011 (C11)
- * - POSIX.1-2008
- * - RFC 8259 (JSON)
- * - IEEE 754 (Floating-Point Arithmetic)
- */
+#include "../core/librafaelia/impl/raf_arch_probe_core.h"
 
 #define _POSIX_C_SOURCE 200809L
 
@@ -573,17 +534,5 @@ overflow:
  * Output: JSON to stdout, errors to stderr
  */
 int main(void) {
-    char json_buffer[JSON_BUFFER_SIZE];
-    
-    if (generate_json_output(json_buffer, sizeof(json_buffer)) != 0) {
-        return 1;
-    }
-
-    /* Write JSON to stdout (pipe-friendly, single write syscall) */
-    if (fputs(json_buffer, stdout) == EOF) {
-        fprintf(stderr, "[ERROR] Failed to write JSON output\n");
-        return 1;
-    }
-
-    return 0;
+    return raf_arch_probe_write_json(stdout, RAF_ARCH_PROBE_PROFILE_EXTENDED);
 }
