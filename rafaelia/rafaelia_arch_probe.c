@@ -45,6 +45,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -338,8 +339,18 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
 #elif defined(__aarch64__) || defined(__arm__)
 #if defined(__linux__) && defined(AT_HWCAP)
     {
-        bool auxv_ok = true;
-        unsigned long hwcap = 0ul;
+        bool auxv_ok = false;
+        unsigned long hwcap;
+        errno = 0;
+        hwcap = getauxval(AT_HWCAP);
+        if (errno == 0) {
+            auxv_ok = true;
+            caps->arch_runtime = detect_arch();
+        }
+
+        if (!auxv_ok) {
+            return;
+        }
 #if defined(AT_HWCAP2)
         unsigned long hwcap2 = 0ul;
 #else
