@@ -264,8 +264,6 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
     bool has_osxsave = false;
     uint64_t xcr0 = 0;
 
-    caps->arch_runtime = detect_arch();
-
     eax = 1u;
     __asm__ volatile(
         "cpuid"
@@ -307,6 +305,7 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
         has_avx2 = false;
     }
 
+    caps->arch_runtime = (sizeof(void *) == 8u) ? "x86_64" : "x86";
     caps->fpu_runtime = has_fpu ? "present" : "soft";
     caps->crypto_runtime = has_aes ? "aes" : "none";
 
@@ -354,7 +353,7 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
             return;
         }
 
-        caps->arch_runtime = detect_arch();
+        caps->arch_runtime = (sizeof(void *) == 8u) ? "aarch64" : "arm";
 
 #if defined(__aarch64__)
 #ifdef HWCAP_ASIMD
@@ -419,7 +418,7 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
         bool has_v = false;
         bool has_zk = false;
 
-        caps->arch_runtime = detect_arch();
+        caps->arch_runtime = (sizeof(void *) == 8u) ? "riscv64" : "riscv32";
         if (f) {
             while (fgets(line, sizeof(line), f) != NULL) {
                 if (str_contains_ci(line, "isa") || str_contains_ci(line, "features")) {
@@ -480,7 +479,12 @@ static int generate_json_output(char *buffer, size_t buffer_size) {
     if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
     pos += written;
     
-    /* Architecture field */
+    /*
+     * Backward-compatibility contract:
+     * - "arch" remains the legacy compile-time field.
+     * - "arch_compiled_for" is the explicit compile-time field sourced from detect_arch().
+     * - "*_runtime" fields are reserved for runtime probing results (or "unknown").
+     */
     written = snprintf(buffer + pos, buffer_size - pos, "\"arch\":\"%s\",", arch_compiled_for);
     if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
     pos += written;
@@ -503,7 +507,10 @@ static int generate_json_output(char *buffer, size_t buffer_size) {
     if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
     pos += written;
     
-    /* SIMD field */
+    /*
+     * "simd" remains legacy compile-time behavior for compatibility with existing consumers.
+     * "simd_runtime" carries runtime probing and may diverge on constrained environments.
+     */
     written = snprintf(buffer + pos, buffer_size - pos, "\"simd\":\"%s\",", simd);
     if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
     pos += written;
@@ -521,7 +528,10 @@ static int generate_json_output(char *buffer, size_t buffer_size) {
     if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
     pos += written;
     
-    /* Crypto field */
+    /*
+     * "crypto" remains legacy compile-time boolean contract.
+     * "crypto_runtime" carries runtime probing and may be "unknown" when unavailable.
+     */
     written = snprintf(buffer + pos, buffer_size - pos, "\"crypto\":%s,", has_crypto ? "true" : "false");
     if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
     pos += written;
