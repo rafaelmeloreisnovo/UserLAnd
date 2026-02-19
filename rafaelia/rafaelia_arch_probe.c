@@ -42,6 +42,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include <inttypes.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <errno.h>
@@ -351,7 +352,7 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
             return;
         }
 #if defined(AT_HWCAP2)
-        const unsigned long hwcap2 = getauxval(AT_HWCAP2);
+        unsigned long hwcap2 = 0ul;
 #else
         const unsigned long hwcap2 = 0ul;
 #endif
@@ -360,6 +361,26 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
         bool has_aes = false;
         bool has_sha = false;
         bool has_pmull = false;
+
+        errno = 0;
+        hwcap = getauxval(AT_HWCAP);
+        if (errno != 0) {
+            auxv_ok = false;
+        }
+
+#if defined(AT_HWCAP2)
+        errno = 0;
+        hwcap2 = getauxval(AT_HWCAP2);
+        if (errno != 0) {
+            auxv_ok = false;
+        }
+#endif
+
+        if (!auxv_ok) {
+            return;
+        }
+
+        caps->arch_runtime = detect_arch();
 
 #if defined(__aarch64__)
 #ifdef HWCAP_ASIMD
