@@ -45,6 +45,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -251,6 +252,7 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
 
 #if defined(__x86_64__) || defined(__i386__)
     uint32_t eax, ebx, ecx, edx;
+    bool cpuid_ok = false;
     bool has_fpu = false;
     bool has_sse = false;
     bool has_sse2 = false;
@@ -264,7 +266,21 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
     bool has_osxsave = false;
     uint64_t xcr0 = 0;
 
-    caps->arch_runtime = detect_arch();
+    eax = 0u;
+    __asm__ volatile(
+        "cpuid"
+        : "+a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
+        :
+        : "cc");
+
+    if (eax >= 7u) {
+        cpuid_ok = true;
+        caps->arch_runtime = detect_arch();
+    }
+
+    if (!cpuid_ok) {
+        return;
+    }
 
     eax = 1u;
     __asm__ volatile(
@@ -323,8 +339,18 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
 #elif defined(__aarch64__) || defined(__arm__)
 #if defined(__linux__) && defined(AT_HWCAP)
     {
-        bool auxv_ok = true;
-        unsigned long hwcap = 0ul;
+        bool auxv_ok = false;
+        unsigned long hwcap;
+        errno = 0;
+        hwcap = getauxval(AT_HWCAP);
+        if (errno == 0) {
+            auxv_ok = true;
+            caps->arch_runtime = detect_arch();
+        }
+
+        if (!auxv_ok) {
+            return;
+        }
 #if defined(AT_HWCAP2)
         unsigned long hwcap2 = 0ul;
 #else
@@ -415,11 +441,11 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
     {
         FILE *f = fopen("/proc/cpuinfo", "r");
         char line[512];
+        bool cpuinfo_ok = false;
         bool found_line = false;
         bool has_v = false;
         bool has_zk = false;
 
-        caps->arch_runtime = detect_arch();
         if (f) {
             while (fgets(line, sizeof(line), f) != NULL) {
                 if (str_contains_ci(line, "isa") || str_contains_ci(line, "features")) {
@@ -435,7 +461,12 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
             fclose(f);
         }
 
-        if (!f || !found_line) {
+        if (f && found_line) {
+            cpuinfo_ok = true;
+            caps->arch_runtime = detect_arch();
+        }
+
+        if (!cpuinfo_ok) {
             caps->simd_runtime = "unknown";
             caps->crypto_runtime = "unknown";
             caps->fpu_runtime = "unknown";
