@@ -134,6 +134,63 @@ find_java_home() {
   return 1
 }
 
+sdkmanager_failure() {
+  local context="$1"
+  local log_file="$2"
+  local status="$3"
+  echo "Error: sdkmanager failed while ${context} (exit code: ${status})." >&2
+  echo "Probable causes: network instability, missing/invalid package, insufficient permissions in SDK_DIR, or invalid/corrupted cmdline-tools." >&2
+  echo "Troubleshooting log: ${log_file}" >&2
+  tail -n 30 "$log_file" >&2 || true
+  exit "$status"
+}
+
+run_sdkmanager_licenses() {
+  local log_file="$SDK_DIR/sdkmanager-licenses.log"
+  local -a pipe_statuses=()
+  local yes_status=0
+  local sdk_status=0
+
+  echo "Accepting Android SDK licenses..."
+  set +e
+  yes | "$TOOLS_DIR/bin/sdkmanager" --licenses >"$log_file" 2>&1
+  pipe_statuses=("${PIPESTATUS[@]}")
+  set -e
+
+  yes_status="${pipe_statuses[0]:-0}"
+  sdk_status="${pipe_statuses[1]:-0}"
+
+  if [[ "$sdk_status" -ne 0 ]]; then
+    sdkmanager_failure "accepting licenses" "$log_file" "$sdk_status"
+  fi
+
+  if [[ "$yes_status" -ne 0 && "$yes_status" -ne 141 ]]; then
+    echo "Error: unexpected 'yes' exit while piping licenses (exit code: $yes_status)." >&2
+    echo "Troubleshooting log: $log_file" >&2
+    tail -n 30 "$log_file" >&2 || true
+    exit "$yes_status"
+  fi
+
+  echo "Licenses accepted. Log: $log_file"
+}
+
+run_sdkmanager_install() {
+  local log_file="$SDK_DIR/sdkmanager-install.log"
+  local status=0
+
+  echo "Installing Android SDK packages: $*"
+  set +e
+  "$TOOLS_DIR/bin/sdkmanager" --install "$@" >"$log_file" 2>&1
+  status=$?
+  set -e
+
+  if [[ "$status" -ne 0 ]]; then
+    sdkmanager_failure "installing packages" "$log_file" "$status"
+  fi
+
+  echo "Packages installed. Log: $log_file"
+}
+
 COMPILE_SDK_VERSION="$(extract_compile_sdk_from_app || true)"
 if [[ -z "$COMPILE_SDK_VERSION" ]]; then
   COMPILE_SDK_VERSION="$DEFAULT_COMPILE_SDK"
@@ -178,15 +235,12 @@ if [[ "$SKIP_SDK" == false ]]; then
   fi
 
   export ANDROID_SDK_ROOT="$SDK_DIR"
-  # sdkmanager closes the input pipe after processing all licenses, which can
-  # deliver SIGPIPE to `yes` under `set -o pipefail`. Allow that benign exit
-  # while still accepting all licenses.
-  yes | "$TOOLS_DIR/bin/sdkmanager" --licenses >/dev/null || true
+  run_sdkmanager_licenses
   SDK_PACKAGES=("platform-tools" "$PLATFORM_PACKAGE" "$BUILD_TOOLS_PACKAGE")
   if [[ -n "$NDK_VERSION" ]]; then
     SDK_PACKAGES+=("ndk;${NDK_VERSION}")
   fi
-  "$TOOLS_DIR/bin/sdkmanager" --install "${SDK_PACKAGES[@]}"
+  run_sdkmanager_install "${SDK_PACKAGES[@]}"
 else
   echo "Skipping SDK install/update as requested."
   if [[ ! -x "$TOOLS_DIR/bin/sdkmanager" ]]; then
