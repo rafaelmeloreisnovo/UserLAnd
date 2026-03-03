@@ -162,10 +162,25 @@ if [[ "$SKIP_SDK" == false ]]; then
   mkdir -p "$SDK_DIR"
   if [[ ! -x "$TOOLS_DIR/bin/sdkmanager" ]]; then
     echo "Downloading Android command line tools into $SDK_DIR ..."
+    case "$(uname -s)" in
+      Linux)
+        CMDLINE_TOOLS_ZIP="commandlinetools-linux-9477386_latest.zip"
+        ;;
+      Darwin)
+        CMDLINE_TOOLS_ZIP="commandlinetools-mac-9477386_latest.zip"
+        ;;
+      MINGW*|MSYS*|CYGWIN*)
+        CMDLINE_TOOLS_ZIP="commandlinetools-win-9477386_latest.zip"
+        ;;
+      *)
+        echo "Error: unsupported host OS '$(uname -s)' for Android cmdline-tools download. Supported: Linux, Darwin, MINGW/MSYS/CYGWIN." >&2
+        exit 1
+        ;;
+    esac
     tmpdir=$(mktemp -d)
     pushd "$tmpdir" >/dev/null
-    curl -LO https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-    unzip -q commandlinetools-linux-9477386_latest.zip
+    curl -LO "https://dl.google.com/android/repository/$CMDLINE_TOOLS_ZIP"
+    unzip -q "$CMDLINE_TOOLS_ZIP"
     mkdir -p "$SDK_DIR/cmdline-tools"
     mv cmdline-tools "$TOOLS_DIR"
     popd >/dev/null
