@@ -56,9 +56,14 @@ machine:
   `JAVA_HOME_11_X64` on Windows).
 2. Run `scripts/build_apk.sh` to download the Android command-line tools into
   `build/android-sdk`, accept licenses, generate `local.properties`, and invoke
-  `assembleDebug`. To limit builds to a specific ABI (for example, arm64-only
-  artifacts for Android 15 devices), pass `--abi arm64-v8a`.
-3. Pass `--skip-sdk` if you already have an SDK available, or `--skip-build` if
+  `assembleDebug`. The script auto-detects your host platform via `uname -s`
+  and fetches the matching artifact (`commandlinetools-linux-*` on Linux,
+  `commandlinetools-mac-*` on macOS, and `commandlinetools-win-*` on
+  MINGW/MSYS/CYGWIN environments). Unsupported host OS values fail fast with
+  an explicit error before download.
+3. To limit builds to a specific ABI (for example, arm64-only artifacts for
+  Android 15 devices), pass `--abi arm64-v8a`.
+4. Pass `--skip-sdk` if you already have an SDK available, or `--skip-build` if
   you only want to bootstrap the SDK without running Gradle.
 
 The native helpers and terminal emulator JNI sources are built against Android
