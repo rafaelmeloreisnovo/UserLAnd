@@ -16,6 +16,11 @@ echo ""
 TOTAL_TESTS=0
 PASSED_TESTS=0
 FAILED_TESTS=0
+ORIGINAL_LOCAL_PROPERTIES_BACKUP=""
+if [[ -f "$ROOT_DIR/local.properties" ]]; then
+    ORIGINAL_LOCAL_PROPERTIES_BACKUP=$(mktemp)
+    cp "$ROOT_DIR/local.properties" "$ORIGINAL_LOCAL_PROPERTIES_BACKUP"
+fi
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -134,6 +139,53 @@ else
 fi
 echo ""
 
+# Test 9b: build_apk escreve sdk.dir escapado no formato .properties
+echo "Test 9b: build_apk should escape sdk.dir with spaces"
+TEST_ROOT="$ROOT_DIR/build/test_path_handling"
+FAKE_SDK="$TEST_ROOT/fake sdk"
+mkdir -p "$FAKE_SDK/cmdline-tools/latest/bin"
+cat > "$FAKE_SDK/cmdline-tools/latest/bin/sdkmanager" <<'EOF_SDKMGR'
+#!/usr/bin/env bash
+exit 0
+EOF_SDKMGR
+chmod +x "$FAKE_SDK/cmdline-tools/latest/bin/sdkmanager"
+rm -f "$ROOT_DIR/local.properties"
+if SDK_DIR="$FAKE_SDK" ./scripts/build_apk.sh --skip-sdk --skip-build >/dev/null 2>&1; then
+    escaped_sdk="${FAKE_SDK//\\/\\\\}"
+    escaped_sdk="${escaped_sdk// /\\ }"
+    sdk_line=$(grep '^sdk.dir=' "$ROOT_DIR/local.properties" | head -n1)
+    expected="sdk.dir=${escaped_sdk}"
+    if [[ "$sdk_line" == "$expected" ]]; then
+        test_pass "local.properties escreveu sdk.dir escapado corretamente"
+    else
+        test_fail "sdk.dir incorreto: expected '$expected', got '$sdk_line'"
+    fi
+else
+    test_fail "build_apk --skip-sdk --skip-build falhou para caminho com espaço"
+fi
+echo ""
+
+# Test 9c: sign_apk resolve sdk.dir escapado para localizar apksigner
+echo "Test 9c: sign_apk should unescape sdk.dir from local.properties"
+FAKE_APKSIGNER_DIR="$FAKE_SDK/build-tools/35.0.0"
+mkdir -p "$FAKE_APKSIGNER_DIR"
+cat > "$FAKE_APKSIGNER_DIR/apksigner" <<'EOF_APKSIGNER'
+#!/usr/bin/env bash
+exit 0
+EOF_APKSIGNER
+chmod +x "$FAKE_APKSIGNER_DIR/apksigner"
+DUMMY_APK="$TEST_ROOT/app-unsigned.apk"
+DUMMY_KEYSTORE="$TEST_ROOT/test.jks"
+mkdir -p "$TEST_ROOT"
+: > "$DUMMY_APK"
+: > "$DUMMY_KEYSTORE"
+if KEYSTORE_FILE="$DUMMY_KEYSTORE" KEY_ALIAS="alias" KEYSTORE_PASSWORD="pass" KEY_PASSWORD="pass" PATH="/usr/bin:/bin" ./scripts/sign_apk.sh "$DUMMY_APK" "$TEST_ROOT/app-signed.apk" >/dev/null 2>&1; then
+    test_pass "sign_apk localizou apksigner via sdk.dir escapado"
+else
+    test_fail "sign_apk não conseguiu resolver sdk.dir escapado"
+fi
+echo ""
+
 echo "=== Integration Tests: Build System ==="
 echo ""
 
@@ -190,6 +242,12 @@ echo ""
 # Clean up
 cd "$ROOT_DIR"
 rm -rf build/ rafaelia/bin rafaelia/obj *.o 2>/dev/null || true
+if [[ -n "$ORIGINAL_LOCAL_PROPERTIES_BACKUP" && -f "$ORIGINAL_LOCAL_PROPERTIES_BACKUP" ]]; then
+    cp "$ORIGINAL_LOCAL_PROPERTIES_BACKUP" "$ROOT_DIR/local.properties"
+    rm -f "$ORIGINAL_LOCAL_PROPERTIES_BACKUP"
+else
+    rm -f "$ROOT_DIR/local.properties"
+fi
 
 echo "================================================================="
 echo "Test Summary"

@@ -167,6 +167,16 @@ if [[ ! -f "$KEYSTORE_FILE" ]]; then
   error "Arquivo keystore não encontrado: $KEYSTORE_FILE"
 fi
 
+
+unescape_properties_value() {
+  local value="$1"
+  value="${value//\\\\/\\}"
+  value="${value//\\ / }"
+  value="${value//\\:/:}"
+  echo "$value"
+}
+
+
 # Encontrar apksigner
 find_apksigner() {
   # Tentar encontrar no PATH primeiro
@@ -200,6 +210,7 @@ find_apksigner() {
   # Tentar local.properties
   if [[ -f "${ROOT_DIR}/local.properties" ]]; then
     local sdk_dir=$(grep '^sdk.dir=' "${ROOT_DIR}/local.properties" | cut -d'=' -f2-)
+    sdk_dir=$(unescape_properties_value "$sdk_dir")
     if [[ -n "$sdk_dir" ]]; then
       local apksigner_path=$(find_latest_build_tools_apksigner "${sdk_dir}/build-tools")
       if [[ -n "$apksigner_path" ]]; then
