@@ -287,17 +287,22 @@ export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$SDK_DIR}"
 
 write_local_properties() {
   local existing_sdk_dir=""
+  local escaped_sdk_dir=""
+
+  escaped_sdk_dir="${SDK_DIR//\\/\\\\}"
+  escaped_sdk_dir="${escaped_sdk_dir// /\\ }"
+
   if [[ -f "$ROOT_DIR/local.properties" ]]; then
     existing_sdk_dir=$(grep '^sdk.dir=' "$ROOT_DIR/local.properties" | head -n1 | cut -d'=' -f2-)
   fi
 
-  if [[ "$existing_sdk_dir" == "$SDK_DIR" ]]; then
+  if [[ "$existing_sdk_dir" == "$escaped_sdk_dir" ]]; then
     echo "local.properties already points at $SDK_DIR"
     return
   fi
 
   cat > "$ROOT_DIR/local.properties" <<EOF_LOCAL
-sdk.dir=$SDK_DIR
+sdk.dir=$escaped_sdk_dir
 EOF_LOCAL
   echo "Wrote local.properties pointing at $SDK_DIR"
 }
