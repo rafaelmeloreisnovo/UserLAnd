@@ -33,13 +33,18 @@ USAGE
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --task)
+      if [[ $# -lt 2 || -z "${2:-}" || "$2" == -* ]]; then
+        echo "Error: --task requires a non-empty value." >&2
+        usage
+        exit 1
+      fi
       BUILD_TASK="$2"
       shift 2
       ;;
     --abi)
       abi_value="${2-}"
       if [[ $# -lt 2 || -z "$abi_value" || "$abi_value" == -* ]]; then
-        echo "Error: --abi requires a non-empty value that does not start with '-'" >&2
+        echo "Error: --abi requires a non-empty value." >&2
         usage
         exit 1
       fi
@@ -49,7 +54,7 @@ while [[ $# -gt 0 ]]; do
     --arch)
       arch_value="${2-}"
       if [[ $# -lt 2 || -z "$arch_value" || "$arch_value" == -* ]]; then
-        echo "Error: --arch requires a non-empty value that does not start with '-'" >&2
+        echo "Error: --arch requires a non-empty value." >&2
         usage
         exit 1
       fi
@@ -59,6 +64,11 @@ while [[ $# -gt 0 ]]; do
     --sdk-dir|--skip-sdk|--skip-build)
       FORWARDED_ARGS+=("$1")
       if [[ "$1" == "--sdk-dir" ]]; then
+        if [[ $# -lt 2 || -z "${2:-}" || "$2" == -* ]]; then
+          echo "Error: --sdk-dir requires a non-empty value." >&2
+          usage
+          exit 1
+        fi
         FORWARDED_ARGS+=("$2")
         shift 2
       else

@@ -44,10 +44,20 @@ USAGE
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --task)
+      if [[ $# -lt 2 || -z "${2:-}" || "$2" == -* ]]; then
+        echo "Error: --task requires a non-empty value." >&2
+        usage
+        exit 1
+      fi
       BUILD_TASK="$2"
       shift 2
       ;;
     --gradle-arg)
+      if [[ $# -lt 2 || -z "${2:-}" || "$2" == -* ]]; then
+        echo "Error: --gradle-arg requires a non-empty value." >&2
+        usage
+        exit 1
+      fi
       GRADLE_ARGS+=("$2")
       shift 2
       ;;
@@ -71,6 +81,11 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --sdk-dir)
+      if [[ $# -lt 2 || -z "${2:-}" || "$2" == -* ]]; then
+        echo "Error: --sdk-dir requires a non-empty value." >&2
+        usage
+        exit 1
+      fi
       SDK_DIR="$2"
       shift 2
       ;;
