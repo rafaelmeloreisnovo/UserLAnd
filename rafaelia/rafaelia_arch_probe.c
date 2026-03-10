@@ -534,5 +534,15 @@ overflow:
  * Output: JSON to stdout, errors to stderr
  */
 int main(void) {
-    return raf_arch_probe_write_json(stdout, RAF_ARCH_PROBE_PROFILE_EXTENDED);
+    char json_buffer[1024];
+    if (generate_json_output(json_buffer, sizeof(json_buffer)) != 0) {
+        return 1;
+    }
+
+    if (fputs(json_buffer, stdout) == EOF) {
+        fprintf(stderr, "[ERROR] Failed to write JSON output\n");
+        return 1;
+    }
+
+    return 0;
 }

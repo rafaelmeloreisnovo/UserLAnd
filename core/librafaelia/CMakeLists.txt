@@ -124,8 +124,13 @@ set(RAF_CORE_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/impl/raf_cpu_parser.c
   ${CMAKE_CURRENT_SOURCE_DIR}/raf_crc_ecc.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../add2/bitstack_Version2.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../app/src/main/cpp/rafaelia_jni.c
 )
+
+if(ANDROID)
+  list(APPEND RAF_CORE_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../app/src/main/cpp/rafaelia_jni.c
+  )
+endif()
 
 # ARM64-only sources use AArch64 assembly/NEON instructions.
 if(ANDROID_ABI STREQUAL "arm64-v8a" OR RAF_ARCH STREQUAL "arm64")
@@ -204,8 +209,12 @@ find_package(Threads REQUIRED)
 # Link Libraries
 # ==============================================================================
 
-find_library(log-lib log)
-target_link_libraries(rafaelia ${log-lib} Threads::Threads)
+if(ANDROID)
+  find_library(log-lib log)
+  target_link_libraries(rafaelia ${log-lib} Threads::Threads)
+else()
+  target_link_libraries(rafaelia Threads::Threads)
+endif()
 
 # ==============================================================================
 # Installation
