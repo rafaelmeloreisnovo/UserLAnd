@@ -15,6 +15,8 @@ apply plugin: 'de.undercouch.download'
 def defaultArchitectures = ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"]
 def requestedArchitectures = (project.findProperty('architectures')
         ?: project.findProperty('abis')
+        ?: project.findProperty('buildArch')
+        ?: project.findProperty('userlandBuildArch')
         ?: '')
         .toString()
         .split(',')
