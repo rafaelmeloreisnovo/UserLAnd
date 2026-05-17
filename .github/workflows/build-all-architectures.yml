@@ -22,9 +22,9 @@ jobs:
           - name: ARM64
             gradle_arg: arm64-v8a
             artifact_suffix: arm64
-          - name: ARMv7
+          - name: ARM32
             gradle_arg: armeabi-v7a
-            artifact_suffix: armv7
+            artifact_suffix: arm32
           - name: x86_64
             gradle_arg: x86_64
             artifact_suffix: x86_64
@@ -62,7 +62,9 @@ jobs:
           
           until [ $RETRY_COUNT -ge $MAX_RETRIES ]; do
             echo "Attempt $((RETRY_COUNT+1)) of $MAX_RETRIES: Fetching assets..."
-            ./gradlew --no-daemon :app:fetchAssets && break
+            ./gradlew --no-daemon :app:fetchAssets \
+              -PbuildArch=${{ matrix.architecture.gradle_arg }} \
+              -PabiFilters=${{ matrix.architecture.gradle_arg }} && break
             RETRY_COUNT=$((RETRY_COUNT+1))
             if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
               echo "Fetch failed, retrying in 5 seconds..."
@@ -83,6 +85,7 @@ jobs:
           ./gradlew --no-daemon :app:assembleDebug \
             -PuserlandUnsignedApk=true \
             -PbuildArch=${{ matrix.architecture.gradle_arg }} \
+            -PabiFilters=${{ matrix.architecture.gradle_arg }} \
             --stacktrace
 
       - name: 🏗️ Build Release APK (${{ matrix.architecture.name }})
@@ -91,6 +94,7 @@ jobs:
           ./gradlew --no-daemon :app:assembleRelease \
             -PuserlandUnsignedApk=true \
             -PbuildArch=${{ matrix.architecture.gradle_arg }} \
+            -PabiFilters=${{ matrix.architecture.gradle_arg }} \
             --stacktrace
 
       - name: 🔍 Validate APK Structure
@@ -107,10 +111,24 @@ jobs:
             APK_SIZE_MB=$((APK_SIZE / 1024 / 1024))
             echo "📦 APK Size: ${APK_SIZE_MB} MB" >> $GITHUB_STEP_SUMMARY
             
-            # Check architecture libs
+            # Check architecture libs and fail if the requested ABI is missing.
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Native Libraries:**" >> $GITHUB_STEP_SUMMARY
-            unzip -l "$RELEASE_APK" | grep "lib/${{ matrix.architecture.gradle_arg }}/" | grep "\.so$" | awk '{print "- " $NF}' >> $GITHUB_STEP_SUMMARY || echo "- ⚠️ No native libraries found" >> $GITHUB_STEP_SUMMARY
+            ABI_LIBS=$(unzip -Z1 "$RELEASE_APK" | grep "^lib/${{ matrix.architecture.gradle_arg }}/.*\.so$" || true)
+            if [[ -z "$ABI_LIBS" ]]; then
+              echo "❌ No native libraries found for ${{ matrix.architecture.gradle_arg }}" >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+            echo "$ABI_LIBS" | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+
+            OTHER_ABI_LIBS=$(unzip -Z1 "$RELEASE_APK" | grep '^lib/.*\.so$' | grep -v "^lib/${{ matrix.architecture.gradle_arg }}/" || true)
+            if [[ -n "$OTHER_ABI_LIBS" ]]; then
+              echo "❌ APK contains non-target ABI libraries:" >> $GITHUB_STEP_SUMMARY
+              echo "$OTHER_ABI_LIBS" | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+
+            echo "✅ Only ${{ matrix.architecture.gradle_arg }} native libraries are packaged" >> $GITHUB_STEP_SUMMARY
             
             # Calculate SHA256
             echo "" >> $GITHUB_STEP_SUMMARY
@@ -125,19 +143,32 @@ jobs:
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
 
-      - name: 📤 Upload Debug APK (${{ matrix.architecture.name }})
-        uses: actions/upload-artifact@v4
-        with:
-          name: userland-${{ matrix.architecture.artifact_suffix }}-debug-${{ github.sha }}
-          path: app/build/outputs/apk/debug/*.apk
-          retention-days: 90
-          if-no-files-found: error
+      - name: 🧪 Package tested ZIP (${{ matrix.architecture.name }})
+        run: |
+          set -euo pipefail
+          DIST_DIR=dist/${{ matrix.architecture.artifact_suffix }}
+          ZIP_NAME=userland-${{ matrix.architecture.artifact_suffix }}-${{ github.sha }}.zip
+          mkdir -p "$DIST_DIR"
+          cp app/build/outputs/apk/debug/*.apk "$DIST_DIR/"
+          cp app/build/outputs/apk/release/*.apk "$DIST_DIR/"
+          (cd "$DIST_DIR" && sha256sum *.apk > SHA256SUMS.txt)
+          cat > "$DIST_DIR/MANIFEST.txt" <<EOF
+          UserLAnd tested Android artifact bundle
+          Git SHA: ${{ github.sha }}
+          Architecture: ${{ matrix.architecture.name }}
+          ABI: ${{ matrix.architecture.gradle_arg }}
+          Validation: release APK contains only ${{ matrix.architecture.gradle_arg }} native libraries
+          Contents: debug APK, release APK, SHA256SUMS.txt
+          EOF
+          (cd "$DIST_DIR" && zip -9 -r "../$ZIP_NAME" .)
+          unzip -t "dist/$ZIP_NAME"
+          echo "ZIP_PATH=dist/$ZIP_NAME" >> "$GITHUB_ENV"
 
-      - name: 📤 Upload Release APK (${{ matrix.architecture.name }})
+      - name: 📤 Upload tested ZIP (${{ matrix.architecture.name }})
         uses: actions/upload-artifact@v4
         with:
-          name: userland-${{ matrix.architecture.artifact_suffix }}-release-${{ github.sha }}
-          path: app/build/outputs/apk/release/*.apk
+          name: userland-${{ matrix.architecture.artifact_suffix }}-tested-zip-${{ github.sha }}
+          path: ${{ env.ZIP_PATH }}
           retention-days: 90
           if-no-files-found: error
 
@@ -156,12 +187,12 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Built Architectures:" >> $GITHUB_STEP_SUMMARY
           echo "- ${{ needs.build-multi-arch.result == 'success' && '✅' || '⚠️' }} ARM64 (arm64-v8a)" >> $GITHUB_STEP_SUMMARY
-          echo "- ${{ needs.build-multi-arch.result == 'success' && '✅' || '⚠️' }} ARMv7 (armeabi-v7a)" >> $GITHUB_STEP_SUMMARY
+          echo "- ${{ needs.build-multi-arch.result == 'success' && '✅' || '⚠️' }} ARM32 (armeabi-v7a)" >> $GITHUB_STEP_SUMMARY
           echo "- ${{ needs.build-multi-arch.result == 'success' && '✅' || '⚠️' }} x86_64" >> $GITHUB_STEP_SUMMARY
           echo "- ${{ needs.build-multi-arch.result == 'success' && '✅' || '⚠️' }} x86" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "All APKs are available in the workflow artifacts with 90-day retention." >> $GITHUB_STEP_SUMMARY
+          echo "Each matrix job uploads a tested ZIP artifact containing debug/release APKs, SHA256SUMS.txt, and MANIFEST.txt with 90-day retention." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
