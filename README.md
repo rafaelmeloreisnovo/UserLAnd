@@ -82,7 +82,18 @@ step), use the helper wrapper:
 scripts/build_unsigned_apk.sh             # assembleRelease without signing
 scripts/build_unsigned_apk.sh --task :app:bundleRelease --skip-sdk
 scripts/build_unsigned_apk.sh --abi arm64-v8a
+
 ```
+
+### Quick Start Doctor (Java/ABI/PRoot/bootstrap)
+
+If startup is failing due to Java/ABI/PRoot bootstrap issues, run:
+
+```bash
+scripts/start_doctor.sh
+```
+
+This performs a fast sanity check of Java 17+, Gradle wrapper, start handler, and PRoot guards before a full build.
 
 The wrapper forwards `-PunsignedApk=true` to Gradle and also exports
 `USERLAND_UNSIGNED_APK=1` for compatibility with the legacy
@@ -116,6 +127,7 @@ filter and then sign locally (not Play Store signing) before installation:
 
 ```sh
 scripts/build_unsigned_apk.sh --abi arm64-v8a
+
 scripts/sign_apk.sh app/build/outputs/apk/release/app-release-unsigned.apk \
   userland-arm64-signed.apk
 adb install userland-arm64-signed.apk
