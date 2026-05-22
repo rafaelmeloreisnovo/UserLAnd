@@ -14,7 +14,9 @@ class UlaFiles(
     val filesDir: File = context.filesDir
     val libDir: File = File(libDirPath)
     val supportDir: File = File(filesDir, "support")
-    val emulatedScopedDir = context.getExternalFilesDir(null)!!
+    // Some devices can return null during early startup or storage transitions.
+    // Fall back to app-internal filesDir to avoid startup crashes.
+    val emulatedScopedDir = context.getExternalFilesDir(null) ?: filesDir
     val emulatedUserDir = File(emulatedScopedDir, "storage")
 
     val sdCardScopedDir: File? = resolveSdCardScopedStorage(context)
@@ -84,7 +86,13 @@ class UlaFiles(
         // Regex to remove versioned suffixes like ".a10.so", ".a11.so", ".a10a.so", etc.
         val versionedSoRegex = Regex("""\\.a[0-9]+[a-zA-Z0-9\-]*\\.so$""")
 
-        libDir.listFiles()!!.forEach { libFile ->
+        val nativeLibs = libDir.listFiles()
+        if (nativeLibs.isNullOrEmpty()) {
+            android.util.Log.e("UlaFiles", "Native library directory is empty or inaccessible: ${libDir.absolutePath}")
+            return
+        }
+
+        nativeLibs.forEach { libFile ->
             var libFileName = libFile.name
 
             // Normalize versioned suffixes (e.g., lib_proot.a10.so -> lib_proot.so)
