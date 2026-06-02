@@ -109,4 +109,39 @@ class RafaeliaNativeSmokeTest {
         // Should return null or a Throwable
         assertTrue(error == null || error is Throwable)
     }
+
+    @Test
+    fun `test compile key report accepts bounded high entropy key with license flags`() {
+        val data = ByteArray(64) { it.toByte() }
+        val crc = RafaeliaNative.safeCrc32(data)
+
+        val report = RafaeliaNative.safeCompileKeyReport(data, expectedCrc32 = crc)
+
+        assertTrue(report.accepted)
+        assertEquals(RafaeliaNative.COMPILE_STATUS_OK, report.status)
+        assertTrue(report.entropyMilli >= 3500)
+        assertTrue(report.tag14 in 1..0x3FFF)
+    }
+
+    @Test
+    fun `test compile key report rejects missing license flags`() {
+        val data = ByteArray(64) { (it * 3).toByte() }
+
+        val report = RafaeliaNative.safeCompileKeyReport(data, flags = 0)
+
+        assertFalse(report.accepted)
+        assertTrue((report.status and RafaeliaNative.COMPILE_STATUS_MISSING_LICENSE_FLAGS) != 0)
+    }
+
+    @Test
+    fun `test compile key report rejects low entropy and crc mismatch`() {
+        val data = ByteArray(8) { 7 }
+
+        val report = RafaeliaNative.safeCompileKeyReport(data, expectedCrc32 = 0x12345678)
+
+        assertFalse(report.accepted)
+        assertTrue((report.status and RafaeliaNative.COMPILE_STATUS_LOW_ENTROPY) != 0)
+        assertTrue((report.status and RafaeliaNative.COMPILE_STATUS_CRC_MISMATCH) != 0)
+    }
+
 }
