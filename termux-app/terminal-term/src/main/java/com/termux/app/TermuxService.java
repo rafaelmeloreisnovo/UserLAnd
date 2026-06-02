@@ -129,10 +129,10 @@ public final class TermuxService extends Service implements SessionChangedCallba
                 updateNotification();
             }
         } else if (ACTION_EXECUTE.equals(action)) {
-            username = intent.getStringExtra("username");
-            hostname = intent.getStringExtra("hostname");
-            port = intent.getStringExtra("port");
-            sessionName = intent.getStringExtra("sessionName");
+            username = valueOrEmpty(intent.getStringExtra("username"));
+            hostname = valueOrEmpty(intent.getStringExtra("hostname"));
+            port = valueOrEmpty(intent.getStringExtra("port"));
+            sessionName = valueOrEmpty(intent.getStringExtra("sessionName"));
 
             if (username.isEmpty() || hostname.isEmpty() || port.isEmpty() || sessionName.isEmpty()) {
                 Log.e(EmulatorDebug.LOG_TAG, "Currently only intents from UserLAnd are supported");
@@ -161,6 +161,42 @@ public final class TermuxService extends Service implements SessionChangedCallba
         prefixPath = filesPath + "/usr";
         homePath = filesPath + "/home";
         startForeground(NOTIFICATION_ID, buildNotification());
+    }
+
+
+    private static String valueOrEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    private File firstExecutableSupportFile(String binaryName) {
+        File file = new File(supportPath + binaryName);
+        if (file.canExecute()) {
+            return file;
+        }
+        if (file.exists() && file.setExecutable(true, false) && file.canExecute()) {
+            return file;
+        }
+        Log.e(TAG, "Missing or non-executable support binary: " + file.getAbsolutePath());
+        return null;
+    }
+
+    private String sshEndpoint() {
+        return shellQuote(username + "@" + hostname + "/" + port);
+    }
+
+    private String buildStartupFailureCommand(File busyboxFile, File dbclientFile) {
+        String busyboxState = busyboxFile == null ? "missing/non-executable busybox" : "busybox ok";
+        String dbclientState = dbclientFile == null ? "missing/non-executable dbclient" : "dbclient ok";
+        return "printf '%s\n' "
+            + shellQuote("UserLAnd startup fallback: cannot open Linux shell yet.") + " "
+            + shellQuote(busyboxState) + " "
+            + shellQuote(dbclientState) + " "
+            + shellQuote("Open UserLAnd again or rebuild support assets, then retry the session.")
+            + "; exec /system/bin/sh -i";
+    }
+
+    private static String shellQuote(String value) {
+        return "'" + value.replace("'", "'\\''") + "'";
     }
 
     /** Update the shown foreground service notification after making any changes that affect it. */
@@ -273,16 +309,21 @@ public final class TermuxService extends Service implements SessionChangedCallba
         String[] env = BackgroundJob.buildEnvironment(failSafe, cwd, filesPath, homePath, prefixPath);
         boolean isLoginShell = false;
 
-        for (String shellBinary : new String[]{"busybox"}) {
-            File shellFile = new File(supportPath + shellBinary);
-            if (shellFile.canExecute()) {
-                executablePath = shellFile.getAbsolutePath();
-                break;
-            }
+        File busyboxFile = firstExecutableSupportFile("busybox");
+        File dbclientFile = firstExecutableSupportFile("dbclient");
+
+        if (busyboxFile != null) {
+            executablePath = busyboxFile.getAbsolutePath();
         }
 
-        // TODO: Replace -y -y option with a way to support hostkey checking
-        String[] dbclientArgs = {"sh", "-c", supportPath + "dbclient -y -y " + username + "@" + hostname + "/" + port};
+        String[] dbclientArgs;
+        if (executablePath == null || dbclientFile == null) {
+            executablePath = "/system/bin/sh";
+            dbclientArgs = new String[]{"sh", "-c", buildStartupFailureCommand(busyboxFile, dbclientFile)};
+        } else {
+            // TODO: Replace -y -y option with a way to support hostkey checking
+            dbclientArgs = new String[]{"sh", "-c", shellQuote(dbclientFile.getAbsolutePath()) + " -y -y " + sshEndpoint()};
+        }
         String[] processArgs = BackgroundJob.setupProcessArgs(executablePath, dbclientArgs, prefixPath);
         executablePath = processArgs[0];
         int lastSlashIndex = executablePath.lastIndexOf('/');
