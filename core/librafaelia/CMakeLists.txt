@@ -228,3 +228,22 @@ set(RAF_BUILD_BITS ${RAF_ARCH_BITS} CACHE STRING "Target bit width for rafaelia"
 message(STATUS "Rafaelia library configuration complete")
 message(STATUS "  Architecture: ${RAF_ARCH}")
 message(STATUS "  Bits: ${RAF_ARCH_BITS}")
+
+# Native host tests keep deterministic helpers failsafe without Android runtime.
+if(NOT ANDROID)
+  enable_testing()
+  add_executable(vectra_vm_vector_field_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_vectra_vm_vector_field.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/impl/vectra_vm_vector_field.c
+  )
+  target_include_directories(vectra_vm_vector_field_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/impl
+  )
+  target_compile_options(vectra_vm_vector_field_test PRIVATE
+    -O2
+    -Wall
+    -Wextra
+    -Werror
+  )
+  add_test(NAME vectra_vm_vector_field_test COMMAND vectra_vm_vector_field_test)
+endif()

@@ -68,6 +68,20 @@ if [[ -f app/src/main/java/tech/ula/ServerService.kt ]]; then
   fi
 fi
 
+
+if [[ -f termux-app/terminal-term/src/main/java/com/termux/app/TermuxService.java ]]; then
+  if rg -q 'buildStartupFailureCommand' termux-app/terminal-term/src/main/java/com/termux/app/TermuxService.java; then
+    ok "Terminal service has shell startup fallback diagnostics"
+  else
+    warn "Terminal service startup fallback diagnostics not found"
+  fi
+  if rg -q 'firstExecutableSupportFile\("dbclient"\)' termux-app/terminal-term/src/main/java/com/termux/app/TermuxService.java; then
+    ok "Terminal service validates dbclient before opening SSH shell"
+  else
+    warn "Terminal service dbclient validation not found"
+  fi
+fi
+
 if [[ "$fail" -ne 0 ]]; then
   echo "== RESULT: FAIL =="
   exit 1
