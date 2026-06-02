@@ -53,7 +53,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --gradle-arg)
-      if [[ $# -lt 2 || -z "${2:-}" || "$2" == -* ]]; then
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
         echo "Error: --gradle-arg requires a non-empty value." >&2
         usage
         exit 1

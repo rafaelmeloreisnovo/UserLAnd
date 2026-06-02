@@ -54,6 +54,7 @@ captures/
 signing.properties
 
 # Generated files for deployment
+dist/
 app/versionCode.txt
 app/versionName.txt
 fastlane/README.md
