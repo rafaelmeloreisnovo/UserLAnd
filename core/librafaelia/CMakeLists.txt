@@ -123,7 +123,7 @@ endif()
 set(RAF_CORE_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/impl/raf_cpu_parser.c
   ${CMAKE_CURRENT_SOURCE_DIR}/raf_crc_ecc.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/impl/vectra_vm_vector_field.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/raf_compile_key.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../add2/bitstack_Version2.c
 )
 
