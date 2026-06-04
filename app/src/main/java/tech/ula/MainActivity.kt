@@ -33,58 +33,22 @@ import tech.ula.model.entities.ServiceType
 import tech.ula.model.entities.Session
 import tech.ula.model.remote.GithubApiClient
 import tech.ula.model.repositories.AssetRepository
+import tech.ula.model.repositories.DownloadMetadata
 import tech.ula.model.repositories.UlaDatabase
 import tech.ula.model.state.AppsStartupFsm
 import tech.ula.model.state.SessionStartupFsm
 import tech.ula.ui.AppsListFragment
 import tech.ula.ui.SessionListFragment
-import tech.ula.viewmodel.ActiveSessionsMustBeDeactivated
-import tech.ula.viewmodel.AppServiceTypePreferenceRequired
-import tech.ula.viewmodel.AssetsHaveNotBeenDownloaded
-import tech.ula.viewmodel.BusyboxMissing
-import tech.ula.viewmodel.CanOnlyStartSingleSession
-import tech.ula.viewmodel.CheckingForAssetsUpdates
-import tech.ula.viewmodel.ClearingSupportFiles
-import tech.ula.viewmodel.CopyingDownloads
-import tech.ula.viewmodel.DownloadCacheAccessedWhileEmpty
-import tech.ula.viewmodel.DownloadProgress
-import tech.ula.viewmodel.DownloadsDidNotCompleteSuccessfully
-import tech.ula.viewmodel.ErrorCopyingAppScript
-import tech.ula.viewmodel.ErrorFetchingAppDatabaseEntries
-import tech.ula.viewmodel.ErrorFetchingAssetLists
-import tech.ula.viewmodel.ErrorGeneratingDownloads
-import tech.ula.viewmodel.FailedToClearSupportFiles
-import tech.ula.viewmodel.FailedToCopyAssetsToFilesystem
-import tech.ula.viewmodel.FailedToCopyAssetsToLocalStorage
-import tech.ula.viewmodel.FailedToExtractFilesystem
-import tech.ula.viewmodel.FetchingAssetLists
-import tech.ula.viewmodel.FilesystemCredentialsRequired
-import tech.ula.viewmodel.FilesystemExtractionStep
-import tech.ula.viewmodel.IllegalStateTransition
-import tech.ula.viewmodel.InsufficientAvailableStorage
-import tech.ula.viewmodel.LargeDownloadRequired
-import tech.ula.viewmodel.LowStorageAcknowledgementRequired
 import tech.ula.viewmodel.MainActivityViewModel
 import tech.ula.viewmodel.MainActivityViewModelFactory
-import tech.ula.viewmodel.NoAppSelectedWhenPreferenceSubmitted
-import tech.ula.viewmodel.NoAppSelectedWhenTransitionNecessary
-import tech.ula.viewmodel.NoFilesystemSelectedWhenCredentialsSubmitted
-import tech.ula.viewmodel.NoSelectionsMadeWhenPermissionsGranted
-import tech.ula.viewmodel.NoSessionSelectedWhenTransitionNecessary
-import tech.ula.viewmodel.ProgressBarOperationComplete
-import tech.ula.viewmodel.SessionCanBeRestarted
-import tech.ula.viewmodel.SessionCanBeStarted
-import tech.ula.viewmodel.StartingSetup
 import tech.ula.viewmodel.State
-import tech.ula.viewmodel.TooManySelectionsMadeWhenPermissionsGranted
-import tech.ula.viewmodel.VerifyingAvailableStorage
-import tech.ula.viewmodel.VerifyingFilesystem
 import tech.ula.utils.Android15CompatibilityHelper
 import tech.ula.utils.AssetDownloader
 import tech.ula.utils.BusyboxExecutor
 import tech.ula.utils.CredentialValidator
 import tech.ula.utils.DownloadManagerWrapper
 import tech.ula.utils.FilesystemManager
+import tech.ula.utils.IllegalStateHandler
 import tech.ula.utils.MemoryMonitor
 import tech.ula.utils.ProotDebugLogger
 import tech.ula.utils.SafetyGuard
@@ -442,49 +406,27 @@ class MainActivity :
     }
 
     private fun handleStartupState(state: State) {
-        when (state) {
-            CanOnlyStartSingleSession -> Toast.makeText(this, R.string.single_session_supported, Toast.LENGTH_LONG).show()
-            is SessionCanBeStarted -> startPreparedSession(state.session, "start")
-            is SessionCanBeRestarted -> startPreparedSession(state.session, "restartRunningSession")
-            FilesystemCredentialsRequired -> showFilesystemCredentialsDialog()
-            AppServiceTypePreferenceRequired -> showAppServiceTypeDialog()
-            is LargeDownloadRequired -> showLargeDownloadDialog(state)
-            LowStorageAcknowledgementRequired -> showLowStorageDialog()
-            ActiveSessionsMustBeDeactivated -> displayGenericErrorDialogSafe(
+        when (val action = MainActivityStateActionMapper.from(state)) {
+            MainActivityStateAction.None -> Unit
+            is MainActivityStateAction.ShowToast -> Toast.makeText(this, action.messageResId, Toast.LENGTH_LONG).show()
+            is MainActivityStateAction.StartSession -> startPreparedSession(action.session, action.type)
+            MainActivityStateAction.RequestFilesystemCredentials -> showFilesystemCredentialsDialog()
+            MainActivityStateAction.RequestAppServiceType -> showAppServiceTypeDialog()
+            is MainActivityStateAction.ConfirmLargeDownload -> showLargeDownloadDialog(action.downloadRequirements)
+            MainActivityStateAction.ConfirmLowStorage -> showLowStorageDialog()
+            MainActivityStateAction.RequireInactiveSessions -> displayGenericErrorDialogSafe(
                 getString(R.string.general_error_title),
                 getString(R.string.alert_storage_low_message)
             )
-            StartingSetup -> showProgress(R.string.progress_start_step)
-            FetchingAssetLists -> showProgress(R.string.progress_fetching_asset_lists)
-            CheckingForAssetsUpdates -> showProgress(R.string.progress_checking_for_required_updates)
-            is DownloadProgress -> showDownloadProgress(state.numComplete, state.numTotal)
-            CopyingDownloads -> showProgress(R.string.progress_copying_downloads)
-            VerifyingFilesystem -> showProgress(R.string.progress_verifying_assets)
-            VerifyingAvailableStorage -> showProgress(R.string.progress_verifying_sufficient_storage)
-            is FilesystemExtractionStep -> showProgress(getString(R.string.progress_extraction_details, state.extractionTarget))
-            ClearingSupportFiles -> showProgress(R.string.progress_clearing_support_files)
-            ProgressBarOperationComplete -> stopProgressFromFilesystemList()
-            is IllegalStateTransition -> showIllegalState(getString(R.string.illegal_state_transition, state.transition))
-            TooManySelectionsMadeWhenPermissionsGranted -> showIllegalState(R.string.illegal_state_too_many_selections_when_permissions_granted)
-            NoSelectionsMadeWhenPermissionsGranted -> showIllegalState(R.string.illegal_state_no_selections_when_permissions_granted)
-            NoFilesystemSelectedWhenCredentialsSubmitted -> showIllegalState(R.string.illegal_state_no_filesystem_selected_when_credentials_selected)
-            NoAppSelectedWhenPreferenceSubmitted -> showIllegalState(R.string.illegal_state_no_app_selected_when_preference_submitted)
-            NoAppSelectedWhenTransitionNecessary -> showIllegalState(R.string.illegal_state_no_app_selected_when_preparation_started)
-            ErrorFetchingAppDatabaseEntries -> showIllegalState(R.string.illegal_state_error_fetching_app_database_entries)
-            ErrorCopyingAppScript -> showIllegalState(R.string.illegal_state_error_copying_app_script)
-            NoSessionSelectedWhenTransitionNecessary -> showIllegalState(R.string.illegal_state_no_session_selected_when_preparation_started)
-            ErrorFetchingAssetLists -> showIllegalState(R.string.illegal_state_error_fetching_asset_lists)
-            is ErrorGeneratingDownloads -> showIllegalState(state.errorId)
-            is DownloadsDidNotCompleteSuccessfully -> showIllegalState(state.reason.getString(this))
-            DownloadCacheAccessedWhileEmpty -> showIllegalState(R.string.illegal_state_empty_download_cache_access)
-            FailedToCopyAssetsToLocalStorage -> showIllegalState(R.string.illegal_state_failed_to_copy_assets_to_local)
-            AssetsHaveNotBeenDownloaded -> showIllegalState(R.string.illegal_state_assets_have_not_been_downloaded)
-            FailedToCopyAssetsToFilesystem -> showIllegalState(R.string.illegal_state_failed_to_copy_assets_to_filesystem)
-            is FailedToExtractFilesystem -> showIllegalState(getString(R.string.illegal_state_failed_to_extract_filesystem, state.reason))
-            FailedToClearSupportFiles -> showIllegalState(R.string.illegal_state_failed_to_clear_support_files)
-            InsufficientAvailableStorage -> showIllegalState(R.string.illegal_state_insufficient_storage)
-            BusyboxMissing -> showIllegalState(R.string.illegal_state_busybox_missing)
-            else -> Unit
+            is MainActivityStateAction.ShowProgress -> showProgress(action.messageResId)
+            is MainActivityStateAction.ShowExtractionProgress -> {
+                showProgress(getString(R.string.progress_extraction_details, action.extractionTarget))
+            }
+            is MainActivityStateAction.ShowDownloadProgress -> showDownloadProgress(action.numComplete, action.numTotal)
+            MainActivityStateAction.CompleteProgress -> stopProgressFromFilesystemList()
+            is MainActivityStateAction.ShowIllegalState -> {
+                showIllegalState(IllegalStateHandler.getLocalizationData(action.state).getString(this))
+            }
         }
     }
 
@@ -605,12 +547,12 @@ class MainActivity :
             .show()
     }
 
-    private fun showLargeDownloadDialog(state: LargeDownloadRequired) {
+    private fun showLargeDownloadDialog(downloadRequirements: List<DownloadMetadata>) {
         AlertDialog.Builder(this)
             .setTitle(R.string.alert_wifi_disabled_title)
             .setMessage(R.string.alert_wifi_disabled_message)
             .setPositiveButton(R.string.alert_wifi_disabled_continue_button) { dialog, _ ->
-                viewModel.startAssetDownloads(state.downloadRequirements)
+                viewModel.startAssetDownloads(downloadRequirements)
                 dialog.dismiss()
             }
             .setNegativeButton(R.string.alert_wifi_disabled_cancel_button) { dialog, _ ->
@@ -651,17 +593,8 @@ class MainActivity :
 
     override fun sessionHasBeenSelected(session: Session) {
         try {
-            val serviceIntent = Intent(this, ServerService::class.java)
-            if (session.active) {
-                // Session is already active, restart the client
-                serviceIntent.putExtra("type", "restartRunningSession")
-                serviceIntent.putExtra("session", session)
-            } else {
-                // Start a new session
-                serviceIntent.putExtra("type", "start")
-                serviceIntent.putExtra("session", session)
-            }
-            startService(serviceIntent)
+            Log.i(TAG, "Session selected: ${session.name}, active: ${session.active}")
+            viewModel.submitSessionSelection(session)
         } catch (e: Exception) {
             Log.e(TAG, "Error starting session: ${session.name}", e)
             displayGenericErrorDialogSafe(
