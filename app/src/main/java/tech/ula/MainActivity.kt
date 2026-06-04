@@ -1,18 +1,27 @@
 package tech.ula
 
+import android.app.DownloadManager
 import android.app.ProgressDialog
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.StatFs
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.EditText
+import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.navigation.NavController
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
 import tech.ula.consent.ConsentLedger
@@ -20,19 +29,37 @@ import tech.ula.consent.ConsentReviewActivity
 import tech.ula.databinding.ActivityMainBinding
 import tech.ula.debug.DebugPanelActivity
 import tech.ula.model.entities.App
+import tech.ula.model.entities.ServiceType
 import tech.ula.model.entities.Session
+import tech.ula.model.remote.GithubApiClient
+import tech.ula.model.repositories.AssetRepository
+import tech.ula.model.repositories.DownloadMetadata
+import tech.ula.model.repositories.UlaDatabase
+import tech.ula.model.state.AppsStartupFsm
+import tech.ula.model.state.SessionStartupFsm
 import tech.ula.ui.AppsListFragment
 import tech.ula.ui.SessionListFragment
+import tech.ula.viewmodel.MainActivityViewModel
+import tech.ula.viewmodel.MainActivityViewModelFactory
+import tech.ula.viewmodel.State
 import tech.ula.utils.Android15CompatibilityHelper
+import tech.ula.utils.AssetDownloader
+import tech.ula.utils.BusyboxExecutor
+import tech.ula.utils.CredentialValidator
+import tech.ula.utils.DownloadManagerWrapper
+import tech.ula.utils.FilesystemManager
+import tech.ula.utils.IllegalStateHandler
 import tech.ula.utils.MemoryMonitor
+import tech.ula.utils.ProotDebugLogger
 import tech.ula.utils.SafetyGuard
+import tech.ula.utils.StorageCalculator
+import tech.ula.utils.UlaFiles
 import tech.ula.utils.defaultSharedPreferences
+import tech.ula.utils.preferences.AssetPreferences
 import java.util.Locale
 
 /**
- * Minimal stub MainActivity for CI builds.
- * TODO: Full ViewBinding migration required - the original code references
- * kotlin-android-extensions synthetics which are no longer supported in Kotlin 1.8+.
+ * Main entry point for app/session startup, navigation, safety status, and CI-verifiable APK builds.
  */
 class MainActivity :
     AppCompatActivity(),
@@ -41,6 +68,38 @@ class MainActivity :
     private lateinit var binding: ActivityMainBinding
     private var progressDialog: ProgressDialog? = null
     private val uiHandler = Handler(Looper.getMainLooper())
+    private val credentialValidator = CredentialValidator()
+
+    private val ulaFiles: UlaFiles by lazy { UlaFiles(this, applicationInfo.nativeLibraryDir) }
+    private val prootDebugLogger: ProotDebugLogger by lazy { ProotDebugLogger(defaultSharedPreferences, ulaFiles) }
+    private val busyboxExecutor: BusyboxExecutor by lazy { BusyboxExecutor(ulaFiles, prootDebugLogger) }
+    private val filesystemManager: FilesystemManager by lazy { FilesystemManager(ulaFiles, busyboxExecutor) }
+    private val assetPreferences: AssetPreferences by lazy { AssetPreferences(this) }
+    private val assetRepository: AssetRepository by lazy {
+        AssetRepository(filesDir.path, assetPreferences, GithubApiClient(ulaFiles))
+    }
+    private val assetDownloader: AssetDownloader by lazy {
+        val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        AssetDownloader(assetPreferences, DownloadManagerWrapper(downloadManager), ulaFiles)
+    }
+    private val storageCalculator: StorageCalculator by lazy { StorageCalculator(StatFs(filesDir.path)) }
+    private val viewModel: MainActivityViewModel by lazy {
+        val database = UlaDatabase.getInstance(this)
+        val appsStartupFsm = AppsStartupFsm(database, filesystemManager, ulaFiles)
+        val sessionStartupFsm = SessionStartupFsm(database, assetRepository, filesystemManager, assetDownloader, storageCalculator)
+        ViewModelProvider(this, MainActivityViewModelFactory(appsStartupFsm, sessionStartupFsm))
+            .get(MainActivityViewModel::class.java)
+    }
+
+    private val downloadCompleteReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action != DownloadManager.ACTION_DOWNLOAD_COMPLETE) return
+                val downloadId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
+                if (downloadId >= 0L) viewModel.submitCompletedDownloadId(downloadId)
+            }
+        }
+    private var downloadReceiverRegistered = false
 
     companion object {
         private const val TAG = "MainActivity"
@@ -96,6 +155,7 @@ class MainActivity :
 
             // Set up navigation
             setupNavigation()
+            observeStartupState()
 
             setupSafetyIndicator()
             
@@ -110,6 +170,7 @@ class MainActivity :
     override fun onResume() {
         super.onResume()
         Log.i(TAG, "MainActivity.onResume()")
+        viewModel.handleOnResume()
         
         // Log memory status to help diagnose issues
         try {
@@ -128,6 +189,28 @@ class MainActivity :
     override fun onPause() {
         super.onPause()
         Log.i(TAG, "MainActivity.onPause()")
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (!downloadReceiverRegistered) {
+            val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(downloadCompleteReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("DEPRECATION")
+                registerReceiver(downloadCompleteReceiver, filter)
+            }
+            downloadReceiverRegistered = true
+        }
+    }
+
+    override fun onStop() {
+        if (downloadReceiverRegistered) {
+            unregisterReceiver(downloadCompleteReceiver)
+            downloadReceiverRegistered = false
+        }
+        super.onStop()
     }
     
     override fun onDestroy() {
@@ -313,19 +396,205 @@ class MainActivity :
         }
     }
 
+    private fun observeStartupState() {
+        viewModel.getState().observe(
+            this,
+            Observer { state ->
+                if (state != null) handleStartupState(state)
+            }
+        )
+    }
+
+    private fun handleStartupState(state: State) {
+        when (val action = MainActivityStateActionMapper.from(state)) {
+            MainActivityStateAction.None -> Unit
+            is MainActivityStateAction.ShowToast -> Toast.makeText(this, action.messageResId, Toast.LENGTH_LONG).show()
+            is MainActivityStateAction.StartSession -> startPreparedSession(action.session, action.type)
+            MainActivityStateAction.RequestFilesystemCredentials -> showFilesystemCredentialsDialog()
+            MainActivityStateAction.RequestAppServiceType -> showAppServiceTypeDialog()
+            is MainActivityStateAction.ConfirmLargeDownload -> showLargeDownloadDialog(action.downloadRequirements)
+            MainActivityStateAction.ConfirmLowStorage -> showLowStorageDialog()
+            MainActivityStateAction.RequireInactiveSessions -> displayGenericErrorDialogSafe(
+                getString(R.string.general_error_title),
+                getString(R.string.alert_storage_low_message)
+            )
+            is MainActivityStateAction.ShowProgress -> showProgress(action.messageResId)
+            is MainActivityStateAction.ShowExtractionProgress -> {
+                showProgress(getString(R.string.progress_extraction_details, action.extractionTarget))
+            }
+            is MainActivityStateAction.ShowDownloadProgress -> showDownloadProgress(action.numComplete, action.numTotal)
+            MainActivityStateAction.CompleteProgress -> stopProgressFromFilesystemList()
+            is MainActivityStateAction.ShowIllegalState -> {
+                showIllegalState(IllegalStateHandler.getLocalizationData(action.state).getString(this))
+            }
+        }
+    }
+
+    private fun showProgress(messageResId: Int) = showProgress(getString(messageResId))
+
+    @Suppress("DEPRECATION")
+    private fun showProgress(message: String) {
+        if (progressDialog == null) {
+            progressDialog =
+                ProgressDialog(this).apply {
+                    setCancelable(false)
+                    setProgressStyle(ProgressDialog.STYLE_SPINNER)
+                    show()
+                }
+        }
+        progressDialog?.setMessage(message)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun showDownloadProgress(
+        complete: Int,
+        total: Int,
+    ) {
+        if (progressDialog == null) {
+            progressDialog =
+                ProgressDialog(this).apply {
+                    setCancelable(false)
+                    setProgressStyle(ProgressDialog.STYLE_HORIZONTAL)
+                    max = total.coerceAtLeast(1)
+                    show()
+                }
+        }
+        progressDialog?.apply {
+            setProgressStyle(ProgressDialog.STYLE_HORIZONTAL)
+            max = total.coerceAtLeast(1)
+            progress = complete.coerceAtLeast(0)
+            setMessage(getString(R.string.progress_downloading_out_of, complete, total))
+        }
+    }
+
+    private fun showIllegalState(messageResId: Int) = showIllegalState(getString(messageResId))
+
+    private fun showIllegalState(message: String) {
+        stopProgressFromFilesystemList()
+        displayGenericErrorDialogSafe(
+            getString(R.string.illegal_state_title),
+            getString(R.string.illegal_state_github_message, message)
+        )
+    }
+
+    private fun showFilesystemCredentialsDialog() {
+        val view = layoutInflater.inflate(R.layout.dia_app_credentials, null)
+        val usernameInput = view.findViewById<EditText>(R.id.text_input_username)
+        val passwordInput = view.findViewById<EditText>(R.id.text_input_password)
+        val vncPasswordInput = view.findViewById<EditText>(R.id.text_input_vnc_password)
+
+        AlertDialog.Builder(this)
+            .setTitle(R.string.prompt_filesystem)
+            .setMessage(R.string.filesystem_credentials_reasoning)
+            .setView(view)
+            .setPositiveButton(R.string.button_ok, null)
+            .setNegativeButton(R.string.button_cancel) { dialog, _ ->
+                viewModel.handleUserInputCancelled()
+                dialog.dismiss()
+            }
+            .create()
+            .apply {
+                setOnShowListener {
+                    getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                        val username = usernameInput.text?.toString().orEmpty()
+                        val password = passwordInput.text?.toString().orEmpty()
+                        val vncPassword = vncPasswordInput.text?.toString().orEmpty()
+                        if (credentialsAreValid(username, password, vncPassword)) {
+                            viewModel.submitFilesystemCredentials(username, password, vncPassword)
+                            dismiss()
+                        }
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun credentialsAreValid(
+        username: String,
+        password: String,
+        vncPassword: String,
+    ): Boolean {
+        val blacklist = resources.getStringArray(R.array.blacklisted_usernames)
+        val validations = listOf(
+            credentialValidator.validateUsername(username, blacklist),
+            credentialValidator.validatePassword(password),
+            credentialValidator.validateVncPassword(vncPassword)
+        )
+        val firstError = validations.firstOrNull { !it.credentialIsValid } ?: return true
+        Toast.makeText(this, firstError.errorMessageId, Toast.LENGTH_LONG).show()
+        return false
+    }
+
+    private fun showAppServiceTypeDialog() {
+        val view = layoutInflater.inflate(R.layout.dia_app_select_client, null)
+        val radioGroup = view.findViewById<RadioGroup>(R.id.radio_apps_service_type_preference)
+        AlertDialog.Builder(this)
+            .setView(view)
+            .setPositiveButton(R.string.button_ok) { dialog, _ ->
+                val serviceType =
+                    when (radioGroup.checkedRadioButtonId) {
+                        R.id.vnc_radio_button -> ServiceType.Vnc
+                        R.id.xsdl_radio_button -> ServiceType.Xsdl
+                        else -> ServiceType.Ssh
+                    }
+                viewModel.submitAppServiceType(serviceType)
+                dialog.dismiss()
+            }
+            .setNegativeButton(R.string.button_cancel) { dialog, _ ->
+                viewModel.handleUserInputCancelled()
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    private fun showLargeDownloadDialog(downloadRequirements: List<DownloadMetadata>) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.alert_wifi_disabled_title)
+            .setMessage(R.string.alert_wifi_disabled_message)
+            .setPositiveButton(R.string.alert_wifi_disabled_continue_button) { dialog, _ ->
+                viewModel.startAssetDownloads(downloadRequirements)
+                dialog.dismiss()
+            }
+            .setNegativeButton(R.string.alert_wifi_disabled_cancel_button) { dialog, _ ->
+                viewModel.handleUserInputCancelled()
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    private fun showLowStorageDialog() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.alert_storage_low_title)
+            .setMessage(R.string.alert_storage_low_message)
+            .setPositiveButton(R.string.button_ok) { dialog, _ ->
+                viewModel.lowAvailableStorageAcknowledged()
+                dialog.dismiss()
+            }
+            .setNegativeButton(R.string.button_cancel) { dialog, _ ->
+                viewModel.handleUserInputCancelled()
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    private fun startPreparedSession(
+        session: Session,
+        type: String,
+    ) {
+        showProgress(R.string.progress_starting)
+        val serviceIntent = Intent(this, ServerService::class.java).apply {
+            putExtra("type", type)
+            putExtra("session", session)
+        }
+        startService(serviceIntent)
+        viewModel.handleSessionHasBeenActivated()
+        stopProgressFromFilesystemList()
+    }
+
     override fun sessionHasBeenSelected(session: Session) {
         try {
-            val serviceIntent = Intent(this, ServerService::class.java)
-            if (session.active) {
-                // Session is already active, restart the client
-                serviceIntent.putExtra("type", "restartRunningSession")
-                serviceIntent.putExtra("session", session)
-            } else {
-                // Start a new session
-                serviceIntent.putExtra("type", "start")
-                serviceIntent.putExtra("session", session)
-            }
-            startService(serviceIntent)
+            Log.i(TAG, "Session selected: ${session.name}, active: ${session.active}")
+            viewModel.submitSessionSelection(session)
         } catch (e: Exception) {
             Log.e(TAG, "Error starting session: ${session.name}", e)
             displayGenericErrorDialogSafe(
@@ -340,21 +609,8 @@ class MainActivity :
         autoStart: Boolean,
     ) {
         try {
-            // Apps are launched via their associated session
-            // For the minimal stub implementation, we show a simple message
-            // Full implementation would use MainActivityViewModel flow
-            Toast.makeText(
-                this,
-                getString(R.string.info_app_starting, app.name),
-                Toast.LENGTH_SHORT
-            ).show()
-            
             Log.i(TAG, "App selected: ${app.name}, autoStart: $autoStart")
-            // Note: A complete implementation would require:
-            // 1. Initialize MainActivityViewModel
-            // 2. Call viewModel.submitAppSelection(app, autoStart)
-            // 3. Observe state changes and handle the startup flow
-            // For now, this minimal stub just logs the selection
+            viewModel.submitAppSelection(app, autoStart)
         } catch (e: Exception) {
             Log.e(TAG, "Error selecting app: ${app.name}", e)
             displayGenericErrorDialogSafe(
