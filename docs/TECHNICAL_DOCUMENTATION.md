@@ -182,7 +182,10 @@ the correct asset layout for builds that embed them directly.
 
 The build is driven by Android Gradle Plugin and expects JDK 17+ and Android SDK
 platform 35. The root `build.gradle`, `settings.gradle`, and `gradle.properties`
-control dependency versions and the NDK pin (`21.4.7075529`).
+control dependency versions. The canonical Android NDK version is pinned in
+`gradle.properties` via `ndkVersion`; at the time of this document it is
+`27.3.13750724`. Update `gradle.properties` first, then update this document and
+other docs to avoid version drift.
 
 ### 6.2 Scripted build helpers
 
