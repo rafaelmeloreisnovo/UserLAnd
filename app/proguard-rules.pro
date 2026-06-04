@@ -26,3 +26,11 @@
 -dontwarn kotlin.uuid.ExperimentalUuidApi
 -dontwarn kotlin.uuid.Uuid$Companion
 -dontwarn kotlin.uuid.Uuid
+
+# Apache Commons Compress references optional codec backends that are not bundled
+# because UserLAnd does not require Brotli, Zstandard, or XZ/7z filter decoding
+# on Android startup paths. Keep R8 strict for real app classes while suppressing
+# those optional backend probes so beta/release APKs compile in CI.
+-dontwarn com.github.luben.zstd.ZstdInputStream
+-dontwarn org.brotli.dec.BrotliInputStream
+-dontwarn org.tukaani.xz.**
