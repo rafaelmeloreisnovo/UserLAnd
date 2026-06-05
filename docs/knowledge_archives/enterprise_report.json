@@ -1,0 +1,23 @@
+{
+  "archive_id": "vectras-vm-android-rafaelia",
+  "counts": {
+    "best_practices": 27,
+    "operational_modes": 5,
+    "resilience_entries": 5,
+    "risks": 5,
+    "seeds": 3
+  },
+  "digest_sha256": "87f23b87fcdb405d51cf678fdf0ae4abbe3557463d87b8252580b5b7f5689e99",
+  "errors": [],
+  "next_actions": [
+    "Add seed ingestion with stable hashes.",
+    "Add golden vectors for parser and state transformations.",
+    "Add a fixed-buffer C validator for Android shell usage.",
+    "Add rollback snapshots for archive writes.",
+    "Add architecture-labeled benchmark records for ARM32, ARM64, scalar C, and NEON/SIMD paths.",
+    "Add a privacy threat model for federated-data seeds.",
+    "Add a release checklist before any subsystem is described as production-ready."
+  ],
+  "status": "PASS",
+  "version": 2
+}

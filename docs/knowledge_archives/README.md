@@ -46,6 +46,7 @@ The session is not a single narrow feature request. It is a request to organize 
 - [`catalog.json`](catalog.json): machine-readable index of seeds, invariants, variables, formulas, risks, and validation hooks.
 - [`vectras_vm_android.md`](vectras_vm_android.md): expanded architecture map for Vectras-VM-Android.
 - [`rafaelia_seed_manifest.md`](rafaelia_seed_manifest.md): normalized expansion of the supplied seed records and formula families.
+- [`enterprise_operations.md`](enterprise_operations.md): functional full-stack/enterprise operations guide with commands, more than 20 best practices, resilience checks, and expansion route.
 
 ## Seven forward directions
 
@@ -66,3 +67,16 @@ The session is not a single narrow feature request. It is a request to organize 
 5. **De-risking**: bind every module to a rollback and fail-safe condition.
 6. **De-siloing**: connect formulas and variables across market, molecular, temporal, geometric, and RAFAELIA domains only where the relation is explicit.
 7. **De-noising**: keep `VOID` for unknowns and avoid false bridges between unrelated domains.
+
+## Functional enterprise commands
+
+Run these commands from the repository root to use the archive as an operational system, not only as documentation:
+
+```bash
+python3 scripts/validate_knowledge_archives.py
+python3 scripts/knowledge_archive_tool.py validate
+python3 scripts/knowledge_archive_tool.py report
+python3 scripts/knowledge_archive_tool.py resilience
+```
+
+The commands emit deterministic PASS/FAIL JSON and preserve the principle that an explicit failure or `VOID` state is better than false certainty.

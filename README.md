@@ -33,7 +33,7 @@ Features:
 - **[⚡ Performance Boosters (PT-BR)](BOOSTERS_PT.md)** - ⭐ **NOVO!** Guia completo dos boosters RAFAELIA, tipos, benchmarks e técnicas de otimização (Português)
 
 ### Knowledge Archives
-- **[🧭 Vectras-VM-Android / RAFAELIA Knowledge Archives](docs/knowledge_archives/README.md)** - Structured seed catalog, navigation map, invariants, validation hooks, and low-level failsafe/failover expansion notes.
+- **[🧭 Vectras-VM-Android / RAFAELIA Knowledge Archives](docs/knowledge_archives/README.md)** - Structured seed catalog, navigation map, invariants, validation hooks, full-stack enterprise operations commands, and low-level failsafe/failover expansion notes.
 
 ### Project Documentation
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to UserLAnd

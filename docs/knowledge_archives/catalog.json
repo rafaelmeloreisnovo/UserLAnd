@@ -1,7 +1,7 @@
 {
   "archive_id": "vectras-vm-android-rafaelia",
-  "version": 1,
-  "purpose": "Organize loose RAFAELIA/Vectras-VM-Android seeds into a navigable archive with invariants, risks, validation hooks, and expansion routes.",
+  "version": 2,
+  "purpose": "Operate loose RAFAELIA/Vectras-VM-Android seeds as a navigable, validated, enterprise-ready knowledge control plane with invariants, risks, resilience hooks, reports, and expansion routes.",
   "invariants": {
     "total": "I = Phi(s, S, H, C, G)",
     "flags": [
@@ -24,7 +24,14 @@
       "ATTRACTOR_COUNT": 42,
       "PI_MAX": 0.9
     },
-    "cycle": ["PSI", "CHI", "RHO", "DELTA", "SIGMA", "OMEGA"]
+    "cycle": [
+      "PSI",
+      "CHI",
+      "RHO",
+      "DELTA",
+      "SIGMA",
+      "OMEGA"
+    ]
   },
   "seeds": [
     {
@@ -33,7 +40,10 @@
       "category": "infrastructure",
       "invariant": "I = Phi(s, S, H, C, G)",
       "expansion": "system architecture split into kernel, scheduler, filesystem, state protocol, identity, audit, and AI-state modules",
-      "validation_notes": ["raw invariant exists", "original has_invariante flag appears parser-inaccurate"]
+      "validation_notes": [
+        "raw invariant exists",
+        "original has_invariante flag appears parser-inaccurate"
+      ]
     },
     {
       "id": "E13",
@@ -41,7 +51,10 @@
       "category": "federated-data",
       "invariant": "raw data remains local before aggregation",
       "expansion": "private collaborative analytics with route tags and aggregate-only outputs",
-      "validation_notes": ["requires threat model", "requires leakage tests"]
+      "validation_notes": [
+        "requires threat model",
+        "requires leakage tests"
+      ]
     },
     {
       "id": "S11",
@@ -49,7 +62,10 @@
       "category": "language-state-machine",
       "invariant": "tokens map to deterministic state transitions with measurable coherence",
       "expansion": "low-resource ARM32/ARM64 no-GPU language-state prototype",
-      "validation_notes": ["requires benchmark tasks", "must return VOID when coherence threshold is not met"]
+      "validation_notes": [
+        "requires benchmark tasks",
+        "must return VOID when coherence threshold is not met"
+      ]
     }
   ],
   "navigation": [
@@ -62,17 +78,132 @@
     "void-layer"
   ],
   "risk_register": [
-    {"risk": "unsupported empirical claim", "mitigation": "mark as VOID until evidence and tests exist"},
-    {"risk": "hidden heap dependency", "mitigation": "document allocation behavior and add fixed-buffer tests"},
-    {"risk": "accelerated path diverges from portable path", "mitigation": "golden vectors across both paths"},
-    {"risk": "privacy leakage in federation", "mitigation": "threat model, query policy, and leakage tests"},
-    {"risk": "metaphor confused with proof", "mitigation": "store parables separately from validation claims"}
+    {
+      "risk": "unsupported empirical claim",
+      "mitigation": "mark as VOID until evidence and tests exist"
+    },
+    {
+      "risk": "hidden heap dependency",
+      "mitigation": "document allocation behavior and add fixed-buffer tests"
+    },
+    {
+      "risk": "accelerated path diverges from portable path",
+      "mitigation": "golden vectors across both paths"
+    },
+    {
+      "risk": "privacy leakage in federation",
+      "mitigation": "threat model, query policy, and leakage tests"
+    },
+    {
+      "risk": "metaphor confused with proof",
+      "mitigation": "store parables separately from validation claims"
+    }
   ],
   "validation_hooks": [
     "json-catalog-parse",
     "unique-seed-ids",
     "invariant-present",
     "navigation-targets-present",
-    "risk-register-present"
+    "risk-register-present",
+    "best-practices-20-plus",
+    "resilience-matrix-present",
+    "operational-modes-present"
+  ],
+  "operational_modes": [
+    {
+      "id": "portable",
+      "description": "dependency-free deterministic archive validation and reporting on any Python 3 host",
+      "fallback": "VOID plus structural error list"
+    },
+    {
+      "id": "arm32",
+      "description": "future ARM32/NEON-aware native helper path with scalar reference oracle",
+      "fallback": "portable scalar/reference path"
+    },
+    {
+      "id": "arm64",
+      "description": "future ARM64 native helper path with explicit ABI and cache-aware benchmarks",
+      "fallback": "portable scalar/reference path"
+    },
+    {
+      "id": "android-shell",
+      "description": "Termux-like or Android shell orchestration using fixed commands and JSON outputs",
+      "fallback": "read-only validation without mutation"
+    },
+    {
+      "id": "enterprise-ci",
+      "description": "CI-ready validation, deterministic report, and resilience matrix checks",
+      "fallback": "non-zero failure with machine-readable diagnostics"
+    }
+  ],
+  "best_practices": [
+    "Keep VOID as a valid state when evidence is missing.",
+    "Keep portable reference logic before accelerated logic.",
+    "Treat branchless transformations as optimizations, not proof of correctness.",
+    "Prefer fixed buffers for low-level archive validators.",
+    "State freestanding, nomalloc, noheap, and noGC expectations explicitly.",
+    "Bind every seed to a rollback route.",
+    "Bind every accelerated path to a portable failover route.",
+    "Bind every parser to malformed-input failtests.",
+    "Bind every long-running route to watchdog state.",
+    "Store deterministic digests for machine-readable archives.",
+    "Keep metaphors as didactic parables, separated from proof claims.",
+    "Split qualitative claims from quantitative claims.",
+    "Require benchmark conditions for performance claims.",
+    "Require threat models for privacy claims.",
+    "Require ABI and architecture labels for Android/native claims.",
+    "Use append-only thinking for audit trails and custody chains.",
+    "Keep seed IDs stable across expansions.",
+    "Normalize repeated fragments before adding new concepts.",
+    "Use explicit status codes instead of ambiguous prose where automation is needed.",
+    "Keep CI commands dependency-free where possible.",
+    "Prefer table-driven states when they reduce repeated conditionals safely.",
+    "Keep a golden-vector path for portable versus optimized comparisons.",
+    "Quarantine unverifiable records instead of deleting them.",
+    "Document known risks before recommending production use.",
+    "Add next actions that are small enough to test independently.",
+    "Map metaphor back to measurable contracts before implementation.",
+    "Keep enterprise reports reproducible with stable JSON ordering and content digests."
+  ],
+  "resilience_matrix": [
+    {
+      "id": "rollback",
+      "trigger": "bad archive mutation or corrupted generated report",
+      "check": "restore from previous git commit or previous generated digest",
+      "expected": "last valid catalog remains available"
+    },
+    {
+      "id": "failover",
+      "trigger": "accelerated or architecture-specific route unavailable",
+      "check": "portable validation/report path still runs",
+      "expected": "same structural PASS/FAIL semantics"
+    },
+    {
+      "id": "failtest",
+      "trigger": "malformed JSON, duplicate IDs, missing invariant, or missing document",
+      "check": "validator exits non-zero and lists exact errors",
+      "expected": "failure is explicit and not hidden"
+    },
+    {
+      "id": "watchdog",
+      "trigger": "future long-running ingestion/build loop stalls",
+      "check": "bounded progress counter or timeout status is emitted",
+      "expected": "operator can stop or roll back safely"
+    },
+    {
+      "id": "mitigation",
+      "trigger": "unsupported claim, privacy risk, or performance claim without benchmark",
+      "check": "risk register maps the claim to VOID, threat model, or benchmark action",
+      "expected": "archive does not promote unproven claims"
+    }
+  ],
+  "next_actions": [
+    "Add seed ingestion with stable hashes.",
+    "Add golden vectors for parser and state transformations.",
+    "Add a fixed-buffer C validator for Android shell usage.",
+    "Add rollback snapshots for archive writes.",
+    "Add architecture-labeled benchmark records for ARM32, ARM64, scalar C, and NEON/SIMD paths.",
+    "Add a privacy threat model for federated-data seeds.",
+    "Add a release checklist before any subsystem is described as production-ready."
   ]
 }
