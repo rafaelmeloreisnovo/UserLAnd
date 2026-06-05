@@ -1,0 +1,78 @@
+{
+  "archive_id": "vectras-vm-android-rafaelia",
+  "version": 1,
+  "purpose": "Organize loose RAFAELIA/Vectras-VM-Android seeds into a navigable archive with invariants, risks, validation hooks, and expansion routes.",
+  "invariants": {
+    "total": "I = Phi(s, S, H, C, G)",
+    "flags": [
+      "freestanding",
+      "nomalloc",
+      "noheap",
+      "noGC",
+      "deterministic",
+      "audit_trail",
+      "rollback_ready",
+      "failover_ready",
+      "watchdog_ready"
+    ],
+    "constants": {
+      "PHI32": "0x9E3779B9",
+      "PHI64": "0x9E3779B97F4A7C15",
+      "FNV1A_PRIME": "0x100000001B3",
+      "CRC32C_POLY": "0x82F63B78",
+      "ALPHA": 0.25,
+      "ATTRACTOR_COUNT": 42,
+      "PI_MAX": 0.9
+    },
+    "cycle": ["PSI", "CHI", "RHO", "DELTA", "SIGMA", "OMEGA"]
+  },
+  "seeds": [
+    {
+      "id": "E20",
+      "title": "SISTEMA_OPERACIONAL_COGNITIVO_COMPLETO",
+      "category": "infrastructure",
+      "invariant": "I = Phi(s, S, H, C, G)",
+      "expansion": "system architecture split into kernel, scheduler, filesystem, state protocol, identity, audit, and AI-state modules",
+      "validation_notes": ["raw invariant exists", "original has_invariante flag appears parser-inaccurate"]
+    },
+    {
+      "id": "E13",
+      "title": "PLATAFORMA_DE_DADOS_FEDERADOS",
+      "category": "federated-data",
+      "invariant": "raw data remains local before aggregation",
+      "expansion": "private collaborative analytics with route tags and aggregate-only outputs",
+      "validation_notes": ["requires threat model", "requires leakage tests"]
+    },
+    {
+      "id": "S11",
+      "title": "LLM_SEM_PESOS_GEOLM",
+      "category": "language-state-machine",
+      "invariant": "tokens map to deterministic state transitions with measurable coherence",
+      "expansion": "low-resource ARM32/ARM64 no-GPU language-state prototype",
+      "validation_notes": ["requires benchmark tasks", "must return VOID when coherence threshold is not met"]
+    }
+  ],
+  "navigation": [
+    "seed-records",
+    "invariant-layer",
+    "module-layer",
+    "validation-layer",
+    "expansion-layer",
+    "metaphor-layer",
+    "void-layer"
+  ],
+  "risk_register": [
+    {"risk": "unsupported empirical claim", "mitigation": "mark as VOID until evidence and tests exist"},
+    {"risk": "hidden heap dependency", "mitigation": "document allocation behavior and add fixed-buffer tests"},
+    {"risk": "accelerated path diverges from portable path", "mitigation": "golden vectors across both paths"},
+    {"risk": "privacy leakage in federation", "mitigation": "threat model, query policy, and leakage tests"},
+    {"risk": "metaphor confused with proof", "mitigation": "store parables separately from validation claims"}
+  ],
+  "validation_hooks": [
+    "json-catalog-parse",
+    "unique-seed-ids",
+    "invariant-present",
+    "navigation-targets-present",
+    "risk-register-present"
+  ]
+}
