@@ -393,7 +393,9 @@ class LocalServerManager(
             ServiceType.Ssh -> "/run/dropbear.pid"
             ServiceType.Vnc -> "/home/${this.username}/.vnc/localhost:$vncDisplayNumber.pid"
             ServiceType.Xsdl -> "/tmp/xsdl.pidfile"
-            else -> "error"
+            // Safer fallback: use a deterministic temp path instead of the literal
+            // string "error" which would silently construct an invalid filesystem path.
+            else -> "/tmp/userland-${this.name}.pid"
         }
 
     private fun Session.pidFilePath(): String = "$applicationFilesDirPath/${this.filesystemId}${this.pidRelativeFilePath()}"
