@@ -7,12 +7,12 @@ on:
   pull_request:
     paths:
       - '.github/workflows/**'
-      - 'tools/check_workflow_refs.py'
+      - 'tools/check_workflows.py'
   push:
     branches: [ main, master ]
     paths:
       - '.github/workflows/**'
-      - 'tools/check_workflow_refs.py'
+      - 'tools/check_workflows.py'
   workflow_dispatch:
 
 permissions:
@@ -39,7 +39,7 @@ jobs:
 
       - name: Run workflow ref validator
         run: |
-          python tools/check_workflow_refs.py --strict
+          python tools/check_workflows.py --strict
 
       - name: Summarize results
         if: always()
