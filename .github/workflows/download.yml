@@ -3,174 +3,109 @@ name: Download Bundle (One-Pass Manifest + Pack)
 on:
   workflow_dispatch:
     inputs:
-      chunk_size_mb:
-        description: "Chunk size (MB) for streaming pieces"
+      chunk_size:
+        description: 'Chunk size for file grouping (files per chunk)'
         required: false
-        default: "50"
-      include_git_dir:
-        description: "Include .git in the package (true/false)"
+        default: '50'
+        type: string
+      max_file_size_mb:
+        description: 'Max individual file size to include (MB)'
         required: false
-        default: "false"
+        default: '100'
+        type: string
+      include_patterns:
+        description: 'Include patterns (space-separated globs, e.g. "*.kt *.java")'
+        required: false
+        default: ''
+        type: string
+      exclude_patterns:
+        description: 'Exclude patterns (space-separated globs)'
+        required: false
+        default: ''
+        type: string
+      compression_level:
+        description: 'Zip compression level (1=fast, 9=best)'
+        required: false
+        default: '6'
+        type: string
 
 permissions:
   contents: read
 
+concurrency:
+  group: download-bundle-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  bundle:
+  build-download-bundle:
+    name: Build Download Bundle
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
     steps:
-      - name: Checkout (full pass)
-        uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
+          submodules: recursive
           fetch-depth: 0
 
-      - name: Install tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y zstd coreutils findutils jq python3
-          # crc32 via python (zlib) — no extra package needed
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-      - name: Normalize workspace (optional drop .git)
+      - name: One-pass manifest and pack
+        shell: bash
+        env:
+          CHUNK_SIZE: ${{ inputs.chunk_size }}
+          MAX_FILE_SIZE_MB: ${{ inputs.max_file_size_mb }}
+          INCLUDE_PATTERNS: ${{ inputs.include_patterns }}
+          EXCLUDE_PATTERNS: ${{ inputs.exclude_patterns }}
+          COMPRESSION_LEVEL: ${{ inputs.compression_level }}
         run: |
-          if [ "${{ inputs.include_git_dir }}" != "true" ]; then
-            rm -rf .git
-          fi
+          set -euo pipefail
+          python3 scripts/bundle_repo.py \
+            --chunk-size "${CHUNK_SIZE:-50}" \
+            --max-file-size-mb "${MAX_FILE_SIZE_MB:-100}" \
+            --include-patterns "${INCLUDE_PATTERNS:-}" \
+            --exclude-patterns "${EXCLUDE_PATTERNS:-}" \
+            --compression-level "${COMPRESSION_LEVEL:-6}" \
+            --output-dir dist/bundle
 
-      - name: Generate ONE-PASS manifest (jsonl + json)
+      - name: Summarize bundle
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p out
+          shopt -s nullglob
+          summary="dist/bundle/MANIFEST.tsv"
+          {
+            echo "## Download Bundle artifacts"
+            echo ""
+            if [[ -f "$summary" ]]; then
+              TOTAL_FILES=$(tail -n +2 "$summary" | wc -l)
+              TOTAL_BYTES=$(tail -n +2 "$summary" | awk -F'\t' '{s+=$3} END {print s}')
+              TOTAL_MB=$(echo "scale=2; $TOTAL_BYTES/1048576" | bc)
+              echo "- Total files: $TOTAL_FILES"
+              echo "- Total size: ${TOTAL_MB} MB"
+              echo ""
+              echo '| Chunk | Path | Size (bytes) | SHA256 |'
+              echo '|---:|---|---:|---|'
+              tail -n +2 "$summary" | while IFS=$'\t' read -r chunk path size sha; do
+                echo "| $chunk | $path | $size | \`$sha\` |"
+              done
+            else
+              echo "No manifest generated. Build failed before artifact packaging."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
-          python3 - <<'PY'
-          import os, json, time, hashlib, zlib
-
-          root = "."
-          items = []
-          total_bytes = 0
-
-          # single pass walk
-          for dirpath, dirnames, filenames in os.walk(root):
-            # skip out directory
-            if dirpath.startswith("./out"):
-              continue
-            for fn in filenames:
-              p = os.path.join(dirpath, fn)
-              if p.startswith("./out"):
-                continue
-              try:
-                st = os.stat(p)
-              except FileNotFoundError:
-                continue
-              if not os.path.isfile(p):
-                continue
-
-              # hash in one pass read
-              h = hashlib.sha256()
-              crc = 0
-              size = 0
-              with open(p, "rb") as f:
-                while True:
-                  b = f.read(1024 * 1024)
-                  if not b:
-                    break
-                  size += len(b)
-                  h.update(b)
-                  crc = zlib.crc32(b, crc)
-
-              rec = {
-                "path": p[2:] if p.startswith("./") else p,
-                "bytes": size,
-                "mtime": int(st.st_mtime),
-                "sha256": h.hexdigest(),
-                "crc32": format(crc & 0xffffffff, "08x"),
-              }
-              items.append(rec)
-              total_bytes += size
-
-          manifest = {
-            "schema": "RAFAELIA_MANIFEST_v1",
-            "generated_unix": int(time.time()),
-            "file_count": len(items),
-            "total_bytes": total_bytes,
-            "files": items,
-          }
-
-          with open("out/manifest.json", "w", encoding="utf-8") as f:
-            json.dump(manifest, f, ensure_ascii=False, separators=(",", ":"))
-
-          # also output jsonl for streaming/grep
-          with open("out/manifest.jsonl", "w", encoding="utf-8") as f:
-            for rec in items:
-              f.write(json.dumps(rec, ensure_ascii=False, separators=(",", ":")) + "\n")
-
-          print("file_count:", len(items))
-          print("total_bytes:", total_bytes)
-          PY
-
-          ls -lh out/manifest.json out/manifest.jsonl || true
-          wc -c out/manifest.json out/manifest.jsonl || true
-
-      - name: Pack project (tar + zstd)
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p out
-
-          # deterministic-ish ordering
-          # (GNU tar on ubuntu supports --sort=name)
-          tar --sort=name --mtime='UTC 2020-01-01' --owner=0 --group=0 --numeric-owner \
-              -cf out/project.tar .
-
-          zstd -19 -T0 -f out/project.tar -o out/project.tar.zst
-          rm -f out/project.tar
-
-          ls -lh out/project.tar.zst
-
-      - name: Chunk for streaming (ZipRaf-like delivery)
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p out/chunks
-          SZ="${{ inputs.chunk_size_mb }}"
-          # split into N MB parts
-          split -b "${SZ}m" -d -a 4 out/project.tar.zst out/chunks/project.tar.zst.part.
-
-          # index chunks
-          python3 - <<'PY'
-          import os, json, hashlib
-          base = "out/chunks"
-          parts = sorted([p for p in os.listdir(base) if p.startswith("project.tar.zst.part.")])
-          idx = []
-          for i,p in enumerate(parts):
-            fp = os.path.join(base,p)
-            h = hashlib.sha256()
-            size = 0
-            with open(fp,"rb") as f:
-              while True:
-                b=f.read(1024*1024)
-                if not b: break
-                size += len(b)
-                h.update(b)
-            idx.append({"part": p, "bytes": size, "sha256": h.hexdigest()})
-          with open("out/chunks/index.json","w",encoding="utf-8") as f:
-            json.dump({"schema":"RAFAELIA_CHUNKS_v1","count":len(idx),"parts":idx}, f, ensure_ascii=False, separators=(",",":"))
-          print("chunks:", len(idx))
-          PY
-
-          ls -lh out/chunks | head -n 50 || true
-          wc -c out/chunks/index.json || true
-
-      - name: Upload artifacts (manifest + chunks)
+      - name: Upload bundle artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: rafaelia-download-bundle
+          name: userland-download-bundle-${{ github.sha }}
           path: |
-            out/manifest.json
-            out/manifest.jsonl
-            out/project.tar.zst
-            out/chunks/index.json
-            out/chunks/project.tar.zst.part.*
+            dist/bundle/**/*.zip
+            dist/bundle/MANIFEST.tsv
+            dist/bundle/SHA256SUMS.txt
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 90

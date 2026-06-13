@@ -1,110 +1,81 @@
 name: 🔍 Validate Workflows
 
 # Author: @rafaelmeloreisnovo
-# RAFCODE-Φ Seal: ⟨Φ⟩-WORKFLOW-VALIDATOR-ACTION-v1.0
+# RAFCODE-Φ Seal: ⟨Φ⟩-WORKFLOW-VALIDATOR-A
 
 on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - '.github/workflows/**'
   pull_request:
     paths:
       - '.github/workflows/**'
-      - 'tools/check_workflows.py'
-  push:
-    branches:
-      - main
-      - master
-      - 'rafaelia/**'
-    paths:
-      - '.github/workflows/**'
-      - 'tools/check_workflows.py'
   workflow_dispatch:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
-  validate-workflows:
-    name: Validate GitHub Actions Workflows
+  validate:
+    name: Validate Workflow Files
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    
+
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v6
-        
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
       - name: 🐍 Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          
+
       - name: 📦 Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pyyaml
-          
-      - name: 🔍 Run workflow validator
-        id: validate
+
+      - name: 🔍 Validate workflow YAML files
         run: |
-          python tools/check_workflows.py || true
-          
-      - name: 📊 Display findings
-        if: always()
-        run: |
-          if [ -f workflow_findings.json ]; then
-            echo "## 🔍 Workflow Validation Findings" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            
-            # Parse and display findings
-            python -c "
-          import json
+          python3 - <<'PYEOF'
+          import yaml
           import sys
-          
-          with open('workflow_findings.json', 'r', encoding='utf-8') as f:
-              findings = json.load(f)
-          
-          if not findings:
-              print('✅ No issues found!')
+          from pathlib import Path
+
+          errors = []
+          workflow_dir = Path('.github/workflows')
+
+          if not workflow_dir.exists():
+              print("No workflows directory found")
               sys.exit(0)
-          
-          # Group by severity
-          by_severity = {}
-          for finding in findings:
-              severity = finding.get('severity', 'unknown')
-              by_severity.setdefault(severity, []).append(finding)
-          
-          # Display by severity
-          severity_order = ['critical', 'error', 'warning', 'info']
-          emoji_map = {
-              'critical': '🔴',
-              'error': '❌',
-              'warning': '⚠️',
-              'info': 'ℹ️'
-          }
-          
-          for severity in severity_order:
-              if severity in by_severity:
-                  items = by_severity[severity]
-                  print(f'\n### {emoji_map.get(severity, \"❓\")} {severity.upper()} ({len(items)})')
-                  for item in items[:10]:  # Limit to first 10 per severity
-                      file = item.get('file', 'unknown')
-                      line = item.get('line', 0)
-                      msg = item.get('message', 'No message')
-                      if line > 0:
-                          print(f'- **{file}:{line}** - {msg}')
-                      else:
-                          print(f'- **{file}** - {msg}')
-                  if len(items) > 10:
-                      print(f'- ... and {len(items) - 10} more')
-          " >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⚠️ No findings file generated" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-      - name: 📤 Upload findings
+
+          for wf_file in sorted(workflow_dir.glob('*.yml')):
+              try:
+                  with open(wf_file) as f:
+                      data = yaml.safe_load(f)
+                  if data is None:
+                      errors.append(f"{wf_file}: Empty file")
+                  elif not isinstance(data, dict):
+                      errors.append(f"{wf_file}: Not a YAML mapping")
+                  else:
+                      print(f"✅ {wf_file.name}")
+              except yaml.YAMLError as e:
+                  errors.append(f"{wf_file}: YAML error: {e}")
+
+          if errors:
+              print("\n❌ Errors found:")
+              for err in errors:
+                  print(f"  - {err}")
+              sys.exit(1)
+          else:
+              print("\n✅ All workflow files are valid YAML")
+          PYEOF
+
+      - name: 📊 Summary
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: workflow-findings
-          path: workflow_findings.json
-          if-no-files-found: warn
-          retention-days: 30
+        run: |
+          echo "## 🔍 Workflow Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          WORKFLOW_COUNT=$(ls .github/workflows/*.yml 2>/dev/null | wc -l)
+          echo "- Workflow files checked: $WORKFLOW_COUNT" >> $GITHUB_STEP_SUMMARY

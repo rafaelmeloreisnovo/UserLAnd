@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 
-# Evita duplicação e “dobro” (cancela o anterior no mesmo ref)
+# Evita duplicação e "dobro" (cancela o anterior no mesmo ref)
 concurrency:
   group: android-ci-${{ github.ref }}
   cancel-in-progress: true
@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
@@ -93,7 +93,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0

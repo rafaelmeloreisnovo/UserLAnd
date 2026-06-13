@@ -35,7 +35,7 @@ jobs:
 
     steps:
       - name: 📥 Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -88,7 +88,7 @@ jobs:
 
     steps:
       - name: 📥 Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -151,14 +151,5 @@ jobs:
           else
             echo "### ❌ Compilation Failed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Check the build logs for details." >> $GITHUB_STEP_SUMMARY
+            echo "APK was not generated. Check workflow logs." >> $GITHUB_STEP_SUMMARY
           fi
-
-      - name: 📤 Upload APK artifact
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: compilation-test-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-          retention-days: 7

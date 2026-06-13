@@ -17,7 +17,7 @@ jobs:
     
     steps:
       - name: 📥 Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -52,7 +52,7 @@ jobs:
             echo "✅ AndroidManifest.xml exists" >> $GITHUB_STEP_SUMMARY
             echo "✅ AndroidManifest.xml found"
           else
-            echo "❌ AndroidManifest.xml missing" >> $GITHUB_STEP_SUMMARY
+          echo "❌ AndroidManifest.xml missing" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
           
