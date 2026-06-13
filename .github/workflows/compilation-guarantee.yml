@@ -151,5 +151,5 @@ jobs:
           else
             echo "### ❌ Compilation Failed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "APK was not generated. Check workflow logs." >> $GITHUB_STEP_SUMMARY
+            echo "APK was not generated. Check the build logs above." >> $GITHUB_STEP_SUMMARY
           fi

@@ -5,14 +5,14 @@ on:
     paths:
       - 'app/build.gradle'
       - 'build.gradle'
-      - 'app/src/**'
+      - 'scripts/license_audit.py'
       - '.github/workflows/license-check.yml'
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, master ]
     paths:
       - 'app/build.gradle'
       - 'build.gradle'
-      - 'app/src/**'
+      - 'scripts/license_audit.py'
       - '.github/workflows/license-check.yml'
   workflow_dispatch:
 
@@ -24,10 +24,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  license-check:
-    name: Check OSS Licenses
+  license-audit:
+    name: License Audit
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
@@ -35,65 +35,32 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v5
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          python-version: '3.11'
+          cache: 'pip'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4.2.2
-        with:
-          cache-read-only: false
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x ./gradlew
-
-      - name: Generate OSS license report
-        run: ./gradlew generateLicenseReport --no-daemon
-
-      - name: Check for license violations
-        shell: bash
+      - name: Install Python dependencies
         run: |
-          set -euo pipefail
-          REPORT_DIR="build/reports/licenses"
-          
-          if [[ ! -d "$REPORT_DIR" ]]; then
-            echo "⚠️ License report not generated (task may not be configured)"
-            exit 0
-          fi
-          
-          # Check for any GPL or AGPL dependencies (not allowed in proprietary builds)
-          VIOLATIONS=$(grep -r --include="*.json" -l '"license": "GPL"' "$REPORT_DIR" || true)
-          if [[ -n "$VIOLATIONS" ]]; then
-            echo "❌ License violations found:"
-            echo "$VIOLATIONS"
-            exit 1
-          fi
-          
-          echo "✅ No license violations found"
+          python -m pip install --upgrade pip
+          pip install pyyaml
 
-      - name: Upload license report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: license-report
-          path: build/reports/licenses/
-          if-no-files-found: warn
-          retention-days: 30
+      - name: Run license audit
+        run: |
+          python scripts/license_audit.py --fail-on-violation
 
-      - name: Summarize license report
+      - name: Summarize license audit
         if: always()
         shell: bash
         run: |
           set -euo pipefail
-          REPORT_DIR="build/reports/licenses"
-          {
-            echo "## License Check Report"
-            if [[ -d "$REPORT_DIR" ]]; then
-              REPORT_FILES=$(find "$REPORT_DIR" -name "*.json" | wc -l)
-              echo "- Reports generated: $REPORT_FILES"
-            else
-              echo "- License report not generated"
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+          echo "## License Audit" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f license_audit_report.txt ]]; then
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            cat license_audit_report.txt >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No report generated (script did not create license_audit_report.txt)." >> "$GITHUB_STEP_SUMMARY"
+          fi

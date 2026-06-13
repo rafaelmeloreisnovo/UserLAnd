@@ -6,13 +6,13 @@ on:
     paths:
       - "*.c"
       - "*.h"
-      - "Makefile"
+      - "scripts/**"
       - ".github/workflows/rafaelia-core-ci.yml"
   pull_request:
     paths:
       - "*.c"
       - "*.h"
-      - "Makefile"
+      - "scripts/**"
       - ".github/workflows/rafaelia-core-ci.yml"
 
 permissions:
@@ -20,31 +20,25 @@ permissions:
 
 jobs:
   core-ci:
-    name: Core CI
+    name: RAFAELIA Core Build & Test
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
-      - name: 📥 Checkout
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 🔧 Install build tools
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y gcc make
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y gcc make
 
-      - name: 🏗️ Build
+      - name: Build C sources
         run: |
-          if [ -f Makefile ]; then
-            make all
-          else
-            echo "ℹ️ No Makefile found, skipping build"
-          fi
+          set -euo pipefail
+          chmod +x scripts/build_core.sh
+          scripts/build_core.sh
 
-      - name: 🧪 Test
+      - name: Run tests
         run: |
-          if [ -f Makefile ]; then
-            make test || echo "⚠️ Tests failed or not configured"
-          else
-            echo "ℹ️ No Makefile found, skipping tests"
-          fi
+          set -euo pipefail
+          chmod +x scripts/test_core.sh
+          scripts/test_core.sh

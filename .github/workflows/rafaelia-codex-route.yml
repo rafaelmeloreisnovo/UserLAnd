@@ -5,17 +5,17 @@ name: RAFAELIA Codex Route Check
   push:
     branches: ["main", "master", "develop"]
     paths:
-      - "**.c"
-      - "**.h"
-      - "**.kt"
-      - "**.java"
+      - "README.md"
+      - "gradle.properties"
+      - "build.gradle"
+      - "settings.gradle"
       - ".github/workflows/rafaelia-codex-route.yml"
   pull_request:
     paths:
-      - "**.c"
-      - "**.h"
-      - "**.kt"
-      - "**.java"
+      - "README.md"
+      - "gradle.properties"
+      - "build.gradle"
+      - "settings.gradle"
       - ".github/workflows/rafaelia-codex-route.yml"
 
 permissions:
@@ -26,32 +26,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  codex-route:
-    name: Codex Route Validation
+  codex-check:
+    name: RAFAELIA Codex Route Validation
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
 
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      - name: 🔍 Validate source tree integrity
+      - name: Run Codex route check
         shell: bash
         run: |
           set -euo pipefail
-          echo "🔍 Validating source tree..."
-          find . -name "*.kt" -o -name "*.java" | head -20
-          echo "✅ Source tree validation complete"
+          chmod +x scripts/rafaelia_codex_route.sh
+          scripts/rafaelia_codex_route.sh
 
-      - name: 📊 Report
+      - name: Report
+        if: always()
         shell: bash
         run: |
-          echo "## 🔐 RAFAELIA Codex Route" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "ΣΩΔΦ_{RAFAELIA} = ∑∑∑ [(C·A·Φ_{Ethica}) ⊗ Pre6seal ⊗ Firewall_Ω]" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Φ_ethica validated" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ ψχρΔΣΩ_LOOP active" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Source integrity check passed" >> $GITHUB_STEP_SUMMARY
+          echo "## RAFAELIA Codex Route" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Codex route check completed." >> "$GITHUB_STEP_SUMMARY"

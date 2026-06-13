@@ -3,109 +3,162 @@ name: Download Bundle (One-Pass Manifest + Pack)
 on:
   workflow_dispatch:
     inputs:
-      chunk_size:
-        description: 'Chunk size for file grouping (files per chunk)'
+      chunk_size_mb:
+        description: "Chunk size (MB) for streaming pieces"
         required: false
-        default: '50'
+        default: "95"
         type: string
-      max_file_size_mb:
-        description: 'Max individual file size to include (MB)'
+      max_files_per_chunk:
+        description: "Max files per zip chunk"
         required: false
-        default: '100'
+        default: "500"
         type: string
-      include_patterns:
-        description: 'Include patterns (space-separated globs, e.g. "*.kt *.java")'
+      include_build_outputs:
+        description: "Include build outputs (APKs, etc.)"
         required: false
-        default: ''
-        type: string
-      exclude_patterns:
-        description: 'Exclude patterns (space-separated globs)'
+        default: false
+        type: boolean
+      retention_days:
+        description: "Artifact retention in days (1-90)"
         required: false
-        default: ''
-        type: string
-      compression_level:
-        description: 'Zip compression level (1=fast, 9=best)'
-        required: false
-        default: '6'
+        default: "7"
         type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: download-bundle-${{ github.ref }}
-  cancel-in-progress: true
+  group: download-bundle-${{ github.ref }}-${{ github.run_id }}
+  cancel-in-progress: false
 
 jobs:
-  build-download-bundle:
-    name: Build Download Bundle
+  bundle:
+    name: Bundle Repo
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
-      - name: Checkout repository
+      - name: Checkout full repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: One-pass manifest and pack
+      - name: Validate inputs
+        id: validate
         shell: bash
-        env:
-          CHUNK_SIZE: ${{ inputs.chunk_size }}
-          MAX_FILE_SIZE_MB: ${{ inputs.max_file_size_mb }}
-          INCLUDE_PATTERNS: ${{ inputs.include_patterns }}
-          EXCLUDE_PATTERNS: ${{ inputs.exclude_patterns }}
-          COMPRESSION_LEVEL: ${{ inputs.compression_level }}
         run: |
           set -euo pipefail
-          python3 scripts/bundle_repo.py \
-            --chunk-size "${CHUNK_SIZE:-50}" \
-            --max-file-size-mb "${MAX_FILE_SIZE_MB:-100}" \
-            --include-patterns "${INCLUDE_PATTERNS:-}" \
-            --exclude-patterns "${EXCLUDE_PATTERNS:-}" \
-            --compression-level "${COMPRESSION_LEVEL:-6}" \
-            --output-dir dist/bundle
+          CHUNK_MB="${{ inputs.chunk_size_mb }}"
+          MAX_FILES="${{ inputs.max_files_per_chunk }}"
+          RETENTION="${{ inputs.retention_days }}"
 
-      - name: Summarize bundle
+          re_int='^[0-9]+$'
+
+          if ! [[ "$CHUNK_MB" =~ $re_int ]] || [[ "$CHUNK_MB" -lt 1 ]] || [[ "$CHUNK_MB" -gt 95 ]]; then
+            echo "ERROR: chunk_size_mb must be 1-95, got '$CHUNK_MB'" >&2; exit 1
+          fi
+          if ! [[ "$MAX_FILES" =~ $re_int ]] || [[ "$MAX_FILES" -lt 1 ]]; then
+            echo "ERROR: max_files_per_chunk must be >= 1, got '$MAX_FILES'" >&2; exit 1
+          fi
+          if ! [[ "$RETENTION" =~ $re_int ]] || [[ "$RETENTION" -lt 1 ]] || [[ "$RETENTION" -gt 90 ]]; then
+            echo "ERROR: retention_days must be 1-90, got '$RETENTION'" >&2; exit 1
+          fi
+
+          echo "chunk_mb=$CHUNK_MB" >> "$GITHUB_OUTPUT"
+          echo "max_files=$MAX_FILES" >> "$GITHUB_OUTPUT"
+          echo "retention=$RETENTION" >> "$GITHUB_OUTPUT"
+
+      - name: Build manifest and pack chunks
+        id: pack
+        shell: bash
+        env:
+          CHUNK_MB: ${{ steps.validate.outputs.chunk_mb }}
+          MAX_FILES: ${{ steps.validate.outputs.max_files }}
+          INCLUDE_BUILD: ${{ inputs.include_build_outputs }}
+        run: |
+          set -euo pipefail
+
+          DIST_DIR="dist/bundle"
+          mkdir -p "$DIST_DIR"
+
+          # --- Build file manifest (one-pass) ---
+          MANIFEST="$DIST_DIR/MANIFEST.txt"
+          EXCLUDE_PATTERN="^(\.git|\.gradle|build/|app/build/|node_modules/)"
+          if [[ "$INCLUDE_BUILD" == "true" ]]; then
+            EXCLUDE_PATTERN="^(\.git|\.gradle|node_modules/)"
+          fi
+
+          echo "Building manifest..."
+          git ls-files --cached --others --exclude-standard \
+            | grep -Ev "$EXCLUDE_PATTERN" > "$MANIFEST" || true
+
+          TOTAL=$(wc -l < "$MANIFEST")
+          echo "Total files in manifest: $TOTAL"
+
+          # --- Chunk and pack ---
+          CHUNK_BYTES=$(( CHUNK_MB * 1024 * 1024 ))
+          chunk_idx=0
+          chunk_size=0
+          chunk_files=0
+          chunk_list="$DIST_DIR/chunk_${chunk_idx}.lst"
+
+          while IFS= read -r file; do
+            [[ -f "$file" ]] || continue
+            fsize=$(stat -c%s "$file" 2>/dev/null || echo 0)
+
+            # Start a new chunk if either limit is exceeded
+            if (( chunk_files >= MAX_FILES || (chunk_files > 0 && chunk_size + fsize > CHUNK_BYTES) )); then
+              chunk_idx=$(( chunk_idx + 1 ))
+              chunk_size=0
+              chunk_files=0
+              chunk_list="$DIST_DIR/chunk_${chunk_idx}.lst"
+            fi
+
+            echo "$file" >> "$chunk_list"
+            chunk_size=$(( chunk_size + fsize ))
+            chunk_files=$(( chunk_files + 1 ))
+          done < "$MANIFEST"
+
+          TOTAL_CHUNKS=$(( chunk_idx + 1 ))
+          echo "total_chunks=$TOTAL_CHUNKS" >> "$GITHUB_OUTPUT"
+          echo "dist_dir=$DIST_DIR" >> "$GITHUB_OUTPUT"
+          echo "Packing $TOTAL_CHUNKS chunk(s)..."
+
+          for i in $(seq 0 $(( TOTAL_CHUNKS - 1 ))); do
+            lst="$DIST_DIR/chunk_${i}.lst"
+            zip_name="$DIST_DIR/bundle_chunk_$(printf '%03d' $i)_of_$(printf '%03d' $TOTAL_CHUNKS).zip"
+            echo "  -> $zip_name ($(wc -l < "$lst") files)"
+            zip -9 "$zip_name" -@ < "$lst"
+          done
+
+          # SHA256 manifest
+          (
+            cd "$DIST_DIR"
+            sha256sum bundle_chunk_*.zip > SHA256SUMS.txt
+          )
+
+          echo "Done. Chunks:"
+          ls -lh "$DIST_DIR"/bundle_chunk_*.zip
+
+      - name: Upload bundle chunks
+        uses: actions/upload-artifact@v4
+        with:
+          name: repo-bundle-${{ github.sha }}
+          path: |
+            ${{ steps.pack.outputs.dist_dir }}/bundle_chunk_*.zip
+            ${{ steps.pack.outputs.dist_dir }}/SHA256SUMS.txt
+            ${{ steps.pack.outputs.dist_dir }}/MANIFEST.txt
+          if-no-files-found: error
+          retention-days: ${{ steps.validate.outputs.retention }}
+
+      - name: Summary
         if: always()
         shell: bash
         run: |
-          set -euo pipefail
-          shopt -s nullglob
-          summary="dist/bundle/MANIFEST.tsv"
-          {
-            echo "## Download Bundle artifacts"
-            echo ""
-            if [[ -f "$summary" ]]; then
-              TOTAL_FILES=$(tail -n +2 "$summary" | wc -l)
-              TOTAL_BYTES=$(tail -n +2 "$summary" | awk -F'\t' '{s+=$3} END {print s}')
-              TOTAL_MB=$(echo "scale=2; $TOTAL_BYTES/1048576" | bc)
-              echo "- Total files: $TOTAL_FILES"
-              echo "- Total size: ${TOTAL_MB} MB"
-              echo ""
-              echo '| Chunk | Path | Size (bytes) | SHA256 |'
-              echo '|---:|---|---:|---|'
-              tail -n +2 "$summary" | while IFS=$'\t' read -r chunk path size sha; do
-                echo "| $chunk | $path | $size | \`$sha\` |"
-              done
-            else
-              echo "No manifest generated. Build failed before artifact packaging."
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload bundle artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: userland-download-bundle-${{ github.sha }}
-          path: |
-            dist/bundle/**/*.zip
-            dist/bundle/MANIFEST.tsv
-            dist/bundle/SHA256SUMS.txt
-          if-no-files-found: error
-          retention-days: 90
+          echo "## 📦 Bundle Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Chunks**: ${{ steps.pack.outputs.total_chunks }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Retention**: ${{ steps.validate.outputs.retention }} days" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **SHA256SUMS**: included" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **MANIFEST**: included" >> "$GITHUB_STEP_SUMMARY"

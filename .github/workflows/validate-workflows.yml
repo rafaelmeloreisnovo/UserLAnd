@@ -1,81 +1,50 @@
 name: 🔍 Validate Workflows
 
 # Author: @rafaelmeloreisnovo
-# RAFCODE-Φ Seal: ⟨Φ⟩-WORKFLOW-VALIDATOR-A
+# RAFCODE-Φ Seal: ⟨Φ⟩-WORKFLOW-VALIDATOR-ACTION-v1.0
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - 'tools/check_workflow_refs.py'
   push:
     branches: [ main, master ]
     paths:
       - '.github/workflows/**'
-  pull_request:
-    paths:
-      - '.github/workflows/**'
+      - 'tools/check_workflow_refs.py'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: validate-workflows-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  validate:
-    name: Validate Workflow Files
+  validate-action-refs:
+    name: Validate Action References
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
-      - name: 📥 Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🐍 Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: 📦 Install dependencies
+      - name: Run workflow ref validator
         run: |
-          python -m pip install --upgrade pip
-          pip install pyyaml
+          python tools/check_workflow_refs.py --strict
 
-      - name: 🔍 Validate workflow YAML files
-        run: |
-          python3 - <<'PYEOF'
-          import yaml
-          import sys
-          from pathlib import Path
-
-          errors = []
-          workflow_dir = Path('.github/workflows')
-
-          if not workflow_dir.exists():
-              print("No workflows directory found")
-              sys.exit(0)
-
-          for wf_file in sorted(workflow_dir.glob('*.yml')):
-              try:
-                  with open(wf_file) as f:
-                      data = yaml.safe_load(f)
-                  if data is None:
-                      errors.append(f"{wf_file}: Empty file")
-                  elif not isinstance(data, dict):
-                      errors.append(f"{wf_file}: Not a YAML mapping")
-                  else:
-                      print(f"✅ {wf_file.name}")
-              except yaml.YAMLError as e:
-                  errors.append(f"{wf_file}: YAML error: {e}")
-
-          if errors:
-              print("\n❌ Errors found:")
-              for err in errors:
-                  print(f"  - {err}")
-              sys.exit(1)
-          else:
-              print("\n✅ All workflow files are valid YAML")
-          PYEOF
-
-      - name: 📊 Summary
+      - name: Summarize results
         if: always()
+        shell: bash
         run: |
-          echo "## 🔍 Workflow Validation" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          WORKFLOW_COUNT=$(ls .github/workflows/*.yml 2>/dev/null | wc -l)
-          echo "- Workflow files checked: $WORKFLOW_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "## Workflow Reference Validation" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Checked all .github/workflows/*.yml files for valid action references." >> "$GITHUB_STEP_SUMMARY"
