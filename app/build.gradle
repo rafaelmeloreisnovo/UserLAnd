@@ -346,8 +346,24 @@ task fetchAssets(dependsOn: downloadAssets) {
             targetDir.deleteDir()
             targetDir.mkdirs()
             
-            // Extract ZIP using Ant task
-            ant.unzip(src: zipFile.absolutePath, dest: extractDir.absolutePath)
+            // Extract ZIP using java.util.zip (Ant task is deprecated in newer AGP)
+            new java.util.zip.ZipInputStream(new java.io.FileInputStream(zipFile)).withCloseable { zis ->
+                java.util.zip.ZipEntry entry
+                while ((entry = zis.getNextEntry()) != null) {
+                    def outFile = new File(extractDir, entry.getName())
+                    if (entry.isDirectory()) {
+                        outFile.mkdirs()
+                    } else {
+                        outFile.parentFile?.mkdirs()
+                        outFile.withOutputStream { fos ->
+                            byte[] buf = new byte[8192]
+                            int len
+                            while ((len = zis.read(buf)) > 0) { fos.write(buf, 0, len) }
+                        }
+                    }
+                    zis.closeEntry()
+                }
+            }
             
             // Copy and rename files using standard Java APIs
             extractDir.eachFileRecurse { file ->

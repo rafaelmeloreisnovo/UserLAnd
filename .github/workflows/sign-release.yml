@@ -48,6 +48,15 @@ jobs:
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > keystore.jks
           echo "Keystore restored."
 
+      - name: Create native asset stubs
+        shell: bash
+        run: |
+          set -euo pipefail
+          for arch in armeabi-v7a arm64-v8a x86 x86_64; do
+            mkdir -p "app/src/main/jniLibs/$arch"
+            printf '%s' "$arch" > "app/src/main/jniLibs/$arch/lib_arch.so"
+          done
+
       - name: Build release APK
         env:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}

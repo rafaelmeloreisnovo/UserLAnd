@@ -395,8 +395,6 @@ class ContributionPrompter(
     }
 
     private fun processPurchase(purchase: Purchase) {
-        // TODO: Migrate to new billing library API - Purchase.sku is deprecated
-        // Use purchase.products instead
         val productId = purchase.products.firstOrNull() ?: ""
         if (productId.endsWith("onetime")) {
             setHasMadeInAppPurchase(true)
