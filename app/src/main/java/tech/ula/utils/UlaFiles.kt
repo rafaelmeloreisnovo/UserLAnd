@@ -158,7 +158,15 @@ class UlaFiles(
     }
 
     fun getArchType(): String {
-        val usedABI = File(libDir, "lib_arch.so").readText()
+        val archFile = File(libDir, "lib_arch.so")
+        if (!archFile.exists()) {
+            android.util.Log.e("UlaFiles", "lib_arch.so not found in ${libDir.absolutePath}")
+            return ""
+        }
+        // readText() may include a trailing newline; .trim() is required so that
+        // translateABI() receives the exact ABI string (e.g. "arm64-v8a" not "arm64-v8a\n")
+        // and doesn't fall through to the else branch returning "".
+        val usedABI = archFile.readText().trim()
         return translateABI(usedABI)
     }
 

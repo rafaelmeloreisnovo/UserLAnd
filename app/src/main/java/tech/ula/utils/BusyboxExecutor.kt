@@ -442,6 +442,9 @@ class BusyboxWrapper(
         hashMapOf(
             "LIB_PATH" to ulaFiles.supportDir.absolutePath,
             "ROOT_PATH" to ulaFiles.filesDir.absolutePath,
+            // Scripts invoked via busybox sh need PATH to resolve standard tools.
+            // supportDir is prepended so busybox-provided binaries take precedence.
+            "PATH" to "${ulaFiles.supportDir.absolutePath}:/system/bin:/system/xbin:/sbin",
         )
 
     fun busyboxIsPresent(): Boolean = ulaFiles.busybox.exists()
@@ -470,12 +473,14 @@ class BusyboxWrapper(
 
         val emulatedStorageBinding =
             "-b ${ulaFiles.emulatedUserDir.absolutePath}:/storage/internal"
-        val externalStorageBinding =
-            ulaFiles.sdCardUserDir?.run {
-                "-b ${this.absolutePath}:/storage/sdcard"
-            } ?: ""
+        // Build EXTRA_BINDINGS without a trailing space when SD card is absent.
+        // Using joinToString avoids "$emulatedBinding $sdBinding" producing a
+        // trailing space that could confuse execInProot.sh argument parsing.
+        val bindings = listOfNotNull(
+            emulatedStorageBinding,
+            ulaFiles.sdCardUserDir?.run { "-b ${this.absolutePath}:/storage/sdcard" },
+        ).joinToString(" ")
 
-        val bindings = "$emulatedStorageBinding $externalStorageBinding"
         val osVersion = System.getProperty("os.version") ?: "unknown"
 
         return hashMapOf(
@@ -486,6 +491,9 @@ class BusyboxWrapper(
             "PROOT_DEBUG_LEVEL" to prootDebugLevel,
             "EXTRA_BINDINGS" to bindings,
             "OS_VERSION" to osVersion,
+            // Scripts launched by proot also need PATH to reach busybox tools
+            // from the outer Android environment (used before chroot takes over).
+            "PATH" to "${ulaFiles.supportDir.absolutePath}:/system/bin:/system/xbin:/sbin",
         )
     }
 

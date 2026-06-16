@@ -8,94 +8,59 @@ on:
       - 'scripts/license_audit.py'
       - '.github/workflows/license-check.yml'
   push:
-    branches:
-      - main
-      - develop
+    branches: [ main, master ]
+    paths:
+      - 'app/build.gradle'
+      - 'build.gradle'
+      - 'scripts/license_audit.py'
+      - '.github/workflows/license-check.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: license-check-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   license-audit:
-    name: License Compliance Audit
+    name: License Audit
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    
+    timeout-minutes: 10
+
     steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v6
-      
-      - name: 🔧 Set up JDK 17
-        uses: actions/setup-java@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
-      
-      - name: 🔧 Set up Python
-        uses: actions/setup-python@v6
+          submodules: recursive
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
-      - name: 🔧 Setup Android SDK
-        uses: android-actions/setup-android@v3
-      
-      - name: 📦 Cache Gradle
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-      
-      - name: 🔍 Run License Audit
+          cache: 'pip'
+
+      - name: Install Python dependencies
         run: |
-          echo "🔨 Running license audit..."
-          python3 scripts/license_audit.py
-        continue-on-error: false
-      
-      - name: 📄 Upload License Report
+          python -m pip install --upgrade pip
+          pip install pyyaml
+
+      - name: Run license audit
+        run: |
+          python scripts/license_audit.py --fail-on-violation
+
+      - name: Summarize license audit
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: license-report
-          path: |
-            THIRD_PARTY_NOTICES.md
-            build/license_report.json
-          if-no-files-found: warn
-      
-      - name: 💬 Comment on PR (if failed)
-        if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            let report = 'License audit failed. Please ensure all dependencies have known licenses.';
-            
-            try {
-              if (fs.existsSync('build/license_report.json')) {
-                const data = JSON.parse(fs.readFileSync('build/license_report.json', 'utf8'));
-                if (data.unknown_licenses && data.unknown_licenses.length > 0) {
-                  report = `## ⚠️ License Audit Failed\n\n`;
-                  report += `Found ${data.unknown_licenses.length} dependencies with unknown licenses:\n\n`;
-                  data.unknown_licenses.forEach(dep => {
-                    report += `- \`${dep}\`\n`;
-                  });
-                  report += `\nPlease add license information to \`scripts/license_audit.py\` or update dependencies.`;
-                }
-              }
-            } catch (e) {
-              console.log('Could not read license report:', e);
-            }
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: report
-            });
-      
-      - name: ✅ License Audit Passed
-        if: success()
+        shell: bash
         run: |
-          echo "✅ All dependencies have known licenses"
-          echo "📊 License report generated successfully"
+          set -euo pipefail
+          echo "## License Audit" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f license_audit_report.txt ]]; then
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            cat license_audit_report.txt >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No report generated (script did not create license_audit_report.txt)." >> "$GITHUB_STEP_SUMMARY"
+          fi

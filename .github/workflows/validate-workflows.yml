@@ -9,10 +9,7 @@ on:
       - '.github/workflows/**'
       - 'tools/check_workflows.py'
   push:
-    branches:
-      - main
-      - master
-      - 'rafaelia/**'
+    branches: [ main, master ]
     paths:
       - '.github/workflows/**'
       - 'tools/check_workflows.py'
@@ -20,91 +17,34 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
+
+concurrency:
+  group: validate-workflows-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  validate-workflows:
-    name: Validate GitHub Actions Workflows
+  validate-action-refs:
+    name: Validate Action References
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    
+
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v6
-        
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v6
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          
-      - name: 📦 Install dependencies
+
+      - name: Run workflow ref validator
         run: |
-          python -m pip install --upgrade pip
-          pip install pyyaml
-          
-      - name: 🔍 Run workflow validator
-        id: validate
-        run: |
-          python tools/check_workflows.py || true
-          
-      - name: 📊 Display findings
+          python tools/check_workflows.py --strict
+
+      - name: Summarize results
         if: always()
+        shell: bash
         run: |
-          if [ -f workflow_findings.json ]; then
-            echo "## 🔍 Workflow Validation Findings" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            
-            # Parse and display findings
-            python -c "
-          import json
-          import sys
-          
-          with open('workflow_findings.json', 'r', encoding='utf-8') as f:
-              findings = json.load(f)
-          
-          if not findings:
-              print('✅ No issues found!')
-              sys.exit(0)
-          
-          # Group by severity
-          by_severity = {}
-          for finding in findings:
-              severity = finding.get('severity', 'unknown')
-              by_severity.setdefault(severity, []).append(finding)
-          
-          # Display by severity
-          severity_order = ['critical', 'error', 'warning', 'info']
-          emoji_map = {
-              'critical': '🔴',
-              'error': '❌',
-              'warning': '⚠️',
-              'info': 'ℹ️'
-          }
-          
-          for severity in severity_order:
-              if severity in by_severity:
-                  items = by_severity[severity]
-                  print(f'\n### {emoji_map.get(severity, \"❓\")} {severity.upper()} ({len(items)})')
-                  for item in items[:10]:  # Limit to first 10 per severity
-                      file = item.get('file', 'unknown')
-                      line = item.get('line', 0)
-                      msg = item.get('message', 'No message')
-                      if line > 0:
-                          print(f'- **{file}:{line}** - {msg}')
-                      else:
-                          print(f'- **{file}** - {msg}')
-                  if len(items) > 10:
-                      print(f'- ... and {len(items) - 10} more')
-          " >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⚠️ No findings file generated" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-      - name: 📤 Upload findings
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: workflow-findings
-          path: workflow_findings.json
-          if-no-files-found: warn
-          retention-days: 30
+          echo "## Workflow Reference Validation" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Checked all .github/workflows/*.yml files for valid action references." >> "$GITHUB_STEP_SUMMARY"

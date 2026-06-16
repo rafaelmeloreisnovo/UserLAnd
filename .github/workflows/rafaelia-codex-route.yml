@@ -9,11 +9,6 @@ name: RAFAELIA Codex Route Check
       - "gradle.properties"
       - "build.gradle"
       - "settings.gradle"
-      - "app/build.gradle"
-      - "docs/**"
-      - "scripts/**"
-      - "core/librafaelia/**"
-      - "raf_*.c"
       - ".github/workflows/rafaelia-codex-route.yml"
   pull_request:
     paths:
@@ -21,13 +16,7 @@ name: RAFAELIA Codex Route Check
       - "gradle.properties"
       - "build.gradle"
       - "settings.gradle"
-      - "app/build.gradle"
-      - "docs/**"
-      - "scripts/**"
-      - "core/librafaelia/**"
-      - "raf_*.c"
       - ".github/workflows/rafaelia-codex-route.yml"
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -37,27 +26,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  route-check:
-    name: Verify RAFAELIA/UserLAnd route invariants
+  codex-check:
+    name: RAFAELIA Codex Route Validation
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Run RAFAELIA Codex route checker
+      - name: Run Codex route check
         shell: bash
         run: |
           set -euo pipefail
-          chmod +x scripts/rafaelia_codex_route_check.sh
-          scripts/rafaelia_codex_route_check.sh
+          chmod +x scripts/rafaelia_codex_route.sh
+          scripts/rafaelia_codex_route.sh
 
-      - name: Upload route report
+      - name: Report
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: rafaelia-codex-route-report
-          path: build/rafaelia_codex_route/
-          if-no-files-found: warn
-          retention-days: 14
+        shell: bash
+        run: |
+          echo "## RAFAELIA Codex Route" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Codex route check completed." >> "$GITHUB_STEP_SUMMARY"

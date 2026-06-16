@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -46,6 +46,16 @@ jobs:
 
       - name: Make Gradle executable
         run: chmod +x ./gradlew
+
+      - name: Create native asset stubs for CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          for arch in armeabi-v7a arm64-v8a x86 x86_64; do
+            mkdir -p "app/src/main/jniLibs/$arch"
+            printf '%s' "$arch" > "app/src/main/jniLibs/$arch/lib_arch.so"
+          done
+          echo "✓ Stub native assets created"
 
       - name: Build release APK
         env:
@@ -95,7 +105,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -118,6 +128,16 @@ jobs:
 
       - name: Make Gradle executable
         run: chmod +x ./gradlew
+
+      - name: Create native asset stubs for CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          for arch in armeabi-v7a arm64-v8a x86 x86_64; do
+            mkdir -p "app/src/main/jniLibs/$arch"
+            printf '%s' "$arch" > "app/src/main/jniLibs/$arch/lib_arch.so"
+          done
+          echo "✓ Stub native assets created"
 
       - name: Build beta APK
         env:

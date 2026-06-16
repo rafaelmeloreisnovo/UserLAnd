@@ -6,171 +6,159 @@ on:
       chunk_size_mb:
         description: "Chunk size (MB) for streaming pieces"
         required: false
-        default: "50"
-      include_git_dir:
-        description: "Include .git in the package (true/false)"
+        default: "95"
+        type: string
+      max_files_per_chunk:
+        description: "Max files per zip chunk"
         required: false
-        default: "false"
+        default: "500"
+        type: string
+      include_build_outputs:
+        description: "Include build outputs (APKs, etc.)"
+        required: false
+        default: false
+        type: boolean
+      retention_days:
+        description: "Artifact retention in days (1-90)"
+        required: false
+        default: "7"
+        type: string
 
 permissions:
   contents: read
 
+concurrency:
+  group: download-bundle-${{ github.ref }}-${{ github.run_id }}
+  cancel-in-progress: false
+
 jobs:
   bundle:
+    name: Bundle Repo
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
     steps:
-      - name: Checkout (full pass)
-        uses: actions/checkout@v6
+      - name: Checkout full repository
+        uses: actions/checkout@v4
         with:
+          submodules: recursive
           fetch-depth: 0
 
-      - name: Install tools
+      - name: Validate inputs
+        id: validate
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y zstd coreutils findutils jq python3
-          # crc32 via python (zlib) — no extra package needed
+          set -euo pipefail
+          CHUNK_MB="${{ inputs.chunk_size_mb }}"
+          MAX_FILES="${{ inputs.max_files_per_chunk }}"
+          RETENTION="${{ inputs.retention_days }}"
 
-      - name: Normalize workspace (optional drop .git)
-        run: |
-          if [ "${{ inputs.include_git_dir }}" != "true" ]; then
-            rm -rf .git
+          re_int='^[0-9]+$'
+
+          if ! [[ "$CHUNK_MB" =~ $re_int ]] || [[ "$CHUNK_MB" -lt 1 ]] || [[ "$CHUNK_MB" -gt 95 ]]; then
+            echo "ERROR: chunk_size_mb must be 1-95, got '$CHUNK_MB'" >&2; exit 1
+          fi
+          if ! [[ "$MAX_FILES" =~ $re_int ]] || [[ "$MAX_FILES" -lt 1 ]]; then
+            echo "ERROR: max_files_per_chunk must be >= 1, got '$MAX_FILES'" >&2; exit 1
+          fi
+          if ! [[ "$RETENTION" =~ $re_int ]] || [[ "$RETENTION" -lt 1 ]] || [[ "$RETENTION" -gt 90 ]]; then
+            echo "ERROR: retention_days must be 1-90, got '$RETENTION'" >&2; exit 1
           fi
 
-      - name: Generate ONE-PASS manifest (jsonl + json)
+          echo "chunk_mb=$CHUNK_MB" >> "$GITHUB_OUTPUT"
+          echo "max_files=$MAX_FILES" >> "$GITHUB_OUTPUT"
+          echo "retention=$RETENTION" >> "$GITHUB_OUTPUT"
+
+      - name: Build manifest and pack chunks
+        id: pack
         shell: bash
+        env:
+          CHUNK_MB: ${{ steps.validate.outputs.chunk_mb }}
+          MAX_FILES: ${{ steps.validate.outputs.max_files }}
+          INCLUDE_BUILD: ${{ inputs.include_build_outputs }}
         run: |
           set -euo pipefail
-          mkdir -p out
 
-          python3 - <<'PY'
-          import os, json, time, hashlib, zlib
+          DIST_DIR="dist/bundle"
+          mkdir -p "$DIST_DIR"
 
-          root = "."
-          items = []
-          total_bytes = 0
+          # --- Build file manifest (one-pass) ---
+          MANIFEST="$DIST_DIR/MANIFEST.txt"
+          EXCLUDE_PATTERN="^(\.git|\.gradle|build/|app/build/|node_modules/)"
+          if [[ "$INCLUDE_BUILD" == "true" ]]; then
+            EXCLUDE_PATTERN="^(\.git|\.gradle|node_modules/)"
+          fi
 
-          # single pass walk
-          for dirpath, dirnames, filenames in os.walk(root):
-            # skip out directory
-            if dirpath.startswith("./out"):
-              continue
-            for fn in filenames:
-              p = os.path.join(dirpath, fn)
-              if p.startswith("./out"):
-                continue
-              try:
-                st = os.stat(p)
-              except FileNotFoundError:
-                continue
-              if not os.path.isfile(p):
-                continue
+          echo "Building manifest..."
+          git ls-files --cached --others --exclude-standard \
+            | grep -Ev "$EXCLUDE_PATTERN" > "$MANIFEST" || true
 
-              # hash in one pass read
-              h = hashlib.sha256()
-              crc = 0
-              size = 0
-              with open(p, "rb") as f:
-                while True:
-                  b = f.read(1024 * 1024)
-                  if not b:
-                    break
-                  size += len(b)
-                  h.update(b)
-                  crc = zlib.crc32(b, crc)
+          TOTAL=$(wc -l < "$MANIFEST")
+          echo "Total files in manifest: $TOTAL"
 
-              rec = {
-                "path": p[2:] if p.startswith("./") else p,
-                "bytes": size,
-                "mtime": int(st.st_mtime),
-                "sha256": h.hexdigest(),
-                "crc32": format(crc & 0xffffffff, "08x"),
-              }
-              items.append(rec)
-              total_bytes += size
+          # --- Chunk and pack ---
+          CHUNK_BYTES=$(( CHUNK_MB * 1024 * 1024 ))
+          chunk_idx=0
+          chunk_size=0
+          chunk_files=0
+          chunk_list="$DIST_DIR/chunk_${chunk_idx}.lst"
 
-          manifest = {
-            "schema": "RAFAELIA_MANIFEST_v1",
-            "generated_unix": int(time.time()),
-            "file_count": len(items),
-            "total_bytes": total_bytes,
-            "files": items,
-          }
+          while IFS= read -r file; do
+            [[ -f "$file" ]] || continue
+            fsize=$(stat -c%s "$file" 2>/dev/null || echo 0)
 
-          with open("out/manifest.json", "w", encoding="utf-8") as f:
-            json.dump(manifest, f, ensure_ascii=False, separators=(",", ":"))
+            # Start a new chunk if either limit is exceeded
+            if (( chunk_files >= MAX_FILES || (chunk_files > 0 && chunk_size + fsize > CHUNK_BYTES) )); then
+              chunk_idx=$(( chunk_idx + 1 ))
+              chunk_size=0
+              chunk_files=0
+              chunk_list="$DIST_DIR/chunk_${chunk_idx}.lst"
+            fi
 
-          # also output jsonl for streaming/grep
-          with open("out/manifest.jsonl", "w", encoding="utf-8") as f:
-            for rec in items:
-              f.write(json.dumps(rec, ensure_ascii=False, separators=(",", ":")) + "\n")
+            echo "$file" >> "$chunk_list"
+            chunk_size=$(( chunk_size + fsize ))
+            chunk_files=$(( chunk_files + 1 ))
+          done < "$MANIFEST"
 
-          print("file_count:", len(items))
-          print("total_bytes:", total_bytes)
-          PY
+          TOTAL_CHUNKS=$(( chunk_idx + 1 ))
+          echo "total_chunks=$TOTAL_CHUNKS" >> "$GITHUB_OUTPUT"
+          echo "dist_dir=$DIST_DIR" >> "$GITHUB_OUTPUT"
+          echo "Packing $TOTAL_CHUNKS chunk(s)..."
 
-          ls -lh out/manifest.json out/manifest.jsonl || true
-          wc -c out/manifest.json out/manifest.jsonl || true
+          for i in $(seq 0 $(( TOTAL_CHUNKS - 1 ))); do
+            lst="$DIST_DIR/chunk_${i}.lst"
+            zip_name="$DIST_DIR/bundle_chunk_$(printf '%03d' $i)_of_$(printf '%03d' $TOTAL_CHUNKS).zip"
+            echo "  -> $zip_name ($(wc -l < "$lst") files)"
+            zip -9 "$zip_name" -@ < "$lst"
+          done
 
-      - name: Pack project (tar + zstd)
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p out
+          # SHA256 manifest
+          (
+            cd "$DIST_DIR"
+            sha256sum bundle_chunk_*.zip > SHA256SUMS.txt
+          )
 
-          # deterministic-ish ordering
-          # (GNU tar on ubuntu supports --sort=name)
-          tar --sort=name --mtime='UTC 2020-01-01' --owner=0 --group=0 --numeric-owner \
-              -cf out/project.tar .
+          echo "Done. Chunks:"
+          ls -lh "$DIST_DIR"/bundle_chunk_*.zip
 
-          zstd -19 -T0 -f out/project.tar -o out/project.tar.zst
-          rm -f out/project.tar
-
-          ls -lh out/project.tar.zst
-
-      - name: Chunk for streaming (ZipRaf-like delivery)
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p out/chunks
-          SZ="${{ inputs.chunk_size_mb }}"
-          # split into N MB parts
-          split -b "${SZ}m" -d -a 4 out/project.tar.zst out/chunks/project.tar.zst.part.
-
-          # index chunks
-          python3 - <<'PY'
-          import os, json, hashlib
-          base = "out/chunks"
-          parts = sorted([p for p in os.listdir(base) if p.startswith("project.tar.zst.part.")])
-          idx = []
-          for i,p in enumerate(parts):
-            fp = os.path.join(base,p)
-            h = hashlib.sha256()
-            size = 0
-            with open(fp,"rb") as f:
-              while True:
-                b=f.read(1024*1024)
-                if not b: break
-                size += len(b)
-                h.update(b)
-            idx.append({"part": p, "bytes": size, "sha256": h.hexdigest()})
-          with open("out/chunks/index.json","w",encoding="utf-8") as f:
-            json.dump({"schema":"RAFAELIA_CHUNKS_v1","count":len(idx),"parts":idx}, f, ensure_ascii=False, separators=(",",":"))
-          print("chunks:", len(idx))
-          PY
-
-          ls -lh out/chunks | head -n 50 || true
-          wc -c out/chunks/index.json || true
-
-      - name: Upload artifacts (manifest + chunks)
+      - name: Upload bundle chunks
         uses: actions/upload-artifact@v4
         with:
-          name: rafaelia-download-bundle
+          name: repo-bundle-${{ github.sha }}
           path: |
-            out/manifest.json
-            out/manifest.jsonl
-            out/project.tar.zst
-            out/chunks/index.json
-            out/chunks/project.tar.zst.part.*
+            ${{ steps.pack.outputs.dist_dir }}/bundle_chunk_*.zip
+            ${{ steps.pack.outputs.dist_dir }}/SHA256SUMS.txt
+            ${{ steps.pack.outputs.dist_dir }}/MANIFEST.txt
           if-no-files-found: error
-          retention-days: 7
+          retention-days: ${{ steps.validate.outputs.retention }}
+
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          echo "## 📦 Bundle Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Chunks**: ${{ steps.pack.outputs.total_chunks }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Retention**: ${{ steps.validate.outputs.retention }} days" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **SHA256SUMS**: included" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **MANIFEST**: included" >> "$GITHUB_STEP_SUMMARY"
