@@ -52,7 +52,6 @@ EXCLUDE_PATTERNS = [
     'tests',
     '__pycache__',
     '.git',
-    'impl',  # Implementation details are allowed to have more functionality
     'raf_kerneld.py',  # Daemon is explicitly for telemetry - excluded from core audit
 ]
 
@@ -63,6 +62,8 @@ WHITELIST_PATTERNS = [
     r'/\*.*telemetry',    # Comments about telemetry
     r'memcpy',            # Memory copy, not data collection
     r'user["\s]',         # CPU field name "user", not user tracking
+    r'raf_compute_cpu_metrics',  # Local CPU utilization math, not telemetry reporting
+    r'RafCpuMetrics',            # Local CPU metric struct, not telemetry reporting
 ]
 
 
