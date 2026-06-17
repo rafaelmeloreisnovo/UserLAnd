@@ -74,10 +74,14 @@ allprojects {
             force "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
             force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
             force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+            // commons-compress ≤1.25 has CVE-2024-25710 (high), CVE-2024-26308 (high),
+            // CVE-2021-36090/35517/35516/35515 (high), CVE-2023-42503 (moderate) —
+            // jarchivelib:1.2.0 pulls in 1.20; force to patched baseline
+            force "org.apache.commons:commons-compress:1.27.1"
         }
     }
 }
 
 task clean(type: Delete) {
-    delete rootProject.buildDir
+    delete rootProject.layout.buildDirectory
 }

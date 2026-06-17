@@ -123,6 +123,14 @@ object SafetyGuard {
 
     fun startupModulesForSdk(sdk: Int): List<String> {
         val baseModules = mutableListOf("memory_guard", "startup_throttle")
+        if (AndroidVersion.isAndroid10Plus(sdk)) {
+            // Scoped Storage enforcement + stricter background execution limits (API 29+)
+            baseModules.add("background_exec_guard")
+        }
+        if (AndroidVersion.isAndroid12Plus(sdk)) {
+            // Phantom Process Killer active on API 31+ — mitigation needed for proot sessions
+            baseModules.add("phantom_process_guard")
+        }
         if (AndroidVersion.isAndroid15Plus(sdk)) {
             baseModules.add("android15_pressure_watch")
         }
