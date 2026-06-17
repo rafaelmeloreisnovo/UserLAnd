@@ -96,8 +96,7 @@ endif()
 if(RAF_HAS_NEON OR ANDROID_ABI MATCHES "arm")
     add_compile_definitions(RAF_ENABLE_NEON=1)
     if(RAF_ARCH STREQUAL "arm")
-        # ARMv7 with NEON
-        add_compile_options(-mfpu=neon)
+        add_compile_options(-mfpu=neon-vfpv4 -mfloat-abi=softfp)
     endif()
     message(STATUS "NEON SIMD enabled")
 endif()
@@ -164,6 +163,9 @@ target_compile_options(rafaelia PRIVATE
   -O2
   -fno-exceptions
   -fvisibility=hidden
+  -ffunction-sections
+  -fdata-sections
+  -fno-common
   -Wall
   -Wextra
   -Wno-unused-parameter
@@ -178,6 +180,7 @@ elseif(RAF_ARCH STREQUAL "arm")
     target_compile_options(rafaelia PRIVATE
         -march=armv7-a
         -mthumb
+        -mthumb-interwork
     )
 endif()
 
@@ -185,14 +188,11 @@ endif()
 # Link Options
 # ==============================================================================
 
-# Android 15/16 compatibility: 16KB page size support
-# This prevents crashes on Android 16+ with 16KB memory pages
+# Android 15/16: 16KB page size; --gc-sections eliminates unused ELF sections
+# (requires -ffunction-sections / -fdata-sections at compile time)
 target_link_options(rafaelia PRIVATE
   -Wl,-z,max-page-size=16384
-)
-
-# Additional security hardening
-target_link_options(rafaelia PRIVATE
+  -Wl,--gc-sections
   -Wl,-z,relro
   -Wl,-z,now
 )
