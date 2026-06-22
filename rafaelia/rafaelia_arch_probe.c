@@ -2,6 +2,8 @@
 
 #define _POSIX_C_SOURCE 200809L
 
+#include "rafaelia_hw_map.h"
+
 #include <inttypes.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -415,6 +417,9 @@ static void detect_runtime_caps(runtime_caps_t *caps) {
 
 /* Generate RFC 8259 compliant JSON output */
 static int generate_json_output(char *buffer, size_t buffer_size) {
+    char hw_map_buffer[768];
+    bool hw_map_available = false;
+
     if (!buffer || buffer_size < 64) {
         fprintf(stderr, "[ERROR] Invalid buffer for JSON generation\n");
         return -1;
@@ -430,6 +435,7 @@ static int generate_json_output(char *buffer, size_t buffer_size) {
     bool has_crypto = has_crypto_extensions();
     runtime_caps_t runtime_caps;
     detect_runtime_caps(&runtime_caps);
+    hw_map_available = (rafaelia_hw_map_generate_json(hw_map_buffer, sizeof(hw_map_buffer)) == 0);
 
     /* Build JSON incrementally for better maintainability and error handling */
     int pos = 0;
@@ -511,8 +517,17 @@ static int generate_json_output(char *buffer, size_t buffer_size) {
     if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
     pos += written;
     
-    /* Timestamp field (last, no trailing comma) */
-    written = snprintf(buffer + pos, buffer_size - pos, "\"timestamp_ns\":%" PRIu64, counter);
+    /* Timestamp field */
+    written = snprintf(buffer + pos, buffer_size - pos, "\"timestamp_ns\":%" PRIu64 ",", counter);
+    if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
+    pos += written;
+
+    /* Safe hardware map. Falls back to null rather than failing the probe. */
+    if (hw_map_available) {
+        written = snprintf(buffer + pos, buffer_size - pos, "\"hardware_map\":%s", hw_map_buffer);
+    } else {
+        written = snprintf(buffer + pos, buffer_size - pos, "\"hardware_map\":null");
+    }
     if (written < 0 || (size_t)(pos + written) >= buffer_size) goto overflow;
     pos += written;
     
@@ -534,7 +549,7 @@ overflow:
  * Output: JSON to stdout, errors to stderr
  */
 int main(void) {
-    char json_buffer[1024];
+    char json_buffer[JSON_BUFFER_SIZE];
     if (generate_json_output(json_buffer, sizeof(json_buffer)) != 0) {
         return 1;
     }
