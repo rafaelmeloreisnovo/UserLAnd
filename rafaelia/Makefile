@@ -171,6 +171,14 @@ test: all
 		echo "[FAIL] No JSON output"; \
 		exit 1; \
 	fi
+	@python3 -c 'import json,sys; d=json.load(sys.stdin); \
+required=("arch","word_bits","endianness","cycle_counter","timestamp_ns","hardware_map"); \
+missing=[k for k in required if k not in d]; hm=d.get("hardware_map"); \
+bad=hm is not None and not {"registers_detected","gpio_pinctrl_detected","access_level"} <= set(hm); \
+assert not missing, "missing keys: %s" % ",".join(missing); \
+assert not bad, "invalid hardware_map contract"; \
+assert d["word_bits"] in (32,64), "invalid word_bits"; \
+print("[PASS] JSON contract validated")' < /tmp/rafaelia_test.json
 	@rm -f /tmp/rafaelia_test.json
 
 help:
