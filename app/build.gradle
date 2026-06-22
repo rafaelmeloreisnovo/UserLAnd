@@ -318,7 +318,7 @@ ext.libDir = "$project.projectDir/src/main/jniLibs"
 // Capture variables for configuration cache compatibility
 def capturedArchitectures = architectures
 def capturedLibDir = ext.libDir
-def capturedBuildDir = project.buildDir
+def capturedBuildDir = project.layout.buildDirectory.get().asFile
 
 task downloadAssets(type: Download) {
     def assetVersion = "v1.2.7"
@@ -327,14 +327,19 @@ task downloadAssets(type: Download) {
         src "$baseUrl/$arch-assets.zip"
         dest capturedBuildDir
     }
+    overwrite false
 }
 
 task fetchAssets(dependsOn: downloadAssets) {
-    // Capture variables for configuration cache compatibility
     def localArchitectures = capturedArchitectures
     def localBuildDir = capturedBuildDir
     def localLibDir = capturedLibDir
-    
+
+    // Declare inputs/outputs so Gradle's up-to-date check handles "skip if present"
+    // This replaces the configuration-time file I/O in the old checkIfAssetsMissing task
+    inputs.files(localArchitectures.collect { arch -> new File(localBuildDir, "$arch-assets.zip") })
+    outputs.dir(localLibDir)
+
     doLast {
         for (arch in localArchitectures) {
             def extractDir = new File(localBuildDir, arch)
@@ -346,8 +351,24 @@ task fetchAssets(dependsOn: downloadAssets) {
             targetDir.deleteDir()
             targetDir.mkdirs()
             
-            // Extract ZIP using Ant task
-            ant.unzip(src: zipFile.absolutePath, dest: extractDir.absolutePath)
+            // Extract ZIP using java.util.zip (Ant task is deprecated in newer AGP)
+            new java.util.zip.ZipInputStream(new java.io.FileInputStream(zipFile)).withCloseable { zis ->
+                java.util.zip.ZipEntry entry
+                while ((entry = zis.getNextEntry()) != null) {
+                    def outFile = new File(extractDir, entry.getName())
+                    if (entry.isDirectory()) {
+                        outFile.mkdirs()
+                    } else {
+                        outFile.parentFile?.mkdirs()
+                        outFile.withOutputStream { fos ->
+                            byte[] buf = new byte[8192]
+                            int len
+                            while ((len = zis.read(buf)) > 0) { fos.write(buf, 0, len) }
+                        }
+                    }
+                    zis.closeEntry()
+                }
+            }
             
             // Copy and rename files using standard Java APIs
             extractDir.eachFileRecurse { file ->
@@ -377,20 +398,7 @@ task fetchAssets(dependsOn: downloadAssets) {
     }
 }
 
-task checkIfAssetsMissing {
-    // Capture variables for configuration cache compatibility
-    def localArchitectures = capturedArchitectures
-    def localLibDir = capturedLibDir
-    
-    for (arch in localArchitectures) {
-        File[] archLibDirContents = new File(localLibDir, arch).listFiles()
-        if (archLibDirContents == null || archLibDirContents.length == 0) {
-            dependsOn 'fetchAssets'
-        }
-    }
-}
-
-preBuild.dependsOn checkIfAssetsMissing
+preBuild.dependsOn fetchAssets
 
 dependencies {
     def moshi_version = rootProject.ext.moshi_version

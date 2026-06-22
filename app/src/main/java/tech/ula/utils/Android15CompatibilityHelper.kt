@@ -42,26 +42,11 @@ object Android15CompatibilityHelper {
      */
     fun isArchitectureSupported(): Boolean {
         val supportedAbis = setOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-        val primaryAbi = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            Build.SUPPORTED_ABIS.firstOrNull() ?: ""
-        } else {
-            @Suppress("DEPRECATION")
-            Build.CPU_ABI
-        }
-        return primaryAbi in supportedAbis
+        return Build.SUPPORTED_ABIS.firstOrNull().orEmpty() in supportedAbis
     }
-    
-    /**
-     * Get device architecture information
-     */
-    fun getArchitectureInfo(): String {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            "Primary: ${Build.SUPPORTED_ABIS.firstOrNull()}, All: ${Build.SUPPORTED_ABIS.joinToString()}"
-        } else {
-            @Suppress("DEPRECATION")
-            "Primary: ${Build.CPU_ABI}, Secondary: ${Build.CPU_ABI2}"
-        }
-    }
+
+    fun getArchitectureInfo(): String =
+        "Primary: ${Build.SUPPORTED_ABIS.firstOrNull()}, All: ${Build.SUPPORTED_ABIS.joinToString()}"
     
     /**
      * Check if the device has sufficient memory for operations
@@ -82,20 +67,12 @@ object Android15CompatibilityHelper {
      */
     fun isAppInForeground(context: Context): Boolean {
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-            ?: return true // Can't check, assume foreground
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val runningAppProcesses = activityManager.runningAppProcesses ?: return true
-            val myPid = Process.myPid()
-            
-            for (processInfo in runningAppProcesses) {
-                if (processInfo.pid == myPid) {
-                    return processInfo.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
-                }
-            }
-        }
-        
-        return true // Can't determine, assume foreground
+            ?: return true
+        val myPid = Process.myPid()
+        return activityManager.runningAppProcesses
+            ?.firstOrNull { it.pid == myPid }
+            ?.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+            ?: true
     }
     
     /**
@@ -119,49 +96,36 @@ object Android15CompatibilityHelper {
      * On Android 15, this is even more important
      */
     fun isBatteryOptimizationActive(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return false // Not applicable on older versions
-        }
-        
         return try {
             val powerManager = context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
-            val packageName = context.packageName
-            powerManager?.isIgnoringBatteryOptimizations(packageName) == false
+            powerManager?.isIgnoringBatteryOptimizations(context.packageName) == false
         } catch (e: Exception) {
             Log.w(TAG, "Failed to check battery optimization status", e)
             false
         }
     }
-    
-    /**
-     * Validate runtime environment for Android 15
-     * Returns a list of issues found, empty if all OK
-     */
+
     fun validateEnvironment(context: Context): List<String> {
         val issues = mutableListOf<String>()
-        
-        // Check architecture
+
         if (!isArchitectureSupported()) {
             issues.add("Unsupported architecture: ${getArchitectureInfo()}")
         }
-        
-        // Check memory
+
         if (!hasAdequateMemory(context)) {
             issues.add("Insufficient memory available")
         }
-        
-        // Check if running on Android 15+ with specific requirements
-        if (isAndroid15Plus()) {
-            val memoryPressure = getMemoryPressure(context)
-            if (memoryPressure > MEMORY_PRESSURE_CRITICAL_THRESHOLD) {
-                issues.add("High memory pressure: $memoryPressure%")
-            }
-            
-            if (isBatteryOptimizationActive(context)) {
-                issues.add("Battery optimization is active - may affect background operations")
-            }
+
+        // Battery optimization is relevant from API 23+ (Marshmallow) — i.e. all supported devices
+        if (isBatteryOptimizationActive(context)) {
+            issues.add("Battery optimization is active - may affect background operations")
         }
-        
+
+        val memoryPressure = getMemoryPressure(context)
+        if (memoryPressure > MEMORY_PRESSURE_CRITICAL_THRESHOLD) {
+            issues.add("High memory pressure: $memoryPressure%")
+        }
+
         return issues
     }
     
@@ -195,20 +159,19 @@ object Android15CompatibilityHelper {
      */
     fun getOptimizationSuggestions(context: Context): List<String> {
         val suggestions = mutableListOf<String>()
-        
-        if (isBatteryOptimizationActive(context) && isAndroid15Plus()) {
+
+        if (isBatteryOptimizationActive(context)) {
             suggestions.add("Disable battery optimization for better background operation")
         }
-        
-        val memoryPressure = getMemoryPressure(context)
-        if (memoryPressure > MEMORY_PRESSURE_WARNING_THRESHOLD) {
+
+        if (getMemoryPressure(context) > MEMORY_PRESSURE_WARNING_THRESHOLD) {
             suggestions.add("Close other apps to free up memory")
         }
-        
+
         if (!isAppInForeground(context)) {
             suggestions.add("Keep app in foreground for reliable operation")
         }
-        
+
         return suggestions
     }
 }

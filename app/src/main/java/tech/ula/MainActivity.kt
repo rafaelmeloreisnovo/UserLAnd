@@ -1,7 +1,6 @@
 package tech.ula
 
 import android.app.DownloadManager
-import android.app.ProgressDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -12,11 +11,15 @@ import android.os.Handler
 import android.os.Looper
 import android.os.StatFs
 import android.util.Log
+import android.view.Gravity
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.RadioGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -66,7 +69,9 @@ class MainActivity :
     SessionListFragment.SessionSelection,
     AppsListFragment.AppSelection {
     private lateinit var binding: ActivityMainBinding
-    private var progressDialog: ProgressDialog? = null
+    private var progressDialog: AlertDialog? = null
+    private var progressMsgView: TextView? = null
+    private var progressBarHorizontal: ProgressBar? = null
     private val uiHandler = Handler(Looper.getMainLooper())
     private val credentialValidator = CredentialValidator()
 
@@ -314,36 +319,25 @@ class MainActivity :
         }
     }
 
-    @Suppress("DEPRECATION")
     fun updateFilesystemExportProgress(details: String) {
         if (progressDialog == null) {
-            progressDialog =
-                ProgressDialog(this).apply {
-                    setMessage(getString(R.string.progress_exporting_filesystem))
-                    setCancelable(false)
-                    setProgressStyle(ProgressDialog.STYLE_HORIZONTAL)
-                    setProgress(0)
-                    show()
-                }
+            progressDialog = buildHorizontalProgressDialog(getString(R.string.progress_exporting_filesystem))
+            progressDialog?.show()
         }
-        progressDialog?.setMessage(details)
+        progressMsgView?.text = details
     }
 
     fun stopProgressFromFilesystemList() {
         progressDialog?.dismiss()
         progressDialog = null
+        progressMsgView = null
+        progressBarHorizontal = null
     }
 
-    @Suppress("DEPRECATION")
     fun updateFilesystemDeleteProgress() {
         if (progressDialog == null) {
-            progressDialog =
-                ProgressDialog(this).apply {
-                    setMessage(getString(R.string.progress_deleting_filesystem))
-                    setCancelable(false)
-                    setProgressStyle(ProgressDialog.STYLE_SPINNER)
-                    show()
-                }
+            progressDialog = buildSpinnerProgressDialog(getString(R.string.progress_deleting_filesystem))
+            progressDialog?.show()
         }
     }
 
@@ -432,39 +426,75 @@ class MainActivity :
 
     private fun showProgress(messageResId: Int) = showProgress(getString(messageResId))
 
-    @Suppress("DEPRECATION")
     private fun showProgress(message: String) {
         if (progressDialog == null) {
-            progressDialog =
-                ProgressDialog(this).apply {
-                    setCancelable(false)
-                    setProgressStyle(ProgressDialog.STYLE_SPINNER)
-                    show()
-                }
+            progressDialog = buildSpinnerProgressDialog(message)
+            progressDialog?.show()
+        } else {
+            progressMsgView?.text = message
         }
-        progressDialog?.setMessage(message)
     }
 
-    @Suppress("DEPRECATION")
     private fun showDownloadProgress(
         complete: Int,
         total: Int,
     ) {
-        if (progressDialog == null) {
-            progressDialog =
-                ProgressDialog(this).apply {
-                    setCancelable(false)
-                    setProgressStyle(ProgressDialog.STYLE_HORIZONTAL)
-                    max = total.coerceAtLeast(1)
-                    show()
-                }
+        val message = getString(R.string.progress_downloading_out_of, complete, total)
+        val safeTotal = total.coerceAtLeast(1)
+        if (progressDialog == null || progressBarHorizontal == null) {
+            progressDialog?.dismiss()
+            progressDialog = buildHorizontalProgressDialog(message, safeTotal)
+            progressDialog?.show()
         }
-        progressDialog?.apply {
-            setProgressStyle(ProgressDialog.STYLE_HORIZONTAL)
-            max = total.coerceAtLeast(1)
+        progressMsgView?.text = message
+        progressBarHorizontal?.apply {
+            max = safeTotal
             progress = complete.coerceAtLeast(0)
-            setMessage(getString(R.string.progress_downloading_out_of, complete, total))
         }
+    }
+
+    private fun buildSpinnerProgressDialog(message: String): AlertDialog {
+        val dp = resources.displayMetrics.density
+        val pad = (20 * dp).toInt()
+        val gap = (12 * dp).toInt()
+        progressMsgView = TextView(this).apply { text = message }
+        progressBarHorizontal = null
+        val spinner = ProgressBar(this)
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(pad, pad, pad, pad)
+            gravity = Gravity.CENTER_VERTICAL
+            addView(spinner, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginEnd = gap })
+            addView(progressMsgView, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        return AlertDialog.Builder(this).setView(layout).setCancelable(false).create()
+    }
+
+    private fun buildHorizontalProgressDialog(message: String, maxValue: Int = 100): AlertDialog {
+        val dp = resources.displayMetrics.density
+        val pad = (20 * dp).toInt()
+        val gap = (8 * dp).toInt()
+        progressMsgView = TextView(this).apply { text = message }
+        progressBarHorizontal = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            isIndeterminate = false
+            max = maxValue
+        }
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(pad, pad, pad, pad)
+            addView(progressMsgView, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = gap })
+            addView(progressBarHorizontal, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ))
+        }
+        return AlertDialog.Builder(this).setView(layout).setCancelable(false).create()
     }
 
     private fun showIllegalState(messageResId: Int) = showIllegalState(getString(messageResId))
