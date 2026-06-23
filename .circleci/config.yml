@@ -38,8 +38,8 @@ references:
       name: Install Android SDK and NDK
       command: |
         export ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-$ANDROID_HOME}
-        yes | sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125"
-        printf "ndk.dir=%s/ndk/26.1.10909125\n" "${ANDROID_SDK_ROOT}" > local.properties
+        yes | sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.3.13750724"
+        printf "ndk.dir=%s/ndk/27.3.13750724\n" "${ANDROID_SDK_ROOT}" > local.properties
 
 jobs:
   build_debug:
