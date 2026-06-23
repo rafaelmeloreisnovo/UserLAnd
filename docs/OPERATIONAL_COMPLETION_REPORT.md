@@ -18,14 +18,15 @@ This report records the operational finalization work performed against the loca
 ## 2. What compiles
 
 - Android debug APK for arm64-v8a compiled successfully.
+- Unfiltered debug APK compilation across configured Android ABIs completed successfully after removing the obsolete ARM32 `-mthumb-interwork` flag.
 - Native C/RAFAELIA helpers compile with the host compiler via `scripts/build_static.sh` and `scripts/compile_check.sh`.
 - Termux packaged helper binaries are cross-compiled for Android arm64 when `termux-app/package_static_bins.sh` runs with the locally installed NDK.
 
 ## 3. APK artifact
 
 - APK path: `app/build/outputs/apk/debug/app-debug.apk`
-- Verified size: `15M`
-- `file app/build/outputs/apk/debug/app-debug.apk` could not be executed because the container does not have the `file` command installed.
+- Verified sizes: `15M` for the arm64-v8a focused build and `17M` after the all-ABI debug build.
+- APK ZIP integrity check passed with Python `zipfile`; `AndroidManifest.xml` and `classes.dex` were present.
 
 ## 4. Commands executed
 
@@ -41,8 +42,9 @@ This report records the operational finalization work performed against the loca
 | `scripts/ensure_compilation.sh` | PASS after SDK bootstrap | Dependency resolution passed after Android SDK/NDK were installed by the build script. |
 | `RUN_COMPILATION_TEST=true scripts/ensure_compilation.sh` | PASS | Full arm64-v8a debug compilation and native compile check passed. |
 | `scripts/build_apk.sh --task assembleDebug --abi arm64-v8a` | PASS | Generated `app-debug.apk`. |
+| `./gradlew :app:assembleDebug --no-daemon --stacktrace` | PASS | Unfiltered configured-ABI debug APK build passed after ARM32 CMake flag fix. |
 | `ls -lh app/build/outputs/apk/debug/*.apk` | PASS | Confirmed `app-debug.apk` exists and is 15M. |
-| `file app/build/outputs/apk/debug/app-debug.apk \|\| true` | WARNING | `file` utility is absent in this container. |
+| `python3 - <<PY ... zipfile.ZipFile("app/build/outputs/apk/debug/app-debug.apk").testzip() ... PY` | PASS | APK ZIP integrity passed; manifest and classes dex entries were present. |
 | `scripts/build_static.sh` | PASS | Host helper binaries compiled. |
 | `scripts/compile_check.sh` | PASS | Required helper binaries exist and are executable. |
 | `ls -lh build/bin/` | PASS | Helper binaries listed. |
@@ -54,9 +56,9 @@ This report records the operational finalization work performed against the loca
 
 ## 5. Remaining failures or warnings
 
-- `file app/build/outputs/apk/debug/app-debug.apk` could not run because the `file` package is missing from the container.
+- No blocking compile, APK, helper-build, or packaging failure remains in the verified gates.
 - Android build emits non-blocking warnings for deprecated APIs and `android:extractNativeLibs`; these warnings did not block APK generation.
-- The full unfiltered all-ABI `assembleDebug` path previously hit an ARM32 NDK flag issue (`-mthumb-interwork`). The verified operational gate is arm64-v8a, matching the requested target path.
+- The previous full unfiltered all-ABI `assembleDebug` ARM32 failure was corrected by removing the obsolete `-mthumb-interwork` flag from the CMake ARM options.
 
 ## 6. Next real installation/test step
 
