@@ -7,7 +7,7 @@ ASSETS_BIN="$SCRIPT_DIR/terminal-term/src/main/assets/bin"
 
 mkdir -p "$ASSETS_BIN"
 
-"$ROOT_DIR/scripts/build_static.sh"
+RAF_ANDROID_HELPERS=1 NDK_ARCH="${NDK_ARCH:-arm64}" "$ROOT_DIR/scripts/build_static.sh"
 
 echo "NDK hints: set NDK_DIR/ANDROID_NDK_HOME/NDK_HOME or drop an NDK under ./ndk to cross-compile the helpers." >&2
 

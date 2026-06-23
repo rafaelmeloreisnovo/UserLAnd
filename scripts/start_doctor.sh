@@ -33,7 +33,7 @@ else
 fi
 
 if [[ -f app/build.gradle ]]; then
-  compile_sdk="$(sed -n 's/^[[:space:]]*compileSdk[[:space:]]*=?[[:space:]]*//p' app/build.gradle | head -n1 | tr -d ' ')"
+  compile_sdk="$(sed -n 's/^[[:space:]]*compileSdk[[:space:]]*=?[[:space:]]*//p; s/^[[:space:]]*compileSdk[[:space:]]\+//p' app/build.gradle | head -n1 | tr -d ' ')"
   if [[ -n "$compile_sdk" ]]; then
     ok "compileSdk=$compile_sdk"
   else

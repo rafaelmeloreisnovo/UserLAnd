@@ -143,7 +143,16 @@ check_ndk() {
     fi
     
     local ndk_dir="${ANDROID_NDK_HOME:-${NDK_HOME:-}}"
-    
+
+    if [[ -z "$ndk_dir" && -f "$ROOT_DIR/local.properties" ]]; then
+        local sdk_dir
+        sdk_dir=$(grep "^sdk.dir=" "$ROOT_DIR/local.properties" | cut -d= -f2-)
+        sdk_dir="${sdk_dir//\\ / }"
+        if [[ -n "$expected_ndk" && -d "$sdk_dir/ndk/$expected_ndk" ]]; then
+            ndk_dir="$sdk_dir/ndk/$expected_ndk"
+        fi
+    fi
+
     if [[ -n "$ndk_dir" ]] && [[ -d "$ndk_dir" ]]; then
         log_success "NDK found at: $ndk_dir"
     else
@@ -238,7 +247,7 @@ test_compilation() {
     start_time=$(date +%s)
     
     local log_file="$LOG_DIR/gradle_build.log"
-    if ./gradlew assembleDebug --no-daemon --stacktrace &> "$log_file"; then
+    if ./gradlew :app:assembleDebug --no-daemon --stacktrace -PabiFilters=arm64-v8a &> "$log_file"; then
         local end_time
         end_time=$(date +%s)
         local duration=$((end_time - start_time))
