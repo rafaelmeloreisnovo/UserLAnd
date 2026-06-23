@@ -110,10 +110,28 @@ choose_ndk_toolchain() {
   local host_tag
   local ndk_dir="${NDK_DIR:-${ANDROID_NDK_HOME:-${NDK_HOME:-${ANDROID_NDK:-}}}}"
 
-  # Auto-detect NDK from common locations
-  if [[ -z "$ndk_dir" ]]; then
+  # Auto-detect NDK from local.properties and common locations only when an
+  # Android helper build is explicitly requested. Plain build_static.sh remains
+  # host-runnable for local smoke tests.
+  if [[ -z "$ndk_dir" && -f "$ROOT_DIR/local.properties" && ( -n "${NDK_ARCH:-}" || "${RAF_ANDROID_HELPERS:-0}" == "1" ) ]]; then
+    local sdk_dir
+    sdk_dir=$(sed -n 's/^sdk\.dir=//p' "$ROOT_DIR/local.properties" | head -n1)
+    sdk_dir="${sdk_dir//\\ / }"
+    if [[ -n "$sdk_dir" && -d "$sdk_dir/ndk" ]]; then
+      local latest_local_ndk
+      latest_local_ndk=$(find "$sdk_dir/ndk" -maxdepth 1 -type d -name '[0-9]*' 2>/dev/null | sort -V | tail -1)
+      if [[ -n "$latest_local_ndk" && -d "$latest_local_ndk/toolchains" ]]; then
+        ndk_dir="$latest_local_ndk"
+      else
+        ndk_dir="$sdk_dir/ndk"
+      fi
+    fi
+  fi
+
+  if [[ -z "$ndk_dir" && ( -n "${NDK_ARCH:-}" || "${RAF_ANDROID_HELPERS:-0}" == "1" ) ]]; then
     local possible_ndk_paths=(
       "$ROOT_DIR/ndk"
+      "$ROOT_DIR/build/android-sdk/ndk"
       "$HOME/Android/Sdk/ndk"
       "$HOME/Library/Android/sdk/ndk"
       "/usr/local/android-sdk/ndk"
@@ -272,7 +290,7 @@ build raf_arch_probe.c raf_arch_probe core/librafaelia/impl/raf_arch_probe_core.
 
 # Build Rafaelia module components
 if [[ -f "$SRC_DIR/rafaelia/rafaelia_arch_probe.c" ]]; then
-  build rafaelia/rafaelia_arch_probe.c rafaelia_arch_probe_v2 core/librafaelia/impl/raf_arch_probe_core.c
+  build rafaelia/rafaelia_arch_probe.c rafaelia_arch_probe_v2 core/librafaelia/impl/raf_arch_probe_core.c rafaelia/rafaelia_hw_map.c
 fi
 
 echo "[SUCCESS] All binaries built to: $OUT_DIR" >&2

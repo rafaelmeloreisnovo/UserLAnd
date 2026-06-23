@@ -180,7 +180,6 @@ elseif(RAF_ARCH STREQUAL "arm")
     target_compile_options(rafaelia PRIVATE
         -march=armv7-a
         -mthumb
-        -mthumb-interwork
     )
 endif()
 
