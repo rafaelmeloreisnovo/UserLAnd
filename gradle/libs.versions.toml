@@ -67,7 +67,7 @@ slf4j = "2.0.9"
 
 # Google Play Services
 billing = "7.1.1"
-play-services-base = "18.9.0"
+play-services-base = "18.10.0"
 
 # Code quality
 ktlint-cli = "1.5.0"
