@@ -13,7 +13,7 @@ buildscript {
         android_plugin = '8.6.0'
         jacoco_version = '0.8.14'
         // Navigation 2.9.6 compatible with AGP 8.6.0 and Kotlin 1.9.24
-        navigation_version = '2.9.6'
+        navigation_version = '2.10.0'
     }
 
     dependencies {
