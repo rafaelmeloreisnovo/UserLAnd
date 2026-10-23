@@ -36,7 +36,7 @@ jobs:
     
     steps:
       - name: 📥 Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -47,7 +47,7 @@ jobs:
           distribution: 'temurin'
 
       - name: 🔧 Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           cache-read-only: false
 
@@ -165,7 +165,7 @@ jobs:
           echo "ZIP_PATH=dist/$ZIP_NAME" >> "$GITHUB_ENV"
 
       - name: 📤 Upload tested ZIP (${{ matrix.architecture.name }})
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: userland-${{ matrix.architecture.artifact_suffix }}-tested-zip-${{ github.sha }}
           path: ${{ env.ZIP_PATH }}
