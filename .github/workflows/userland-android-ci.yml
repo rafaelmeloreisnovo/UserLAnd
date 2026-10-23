@@ -38,7 +38,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -49,7 +49,7 @@ jobs:
           java-version: "17"
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Build Debug APK
         shell: bash
@@ -59,7 +59,7 @@ jobs:
           ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
       - name: Upload Debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: userland-debug-apk-${{ github.sha }}
           path: app/build/outputs/apk/debug/*.apk
