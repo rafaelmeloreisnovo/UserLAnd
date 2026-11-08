@@ -62,7 +62,7 @@ gson = "2.11.0"
 # Utilities
 # jarchivelib 1.2.0 supports minSdk 21 (avoid 2.x which requires API 26+)
 jarchivelib = "1.2.0"
-sentry = "8.29.0"
+sentry = "8.61.1"
 slf4j = "2.0.18"
 
 # Google Play Services
