@@ -39,8 +39,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          chmod +x scripts/rafaelia_codex_route.sh
-          scripts/rafaelia_codex_route.sh
+          chmod +x scripts/rafaelia_codex_route_check.sh
+          scripts/rafaelia_codex_route_check.sh
 
       - name: Report
         if: always()
@@ -48,4 +48,8 @@ jobs:
         run: |
           echo "## RAFAELIA Codex Route" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Codex route check completed." >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f build/rafaelia_codex_route/REPORT.md ]]; then
+            cat build/rafaelia_codex_route/REPORT.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "TOKEN_VAZIO: route check report not produced; see failed job log." >> "$GITHUB_STEP_SUMMARY"
+          fi
