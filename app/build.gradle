@@ -31,14 +31,8 @@ if (!requestedArchitectures.isEmpty()) {
 }
 def architectures = requestedArchitectures.isEmpty() ? defaultArchitectures : requestedArchitectures
 
-def localProperties = new Properties()
-def localPropertiesFile = rootProject.file('local.properties')
-if (localPropertiesFile.exists()) {
-    localPropertiesFile.withInputStream { localProperties.load(it) }
-}
-def localNdkDir = localProperties.getProperty('ndk.dir')
-        ?: System.getenv('ANDROID_NDK_HOME')
-        ?: System.getenv('NDK_HOME')
+// The canonical ndkVersion property must remain authoritative even when
+// local.properties sets ndk.dir; otherwise AGP silently selects its default.
 def resolvedNdkVersion = project.findProperty('ndkVersion')
 def abiFiltersProperty = project.findProperty('abiFilters') ?: project.findProperty('userlandAbiFilters')
 def abiFiltersList = abiFiltersProperty
@@ -53,7 +47,7 @@ def resolvedAbiFilters = abiFiltersList.isEmpty() ? architectures : abiFiltersLi
 android {
     namespace 'tech.ula'
     compileSdk 35
-    if (resolvedNdkVersion && !localNdkDir) {
+    if (resolvedNdkVersion) {
         ndkVersion resolvedNdkVersion
     }
 
