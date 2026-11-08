@@ -11,7 +11,7 @@ buildscript {
         // Kotlin 1.9.24 for compatibility with AGP 8.6.0 and AndroidX baselines
         kotlin_version = '2.4.0'
         android_plugin = '8.6.0'
-        jacoco_version = '0.8.14'
+        jacoco_version = '0.8.16'
         // Navigation 2.10.x raised minSdk to API 24. Keep API 23 support.
         // 2.9.8 retains Safe Args compatibility with AGP 8.6.0.
         navigation_version = '2.9.8'
