@@ -11,6 +11,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import tech.ula.BuildConfig
 import org.json.JSONObject
 import java.io.File
 import java.util.Random
