@@ -1,0 +1,9 @@
+id;operation;critical
+ENV_ABI;abi;true
+ENV_MEMORY;memory;true
+APP_PACKAGE;package;true
+PROOT_LIBRARY;native_proot;false
+SANDBOX_IO;sandbox_io;true
+FRAMEWORK_STATE;bundle_state;true
+SEEDED_EVENT_ORDER;permutations;true
+LINUX_GUEST_E2E;guest_e2e;false
