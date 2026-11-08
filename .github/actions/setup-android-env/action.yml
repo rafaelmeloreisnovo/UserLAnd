@@ -41,7 +41,9 @@ runs:
 
     - name: Install Android SDK and NDK
       uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # verified v3 commit
-      with: {}
+      with:
+        # 'tools' is a removed SDK package. Install only explicitly listed components below.
+        packages: ""
 
     - name: Install required SDK components
       shell: bash
