@@ -12,8 +12,9 @@ buildscript {
         kotlin_version = '2.4.0'
         android_plugin = '8.6.0'
         jacoco_version = '0.8.14'
-        // Navigation 2.9.6 compatible with AGP 8.6.0 and Kotlin 1.9.24
-        navigation_version = '2.10.2'
+        // Navigation 2.10.x requires minSdk 24; keep 2.9.x for the app's minSdk 23.
+        // Safe Args 2.9.6+ is documented compatible with AGP 8.4.2+.
+        navigation_version = '2.9.8'
     }
 
     dependencies {
@@ -41,7 +42,9 @@ ext {
     androidx_test_espresso_version = '3.7.0'
     material_version = '1.13.0'
     kotlinx_coroutines_version = '1.11.0'
-    okhttp_version = '5.4.0'
+    // OkHttp 5.4.0's Android AAR requires compileSdk 36. Retain API-35
+    // builds with the published 4.12.x maintenance line (also MockWebServer).
+    okhttp_version = '4.12.1'
     moshi_version = '1.15.2'
     gson_version = '2.11.0'
     jarchivelib_version = '1.2.0'
