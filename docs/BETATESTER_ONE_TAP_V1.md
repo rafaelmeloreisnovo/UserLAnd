@@ -19,7 +19,7 @@ The battery reads app/src/main/assets/betatester/scenarios.csv, an ASCII semicol
 | SEEDED_EVENT_ORDER | 24 bounded seeded Bundle event orders | PASS on deterministic replay |
 | LINUX_GUEST_E2E | explicit no-execution boundary | BLOCKED/NOT_RUN |
 
-A failing case has a stable ID, operation, elapsed time, sanitized reason and random seed. An exception is recorded by class only (no stack payload or credentials). A completed header/cases/summary JSONL file is written under private internal files. User-initiated sharing copies just this diagnostic file into FileProvider's scoped cache path. No automatic upload. Android caches may be reclaimed; the primary receipt in filesDir is retained.
+A failing case has a stable ID, operation, elapsed time, sanitized reason and random seed. An exception is recorded by class only (no stack payload or credentials). A completed header/cases/summary JSONL file is written under private internal files. User-initiated sharing creates a bounded ZIP in FileProvider's scoped cache path containing receipt.jsonl and manifest.csv with its SHA-256 digest. No automatic upload. Android caches may be reclaimed; the primary receipt in filesDir is retained.
 
 ## Evidence, boundaries and rollback
 
