@@ -14,6 +14,9 @@ import androidx.core.content.FileProvider
 import tech.ula.BuildConfig
 import org.json.JSONObject
 import java.io.File
+import java.security.MessageDigest
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import java.util.Random
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -211,16 +214,27 @@ class BetaTesterActivity : AppCompatActivity() {
     private fun shareReceipt() {
         val report = lastReport ?: return
         try {
-            // FileProvider is deliberately configured for cache-path only.
-            val shareCopy = File(cacheDir, "betatester-share.jsonl")
-            report.copyTo(shareCopy, overwrite = true)
-            val uri = FileProvider.getUriForFile(this, packageName + ".fileprovider", shareCopy)
+            // Export requires explicit user action; ZIP is bounded and contains no user files.
+            val archive = File(cacheDir, "betatester-share.zip")
+            val hash = MessageDigest.getInstance("SHA-256").digest(report.readBytes())
+                .joinToString("") { "%02x".format(it.toInt() and 255) }
+            ZipOutputStream(archive.outputStream().buffered()).use { zip ->
+                zip.putNextEntry(ZipEntry("receipt.jsonl"))
+                report.inputStream().use { it.copyTo(zip, bufferSize = 4096) }
+                zip.closeEntry()
+                zip.putNextEntry(ZipEntry("manifest.csv"))
+                val manifest = "schema;payload_sha256;scope\n" +
+                    "1;" + hash + ";userland_sandbox_no_guest_e2e\n"
+                zip.write(manifest.toByteArray(Charsets.US_ASCII))
+                zip.closeEntry()
+            }
+            val uri = FileProvider.getUriForFile(this, packageName + ".fileprovider", archive)
             val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/x-ndjson"
+                type = "application/zip"
                 putExtra(Intent.EXTRA_STREAM, uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            startActivity(Intent.createChooser(intent, "Compartilhar receipt local"))
+            startActivity(Intent.createChooser(intent, "Compartilhar ZIP de diagnostico"))
         } catch (t: Exception) {
             status.append("\nEXPORT_BLOCKED: " + t.javaClass.simpleName)
         }
