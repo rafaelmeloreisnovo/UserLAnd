@@ -10,7 +10,7 @@ buildscript {
     ext {
         // Room 2.8.5 KAPT parses Kotlin metadata through 2.3.0, not 2.4.0.
         // Align compiler/stdlib to Kotlin 2.3.21 (AGP 8.6 compatible).
-        kotlin_version = '2.3.21'
+        kotlin_version = '2.4.21'
         android_plugin = '8.6.0'
         jacoco_version = '0.8.14'
         // Navigation 2.10.x raised minSdk to API 24. Keep API 23 support.
