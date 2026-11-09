@@ -1,6 +1,14 @@
 name: Beta APK Artifacts Per ABI
 
 on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'app/src/main/java/tech/ula/betatester/**'
+      - 'app/src/main/assets/betatester/**'
+      - 'app/src/debug/AndroidManifest.xml'
+      - 'app/src/beta/AndroidManifest.xml'
+      - '.github/workflows/beta-apk-artifacts.yml'
   workflow_dispatch:
     inputs:
       signed_beta:
