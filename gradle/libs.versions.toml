@@ -17,7 +17,7 @@
 # ==============================================================================
 
 # Build tools and plugins
-kotlin = "2.4.0"
+kotlin = "2.4.21"
 androidGradlePlugin = "8.6.0"
 jacoco = "0.8.14"
 
