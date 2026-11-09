@@ -293,7 +293,7 @@ write_local_properties() {
   escaped_sdk_dir="${escaped_sdk_dir// /\\ }"
 
   if [[ -f "$ROOT_DIR/local.properties" ]]; then
-    existing_sdk_dir=$(grep '^sdk.dir=' "$ROOT_DIR/local.properties" | head -n1 | cut -d'=' -f2-)
+    existing_sdk_dir=$(grep -m1 '^sdk.dir=' "$ROOT_DIR/local.properties" | cut -d'=' -f2- || true)
   fi
 
   if [[ "$existing_sdk_dir" == "$escaped_sdk_dir" ]]; then
