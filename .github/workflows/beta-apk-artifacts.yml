@@ -83,6 +83,7 @@ jobs:
             --abis "${{ matrix.abi.value }}" \
             "$sign_mode" \
             --skip-sdk \
+            --sdk-dir "${ANDROID_SDK_ROOT}" \
             --dist "dist/beta-apks"
 
       - name: Summarize artifact sizes
