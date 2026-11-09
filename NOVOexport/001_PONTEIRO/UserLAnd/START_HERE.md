@@ -10,3 +10,8 @@
 - **NEXT**: ARMv7 Motorola E7 and AArch64 device execution receipts, targeted PRoot requirements, component license file-level chain.
 
 This GitHub pointer is not evidence of a Google Drive sync; update the longitudinal Drive index only after authorized write+readback.
+
+## One-tap debug/beta BetaTester route (proposed)
+
+- [Scenario manifest](../../../app/src/main/assets/betatester/scenarios.csv) -> [executor](../../../app/src/main/java/tech/ula/betatester/BetaTesterActivity.kt) -> [cases, limitations and receipts](../../../docs/BETATESTER_ONE_TAP_V1.md).
+- Both debug and beta source sets advertise a separate launcher entry; release does not. Physical device evidence is required to promote this candidate from IMPLEMENTED_UNTESTED.
