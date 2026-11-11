@@ -19,7 +19,7 @@
 # Build tools and plugins
 kotlin = "2.4.0"
 androidGradlePlugin = "8.6.0"
-jacoco = "0.8.14"
+jacoco = "0.8.16"
 
 # NDK configuration for cross-architecture builds
 # NDK r27.3 supports: arm64-v8a, armeabi-v7a, x86_64, x86
