@@ -47,7 +47,7 @@ ext {
     kotlinx_coroutines_version = '1.11.0'
     // 5.4.0's Android AAR requires compileSdk 36; preserve compileSdk 35.
     // 4.12.1 is the maintained 4.x patch with the same client API used here.
-    okhttp_version = '4.12.1'
+    okhttp_version = '5.5.1'
     moshi_version = '1.15.2'
     gson_version = '2.11.0'
     jarchivelib_version = '1.2.0'
