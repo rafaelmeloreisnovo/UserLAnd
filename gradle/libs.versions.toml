@@ -17,7 +17,7 @@
 # ==============================================================================
 
 # Build tools and plugins
-kotlin = "2.4.0"
+kotlin = "2.4.21"
 androidGradlePlugin = "8.6.0"
 jacoco = "0.8.14"
 
@@ -52,7 +52,7 @@ androidx-test-espresso = "3.7.0"
 material = "1.13.0"
 
 # Kotlin libraries
-kotlinx-coroutines = "1.7.3"
+kotlinx-coroutines = "1.11.0"
 
 # Network and serialization
 okhttp = "4.12.0"
